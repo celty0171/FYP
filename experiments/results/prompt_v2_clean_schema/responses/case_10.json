@@ -1,0 +1,59 @@
+{
+  "case_id": "10",
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "schema_evidence": {
+    "selected_table": "continent",
+    "selected_columns": ["name", "area"],
+    "primary_key_columns": ["name"],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["name"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "Primary key is not compound and there are no foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "PK is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "PK is not compound and there are no foreign keys."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key is present."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "Table has its own PK ('name') and attributes with no foreign key dependency."
+      }
+    ],
+    "cardinality_reasoning": "Each continent is uniquely identified by its name, with area as an attribute; no foreign key involvement."
+  },
+  "recommended_visualisations": ["bar chart", "calendar chart", "scatter chart", "bubble chart", "choropleth map", "word cloud"],
+  "chart_mapping": {
+    "bar chart": ["name", "area"],
+    "calendar chart": ["name", "area"],
+    "scatter chart": ["name", "area"],
+    "bubble chart": ["name", "area"],
+    "choropleth map": ["name", "area"],
+    "word cloud": ["name", "area"]
+  },
+  "data_type_reasoning": "Name is categorical, area is numeric—suitable for comparisons and geographic visualizations.",
+  "limitations": [
+    "Limited to one record per continent.",
+    "Geographic visualizations require mapping between names and regions."
+  ]
+}

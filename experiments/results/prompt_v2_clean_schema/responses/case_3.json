@@ -1,0 +1,66 @@
+{
+  "case_id": "3",
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": ["name", "elevation", "depth", "dam_height"],
+    "primary_key_columns": ["name"],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["name"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "Primary key is a single column and not a foreign key."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "Primary key is not inherited from another table."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "No compound primary key or foreign key in PK."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key present in selection."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "Table has a primary key and no selected foreign key dependencies."
+      }
+    ],
+    "cardinality_reasoning": "Each lake is uniquely identified by its name, with no foreign key dependencies."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "calendar chart",
+    "scatter chart",
+    "bubble chart",
+    "choropleth map",
+    "word cloud"
+  ],
+  "chart_mapping": {
+    "bar chart": ["name", "elevation", "depth", "dam_height"],
+    "calendar chart": ["elevation", "depth", "dam_height (if time-based)"],
+    "scatter chart": ["elevation", "depth", "dam_height"],
+    "bubble chart": ["name", "elevation", "depth", "dam_height"],
+    "choropleth map": ["name", "elevation", "depth", "dam_height"],
+    "word cloud": ["name"]
+  },
+  "data_type_reasoning": "The 'name' column is categorical, while 'elevation', 'depth', and 'dam_height' are numeric, suitable for entity-based visualisations.",
+  "limitations": [
+    "If only one lake is selected, most visualisations except text/word cloud will not be meaningful.",
+    "Temporal analysis is not possible unless there is a time dimension."
+  ]
+}

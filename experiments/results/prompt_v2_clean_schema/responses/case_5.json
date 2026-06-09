@@ -1,0 +1,57 @@
+{
+  "case_id": "5",
+  "identified_pattern": "weak_entity",
+  "confidence": 1.0,
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": ["country", "year", "population"],
+    "primary_key_columns": ["country", "year"],
+    "foreign_key_columns": ["country"],
+    "selected_foreign_key_columns": ["country"],
+    "foreign_keys_in_primary_key": ["country"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["year"],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "Only one PK column ('country') is a FK; 'year' is local."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "PK is not fully inherited from one parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "Compound PK; 'country' is FK to parent, 'year' is local PK column."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "FK is part of PK and there is a local PK column."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Compound PK with FK and local PK column."
+      }
+    ],
+    "cardinality_reasoning": "Each country_population record is identified by country and year; country is a FK, year is local, matching the weak entity pattern."
+  },
+  "recommended_visualisations": ["line chart", "stacked bar chart", "grouped bar chart", "spider chart"],
+  "chart_mapping": {
+    "line chart": ["country", "year", "population"],
+    "stacked bar chart": ["country", "year", "population"],
+    "grouped bar chart": ["country", "year", "population"],
+    "spider chart": ["country", "year", "population"]
+  },
+  "data_type_reasoning": "Country is categorical, year is temporal, population is numeric—ideal for temporal and grouped comparisons.",
+  "limitations": [
+    "Missing years for some countries may affect trend analysis.",
+    "Population values may require normalization for comparison."
+  ]
+}

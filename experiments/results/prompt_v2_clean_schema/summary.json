@@ -1,0 +1,12 @@
+{
+  "case_count": 9,
+  "pattern_matches": 9,
+  "pattern_accuracy": 1.0,
+  "schema_evidence_matches": 9,
+  "schema_evidence_accuracy": 1.0,
+  "visualisation_any_overlap": 9,
+  "visualisation_overlap_rate": 1.0,
+  "exact_visualisation_set_matches": 1,
+  "exact_visualisation_set_rate": 0.1111111111111111,
+  "pattern_confusions": {}
+}

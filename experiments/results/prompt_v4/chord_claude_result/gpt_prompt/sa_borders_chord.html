@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>South American Land Borders — Chord Diagram</title>
+<!-- Library: D3.js v7 (official). Data: Mondial `borders` table, filtered to South America. -->
+<!-- Mapping (preserved exactly): source = country1, target = country2, weight = length (km of shared border). -->
+<!-- Borders are UNDIRECTED in the source data; the matrix is symmetric and each border appears once. -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+  html, body { margin: 0; background: #fbfbfd; color: #1d1d22; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  #wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { font-size: 13px; color: #5a5a64; margin: 0 0 2px; line-height: 1.5; }
+  .note { font-size: 12px; color: #8a8a94; margin: 2px 0 14px; }
+  svg { display: block; width: 100%; height: auto; }
+  .arc-label { font-size: 12px; fill: #2a2a30; pointer-events: none; }
+  .group-arc { cursor: pointer; }
+  #tooltip {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: rgba(25,25,30,.95); color: #fff; padding: 7px 10px; border-radius: 6px;
+    font-size: 12px; line-height: 1.45; max-width: 240px; box-shadow: 0 4px 14px rgba(0,0,0,.25); z-index: 10;
+  }
+  #tooltip b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>South American Land Borders</h1>
+  <p class="subtitle">Chord <b>width</b> is proportional to the <b>length of the shared land border (km)</b> between two countries.</p>
+  <p class="note">Source: Mondial <code>borders</code> table — source = country1, target = country2, weight = length. Filtered to country pairs where both nations lie in South America. Borders are undirected, so each chord represents one shared frontier. Node order around the circle is computed to place strongly connected countries adjacent and reduce chord crossings. Hover a country or chord for details.</p>
+  <div id="chart"></div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+// ---------------------------------------------------------------------------
+// DATA (inline). Filter already applied: South America only.
+// ---------------------------------------------------------------------------
+const EDGES = [
+  ["Guyana","Suriname",836],["Guyana","Venezuela",789],["French Guiana","Suriname",556],
+  ["Colombia","Peru",1494],["Colombia","Venezuela",2341],["Colombia","Ecuador",708],
+  ["Ecuador","Peru",1529],["Peru","Chile",168],["Bolivia","Argentina",942],
+  ["Bolivia","Brazil",3403],["Bolivia","Chile",942],["Bolivia","Paraguay",753],
+  ["Bolivia","Peru",1212],["Argentina","Chile",6691],["Argentina","Uruguay",541],
+  ["Paraguay","Argentina",2531],["Brazil","Colombia",1790],["Brazil","Argentina",1263],
+  ["Brazil","Paraguay",1371],["Brazil","Uruguay",1050],["Brazil","Peru",2659],
+  ["Brazil","French Guiana",649],["Brazil","Guyana",1308],["Brazil","Suriname",515],
+  ["Brazil","Venezuela",2137]
+];
+
+// ---------------------------------------------------------------------------
+// STEP A — Relationship structure: build symmetric weighted node-node matrix.
+// ---------------------------------------------------------------------------
+const nameSet = new Set();
+EDGES.forEach(([a,b]) => { nameSet.add(a); nameSet.add(b); });
+let names = Array.from(nameSet).sort(); // stable baseline ordering for determinism
+const idx = new Map(names.map((n,i)=>[n,i]));
+const N = names.length;
+
+const matrix = Array.from({length:N}, () => new Array(N).fill(0));
+EDGES.forEach(([a,b,w]) => {
+  const i = idx.get(a), j = idx.get(b);
+  matrix[i][j] += w;  // undirected: mirror the weight
+  matrix[j][i] += w;
+});
+const totalWeight = matrix.map(row => d3.sum(row));
+
+// ---------------------------------------------------------------------------
+// STEP B — Optimise circular node ordering.
+// Affinity = symmetric relationship weight (matrix is already symmetric).
+// Seriation: spectral ordering via the Fiedler vector of the graph Laplacian,
+// then a deterministic crossing-reduction refinement (adjacent swaps).
+// ---------------------------------------------------------------------------
+
+// Build normalised affinity (weights vary by orders of magnitude; sqrt-compress
+// so a single huge border doesn't dominate the ordering geometry).
+const aff = Array.from({length:N}, () => new Array(N).fill(0));
+for (let i=0;i<N;i++) for (let j=0;j<N;j++) if (i!==j && matrix[i][j]>0) aff[i][j] = Math.sqrt(matrix[i][j]);
+
+// --- Fiedler vector via power iteration on the (deflated) Laplacian ---
+function fiedlerOrder() {
+  const deg = aff.map(r => d3.sum(r));
+  // L = D - A
+  const L = Array.from({length:N}, (_,i)=> Array.from({length:N},(_,j)=> (i===j?deg[i]:0) - aff[i][j]));
+  // Shift to make it positive-ish for largest-eigenvector power iteration: M = cI - L
+  const c = Math.max(...deg) * 2 + 1;
+  const M = L.map((row,i)=> row.map((v,j)=> (i===j?c:0) - v));
+  // ones vector is the trivial eigenvector (eigenvalue c). Deflate against it.
+  const ones = new Array(N).fill(1/Math.sqrt(N));
+  let v = names.map((_,i)=> Math.sin(i*1.7)+Math.cos(i*0.9)); // deterministic seed
+  function orthonormaliseAgainstOnes(x){
+    const dot = x.reduce((s,xi,i)=> s + xi*ones[i], 0);
+    for (let i=0;i<N;i++) x[i] -= dot*ones[i];
+    const nrm = Math.hypot(...x) || 1;
+    for (let i=0;i<N;i++) x[i] /= nrm;
+  }
+  orthonormaliseAgainstOnes(v);
+  for (let it=0; it<300; it++){
+    const nx = new Array(N).fill(0);
+    for (let i=0;i<N;i++){ let s=0; for (let j=0;j<N;j++) s += M[i][j]*v[j]; nx[i]=s; }
+    orthonormaliseAgainstOnes(nx);
+    v = nx;
+  }
+  // Order nodes by Fiedler component; tie-break by total weight desc then name.
+  return d3.range(N).sort((p,q)=>{
+    if (Math.abs(v[p]-v[q]) > 1e-9) return v[p]-v[q];
+    if (totalWeight[q] !== totalWeight[p]) return totalWeight[q]-totalWeight[p];
+    return d3.ascending(names[p], names[q]);
+  });
+}
+
+// --- Crossing estimate for a given circular order (lower = better) ---
+// Two chords (a,b) and (c,d) cross iff exactly one of c,d lies strictly between a,b on the circle.
+function crossingCount(order){
+  const pos = new Array(N);
+  order.forEach((node,r)=> pos[node]=r);
+  const chords = [];
+  for (let i=0;i<N;i++) for (let j=i+1;j<N;j++) if (matrix[i][j]>0) chords.push([pos[i],pos[j],matrix[i][j]]);
+  let cross = 0;
+  function between(x,lo,hi){ return x>lo && x<hi; }
+  for (let u=0;u<chords.length;u++){
+    let [a,b,w1]=chords[u]; if(a>b)[a,b]=[b,a];
+    for (let v=u+1;v<chords.length;v++){
+      let [c,d,w2]=chords[v]; if(c>d)[c,d]=[d,c];
+      const cIn=between(c,a,b), dIn=between(d,a,b);
+      if (cIn !== dIn) cross += (w1+w2); // weight crossings so heavy chords are prioritised
+    }
+  }
+  return cross;
+}
+
+// --- Deterministic refinement: repeated adjacent-swap passes, keep improvements ---
+function refine(order){
+  let best = order.slice();
+  let bestScore = crossingCount(best);
+  let improved = true, passes = 0;
+  while (improved && passes < 40){
+    improved = false; passes++;
+    for (let r=0;r<N;r++){
+      const s=(r+1)%N;
+      const cand = best.slice();
+      [cand[r],cand[s]]=[cand[s],cand[r]];
+      const sc = crossingCount(cand);
+      if (sc < bestScore - 1e-9){ best=cand; bestScore=sc; improved=true; }
+    }
+  }
+  return best;
+}
+
+const circularOrder = refine(fiedlerOrder());      // array of node indices, clockwise
+const rankOfNode = new Array(N);
+circularOrder.forEach((node,r)=> rankOfNode[node]=r);
+
+// Reorder names + matrix into circular order so d3.chord consumes them directly.
+const orderedNames = circularOrder.map(i=>names[i]);
+const M2 = circularOrder.map(i => circularOrder.map(j => matrix[i][j]));
+
+// ---------------------------------------------------------------------------
+// STEP C — Consistent chord ordering handled below via sortSubgroups / sortChords.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------------------
+const width = 900, height = 900;
+const outerR = Math.min(width,height)*0.5 - 150; // generous label margin
+const innerR = outerR - 16;
+
+const color = d3.scaleOrdinal()
+  .domain(orderedNames)
+  .range(orderedNames.map((_,i)=> d3.interpolateRainbow(i/orderedNames.length)));
+
+const chord = d3.chord()
+  .padAngle(14/innerR)
+  .sortGroups(null)                       // groups already in computed circular rank
+  .sortSubgroups(d3.descending)           // within a node, heavier links nearer; rank consistency below
+  .sortChords(d3.ascending);              // DRAW ascending by weight -> thin chords on top, not hidden
+
+const chords = chord(M2);
+
+const arc = d3.arc().innerRadius(innerR).outerRadius(outerR);
+const ribbon = d3.ribbon().radius(innerR);
+
+const svg = d3.select("#chart").append("svg")
+  .attr("viewBox", [-width/2, -height/2, width, height])
+  .attr("font-family","inherit");
+
+const tip = d3.select("#tooltip");
+function showTip(html, ev){ tip.style("opacity",1).html(html); moveTip(ev); }
+function moveTip(ev){ tip.style("left",(ev.clientX+14)+"px").style("top",(ev.clientY+14)+"px"); }
+function hideTip(){ tip.style("opacity",0); }
+const fmt = d3.format(",");
+
+// --- Outer group arcs ---
+const group = svg.append("g").selectAll("g")
+  .data(chords.groups).join("g");
+
+group.append("path")
+  .attr("class","group-arc")
+  .attr("d", arc)
+  .attr("fill", d => color(orderedNames[d.index]))
+  .attr("stroke", d => d3.rgb(color(orderedNames[d.index])).darker(0.6))
+  .on("mouseover", (ev,d)=> { highlight(d.index); 
+      showTip(`<b>${orderedNames[d.index]}</b><br>Total shared border: ${fmt(d.value)} km`, ev); })
+  .on("mousemove", moveTip)
+  .on("mouseout", ()=> { unhighlight(); hideTip(); });
+
+// --- Labels outside the outer arc ---
+group.append("text")
+  .attr("class","arc-label")
+  .each(d => { d.angle = (d.startAngle + d.endAngle)/2; })
+  .attr("dy","0.35em")
+  .attr("transform", d => `
+      rotate(${(d.angle*180/Math.PI - 90)})
+      translate(${outerR + 10})
+      ${d.angle > Math.PI ? "rotate(180)" : ""}`)
+  .attr("text-anchor", d => d.angle > Math.PI ? "end" : null)
+  .text(d => orderedNames[d.index]);
+
+// --- Ribbons (chords): drawn after arcs, ascending weight (via sortChords) ---
+const ribbons = svg.append("g")
+  .attr("fill-opacity", 0.68)
+  .selectAll("path")
+  .data(chords).join("path")
+  .attr("class","ribbon")
+  .attr("d", ribbon)
+  .attr("fill", d => color(orderedNames[d.target.index]))   // colour by target group
+  .attr("stroke", d => d3.rgb(color(orderedNames[d.target.index])).darker(0.7))
+  .attr("stroke-width", 0.5)
+  .on("mouseover", (ev,d)=> {
+      d3.select(ev.currentTarget).attr("fill-opacity",0.95);
+      const a = orderedNames[d.source.index], b = orderedNames[d.target.index];
+      showTip(`<b>${a}</b> &harr; <b>${b}</b><br>Shared border: ${fmt(d.source.value)} km`, ev);
+  })
+  .on("mousemove", moveTip)
+  .on("mouseout", (ev)=> { d3.select(ev.currentTarget).attr("fill-opacity",0.68); hideTip(); });
+
+// --- Hover highlighting: fade unrelated chords, keep connected ones ---
+function highlight(i){
+  ribbons.attr("fill-opacity", d =>
+    (d.source.index===i || d.target.index===i) ? 0.95 : 0.06);
+  group.selectAll(".group-arc").attr("opacity", d =>
+    (d.index===i || M2[i][d.index]>0) ? 1 : 0.35);
+}
+function unhighlight(){
+  ribbons.attr("fill-opacity", 0.68);
+  group.selectAll(".group-arc").attr("opacity", 1);
+}
+</script>
+</body>
+</html>

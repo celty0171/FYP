@@ -1,0 +1,541 @@
+html
+  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mondial Encompasses – Sankey Diagram</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f1117;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px 40px;
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #8a8fa8;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+
+    #chart-container {
+      background: #181b26;
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+      padding: 20px 10px;
+      width: 100%;
+      max-width: 1100px;
+      overflow-x: auto;
+    }
+
+    svg { display: block; margin: 0 auto; }
+
+    .node rect {
+      rx: 4;
+      ry: 4;
+      stroke-width: 0;
+    }
+
+    .node text {
+      font-size: 11.5px;
+      fill: #d8dce8;
+      pointer-events: none;
+    }
+
+    .link {
+      fill: none;
+      stroke-opacity: 0.28;
+      transition: stroke-opacity 0.2s;
+    }
+
+    .link:hover { stroke-opacity: 0.62; }
+
+    .tooltip {
+      position: fixed;
+      background: rgba(20, 22, 34, 0.96);
+      border: 1px solid #3a3f58;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 12.5px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      color: #e8eaf6;
+      line-height: 1.7;
+      z-index: 999;
+      max-width: 220px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 22px;
+      justify-content: center;
+      margin-top: 22px;
+      max-width: 900px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12.5px;
+      color: #b0b4c8;
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🌍 Mondial Encompasses — Country → Continent</h1>
+<p class="subtitle">Sankey diagram mapping countries to continents weighted by territorial percentage</p>
+
+<div id="chart-container">
+  <svg id="sankey-svg"></svg>
+</div>
+
+<div class="legend" id="legend"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ─── Inline Data ────────────────────────────────────────────────────────────
+const rawData = [
+  {"country":"AL","continent":"Europe","percentage":100},
+  {"country":"GR","continent":"Europe","percentage":100},
+  {"country":"CY","continent":"Europe","percentage":100},
+  {"country":"AD","continent":"Europe","percentage":100},
+  {"country":"MK","continent":"Europe","percentage":100},
+  {"country":"SRB","continent":"Europe","percentage":100},
+  {"country":"MNE","continent":"Europe","percentage":100},
+  {"country":"KOS","continent":"Europe","percentage":100},
+  {"country":"AND","continent":"Europe","percentage":100},
+  {"country":"F","continent":"Europe","percentage":100},
+  {"country":"E","continent":"Europe","percentage":100},
+  {"country":"CZ","continent":"Europe","percentage":100},
+  {"country":"SK","continent":"Europe","percentage":100},
+  {"country":"D","continent":"Europe","percentage":100},
+  {"country":"H","continent":"Europe","percentage":100},
+  {"country":"I","continent":"Europe","percentage":100},
+  {"country":"CH","continent":"Europe","percentage":100},
+  {"country":"FL","continent":"Europe","percentage":100},
+  {"country":"A","continent":"Europe","percentage":100},
+  {"country":"EST","continent":"Europe","percentage":100},
+  {"country":"LV","continent":"Europe","percentage":100},
+  {"country":"LT","continent":"Europe","percentage":100},
+  {"country":"BY","continent":"Europe","percentage":100},
+  {"country":"PL","continent":"Europe","percentage":100},
+  {"country":"UA","continent":"Europe","percentage":100},
+  {"country":"R","continent":"Europe","percentage":23.15},
+  {"country":"R","continent":"Asia","percentage":76.85},
+  {"country":"B","continent":"Europe","percentage":100},
+  {"country":"L","continent":"Europe","percentage":100},
+  {"country":"NL","continent":"Europe","percentage":100},
+  {"country":"SLO","continent":"Europe","percentage":100},
+  {"country":"HR","continent":"Europe","percentage":100},
+  {"country":"BIH","continent":"Europe","percentage":100},
+  {"country":"BG","continent":"Europe","percentage":100},
+  {"country":"RO","continent":"Europe","percentage":100},
+  {"country":"DK","continent":"Europe","percentage":100},
+  {"country":"IS","continent":"Europe","percentage":100},
+  {"country":"FO","continent":"Europe","percentage":100},
+  {"country":"IRL","continent":"Europe","percentage":100},
+  {"country":"SF","continent":"Europe","percentage":100},
+  {"country":"N","continent":"Europe","percentage":100},
+  {"country":"S","continent":"Europe","percentage":100},
+  {"country":"MC","continent":"Europe","percentage":100},
+  {"country":"V","continent":"Europe","percentage":100},
+  {"country":"CEU","continent":"Africa","percentage":100},
+  {"country":"MEL","continent":"Africa","percentage":100},
+  {"country":"RSM","continent":"Europe","percentage":100},
+  {"country":"M","continent":"Europe","percentage":100},
+  {"country":"GBM","continent":"Europe","percentage":100},
+  {"country":"MD","continent":"Europe","percentage":100},
+  {"country":"P","continent":"Europe","percentage":100},
+  {"country":"SVA","continent":"Europe","percentage":100},
+  {"country":"GB","continent":"Europe","percentage":100},
+  {"country":"GBZ","continent":"Europe","percentage":100},
+  {"country":"GBG","continent":"Europe","percentage":100},
+  {"country":"GBJ","continent":"Europe","percentage":100},
+  {"country":"ARM","continent":"Asia","percentage":100},
+  {"country":"GE","continent":"Asia","percentage":100},
+  {"country":"AZ","continent":"Asia","percentage":100},
+  {"country":"TR","continent":"Europe","percentage":3},
+  {"country":"TR","continent":"Asia","percentage":97},
+  {"country":"RL","continent":"Asia","percentage":100},
+  {"country":"WB","continent":"Asia","percentage":100},
+  {"country":"GAZA","continent":"Asia","percentage":100},
+  {"country":"IL","continent":"Asia","percentage":100},
+  {"country":"SYR","continent":"Asia","percentage":100},
+  {"country":"JOR","continent":"Asia","percentage":100},
+  {"country":"SA","continent":"Asia","percentage":100},
+  {"country":"BRN","continent":"Asia","percentage":100},
+  {"country":"Q","continent":"Asia","percentage":100},
+  {"country":"UAE","continent":"Asia","percentage":100},
+  {"country":"OM","continent":"Asia","percentage":100},
+  {"country":"YE","continent":"Asia","percentage":100},
+  {"country":"KWT","continent":"Asia","percentage":100},
+  {"country":"IRQ","continent":"Asia","percentage":100},
+  {"country":"IR","continent":"Asia","percentage":100},
+  {"country":"AFG","continent":"Asia","percentage":100},
+  {"country":"TM","continent":"Asia","percentage":100},
+  {"country":"UZ","continent":"Asia","percentage":100},
+  {"country":"TJ","continent":"Asia","percentage":100},
+  {"country":"KG","continent":"Asia","percentage":100},
+  {"country":"KZ","continent":"Europe","percentage":5.4},
+  {"country":"KZ","continent":"Asia","percentage":94.6},
+  {"country":"MNG","continent":"Asia","percentage":100},
+  {"country":"MV","continent":"Asia","percentage":100},
+  {"country":"PK","continent":"Asia","percentage":100},
+  {"country":"IND","continent":"Asia","percentage":100},
+  {"country":"NEP","continent":"Asia","percentage":100},
+  {"country":"BHT","continent":"Asia","percentage":100},
+  {"country":"BD","continent":"Asia","percentage":100},
+  {"country":"MYA","continent":"Asia","percentage":100},
+  {"country":"CL","continent":"Asia","percentage":100},
+  {"country":"CN","continent":"Asia","percentage":100},
+  {"country":"RC","continent":"Asia","percentage":100},
+  {"country":"HK","continent":"Asia","percentage":100},
+  {"country":"MAC","continent":"Asia","percentage":100},
+  {"country":"KP","continent":"Asia","percentage":100},
+  {"country":"ROK","continent":"Asia","percentage":100},
+  {"country":"J","continent":"Asia","percentage":100},
+  {"country":"RP","continent":"Asia","percentage":100},
+  {"country":"VN","continent":"Asia","percentage":100},
+  {"country":"K","continent":"Asia","percentage":100},
+  {"country":"LAO","continent":"Asia","percentage":100},
+  {"country":"THA","continent":"Asia","percentage":100},
+  {"country":"MAL","continent":"Asia","percentage":100},
+  {"country":"BRU","continent":"Asia","percentage":100},
+  {"country":"SGP","continent":"Asia","percentage":100},
+  {"country":"RI","continent":"Asia","percentage":78},
+  {"country":"RI","continent":"Australia/Oceania","percentage":22},
+  {"country":"TL","continent":"Asia","percentage":100},
+  {"country":"PNG","continent":"Australia/Oceania","percentage":100},
+  {"country":"SOL","continent":"Australia/Oceania","percentage":100},
+  {"country":"VU","continent":"Australia/Oceania","percentage":100},
+  {"country":"NCL","continent":"Australia/Oceania","percentage":100},
+  {"country":"AUS","continent":"Australia/Oceania","percentage":100},
+  {"country":"CX","continent":"Australia/Oceania","percentage":100},
+  {"country":"CC","continent":"Australia/Oceania","percentage":100},
+  {"country":"NF","continent":"Australia/Oceania","percentage":100},
+  {"country":"NZ","continent":"Australia/Oceania","percentage":100},
+  {"country":"PAL","continent":"Australia/Oceania","percentage":100},
+  {"country":"MP","continent":"Australia/Oceania","percentage":100},
+  {"country":"GU","continent":"Australia/Oceania","percentage":100},
+  {"country":"FSM","continent":"Australia/Oceania","percentage":100},
+  {"country":"MH","continent":"Australia/Oceania","percentage":100},
+  {"country":"NAU","continent":"Australia/Oceania","percentage":100},
+  {"country":"KIR","continent":"Australia/Oceania","percentage":100},
+  {"country":"TUV","continent":"Australia/Oceania","percentage":100},
+  {"country":"TOK","continent":"Australia/Oceania","percentage":100},
+  {"country":"WS","continent":"Australia/Oceania","percentage":100},
+  {"country":"AS","continent":"Australia/Oceania","percentage":100},
+  {"country":"WF","continent":"Australia/Oceania","percentage":100},
+  {"country":"FJI","continent":"Australia/Oceania","percentage":100},
+  {"country":"TO","continent":"Australia/Oceania","percentage":100},
+  {"country":"NU","continent":"Australia/Oceania","percentage":100},
+  {"country":"CK","continent":"Australia/Oceania","percentage":100},
+  {"country":"PF","continent":"Australia/Oceania","percentage":100},
+  {"country":"PN","continent":"Australia/Oceania","percentage":100},
+  {"country":"ET","continent":"Asia","percentage":7.3},
+  {"country":"ET","continent":"Africa","percentage":92.7},
+  {"country":"LAR","continent":"Africa","percentage":100},
+  {"country":"TN","continent":"Africa","percentage":100},
+  {"country":"DZ","continent":"Africa","percentage":100},
+  {"country":"MA","continent":"Africa","percentage":100},
+  {"country":"WSA","continent":"Africa","percentage":100},
+  {"country":"RMM","continent":"Africa","percentage":100},
+  {"country":"RIM","continent":"Africa","percentage":100},
+  {"country":"SN","continent":"Africa","percentage":100},
+  {"country":"WAG","continent":"Africa","percentage":100},
+  {"country":"GUB","continent":"Africa","percentage":100},
+  {"country":"RG","continent":"Africa","percentage":100},
+  {"country":"SLE","continent":"Africa","percentage":100},
+  {"country":"LB","continent":"Africa","percentage":100},
+  {"country":"BF","continent":"Africa","percentage":100},
+  {"country":"CI","continent":"Africa","percentage":100},
+  {"country":"GH","continent":"Africa","percentage":100},
+  {"country":"RT","continent":"Africa","percentage":100},
+  {"country":"BEN","continent":"Africa","percentage":100},
+  {"country":"NGR","continent":"Africa","percentage":100},
+  {"country":"RN","continent":"Africa","percentage":100},
+  {"country":"TCH","continent":"Africa","percentage":100},
+  {"country":"SUD","continent":"Africa","percentage":100},
+  {"country":"SSD","continent":"Africa","percentage":100},
+  {"country":"RCA","continent":"Africa","percentage":100},
+  {"country":"CAM","continent":"Africa","percentage":100},
+  {"country":"GQ","continent":"Africa","percentage":100},
+  {"country":"G","continent":"Africa","percentage":100},
+  {"country":"RCB","continent":"Africa","percentage":100},
+  {"country":"CGO","continent":"Africa","percentage":100},
+  {"country":"ANG","continent":"Africa","percentage":100},
+  {"country":"NAM","continent":"Africa","percentage":100},
+  {"country":"RB","continent":"Africa","percentage":100},
+  {"country":"RSA","continent":"Africa","percentage":100},
+  {"country":"LS","continent":"Africa","percentage":100},
+  {"country":"SD","continent":"Africa","percentage":100},
+  {"country":"MOC","continent":"Africa","percentage":100},
+  {"country":"ZW","continent":"Africa","percentage":100},
+  {"country":"Z","continent":"Africa","percentage":100},
+  {"country":"MW","continent":"Africa","percentage":100},
+  {"country":"EAT","continent":"Africa","percentage":100},
+  {"country":"BI","continent":"Africa","percentage":100},
+  {"country":"RWA","continent":"Africa","percentage":100},
+  {"country":"EAU","continent":"Africa","percentage":100},
+  {"country":"EAK","continent":"Africa","percentage":100},
+  {"country":"SO","continent":"Africa","percentage":100},
+  {"country":"DJI","continent":"Africa","percentage":100},
+  {"country":"ETH","continent":"Africa","percentage":100},
+  {"country":"ER","continent":"Africa","percentage":100},
+  {"country":"CV","continent":"Africa","percentage":100},
+  {"country":"STP","continent":"Africa","percentage":100},
+  {"country":"SY","continent":"Africa","percentage":100},
+  {"country":"COM","continent":"Africa","percentage":100},
+  {"country":"MYT","continent":"Africa","percentage":100},
+  {"country":"RM","continent":"Africa","percentage":100},
+  {"country":"MS","continent":"Africa","percentage":100},
+  {"country":"RE","continent":"Africa","percentage":100},
+  {"country":"HELX","continent":"Africa","percentage":100},
+  {"country":"GL","continent":"North America","percentage":100},
+  {"country":"SPM","continent":"North America","percentage":100},
+  {"country":"BM","continent":"North America","percentage":100},
+  {"country":"CDN","continent":"North America","percentage":100},
+  {"country":"USA","continent":"North America","percentage":100},
+  {"country":"MEX","continent":"North America","percentage":100},
+  {"country":"BZ","continent":"North America","percentage":100},
+  {"country":"GCA","continent":"North America","percentage":100},
+  {"country":"ES","continent":"North America","percentage":100},
+  {"country":"HN","continent":"North America","percentage":100},
+  {"country":"NIC","continent":"North America","percentage":100},
+  {"country":"CR","continent":"North America","percentage":100},
+  {"country":"PA","continent":"North America","percentage":100},
+  {"country":"BS","continent":"North America","percentage":100},
+  {"country":"TUCA","continent":"North America","percentage":100},
+  {"country":"CYM","continent":"North America","percentage":100},
+  {"country":"C","continent":"North America","percentage":100},
+  {"country":"JA","continent":"North America","percentage":100},
+  {"country":"RH","continent":"North America","percentage":100},
+  {"country":"DOM","continent":"North America","percentage":100},
+  {"country":"PR","continent":"North America","percentage":100},
+  {"country":"VIRG","continent":"North America","percentage":100},
+  {"country":"BVI","continent":"North America","percentage":100},
+  {"country":"AXA","continent":"North America","percentage":100},
+  {"country":"SMAR","continent":"North America","percentage":100},
+  {"country":"SX","continent":"North America","percentage":100},
+  {"country":"SBAR","continent":"North America","percentage":100},
+  {"country":"KN","continent":"North America","percentage":100},
+  {"country":"AG","continent":"North America","percentage":100},
+  {"country":"MNTS","continent":"North America","percentage":100},
+  {"country":"GP","continent":"North America","percentage":100},
+  {"country":"WD","continent":"North America","percentage":100},
+  {"country":"MQ","continent":"North America","percentage":100},
+  {"country":"WL","continent":"North America","percentage":100},
+  {"country":"BDS","continent":"North America","percentage":100},
+  {"country":"WV","continent":"North America","percentage":100},
+  {"country":"WG","continent":"North America","percentage":100},
+  {"country":"TT","continent":"North America","percentage":100},
+  {"country":"NLB","continent":"South America","percentage":100},
+  {"country":"CUR","continent":"South America","percentage":100},
+  {"country":"ARU","continent":"South America","percentage":100},
+  {"country":"YV","continent":"South America","percentage":100},
+  {"country":"GUY","continent":"South America","percentage":100},
+  {"country":"SME","continent":"South America","percentage":100},
+  {"country":"GF","continent":"South America","percentage":100},
+  {"country":"CO","continent":"South America","percentage":100},
+  {"country":"EC","continent":"South America","percentage":100},
+  {"country":"PE","continent":"South America","percentage":100},
+  {"country":"BOL","continent":"South America","percentage":100},
+  {"country":"RCH","continent":"South America","percentage":100},
+  {"country":"RA","continent":"South America","percentage":100},
+  {"country":"PY","continent":"South America","percentage":100},
+  {"country":"ROU","continent":"South America","percentage":100},
+  {"country":"BR","continent":"South America","percentage":100},
+  {"country":"FALK","continent":"South America","percentage":100}
+];
+
+// ─── Colour palette per continent ───────────────────────────────────────────
+const continentColour = {
+  "Europe":            "#4e79d4",
+  "Asia":              "#e05c2a",
+  "Africa":            "#2ecc71",
+  "North America":     "#f39c12",
+  "South America":     "#9b59b6",
+  "Australia/Oceania": "#1abc9c"
+};
+
+const continents = Object.keys(continentColour);
+
+// Assign a colour to every node: continents use their fixed colour,
+// countries inherit the colour of their (first / dominant) continent.
+function dominantContinent(country) {
+  const rows = rawData.filter(d => d.country === country);
+  rows.sort((a, b) => b.percentage - a.percentage);
+  return rows[0].continent;
+}
+
+// ─── Build Sankey graph data ─────────────────────────────────────────────────
+const nodeNames = [];
+const nodeIndex = {};
+
+function getOrAdd(name) {
+  if (!(name in nodeIndex)) {
+    nodeIndex[name] = nodeNames.length;
+    nodeNames.push(name);
+  }
+  return nodeIndex[name];
+}
+
+// Add continents first (right side), then countries (left side)
+continents.forEach(c => getOrAdd(c));
+const uniqueCountries = [...new Set(rawData.map(d => d.country))];
+uniqueCountries.forEach(c => getOrAdd(c));
+
+const links = rawData.map(d => ({
+  source: nodeIndex[d.country],
+  target: nodeIndex[d.continent],
+  value:  d.percentage,
+  country: d.country,
+  continent: d.continent
+}));
+
+const graph = {
+  nodes: nodeNames.map(name => ({ name })),
+  links
+};
+
+// ─── Layout ──────────────────────────────────────────────────────────────────
+const margin = { top: 20, right: 160, bottom: 20, left: 160 };
+const totalW  = Math.min(1060, window.innerWidth - 40);
+const totalH  = Math.max(820, uniqueCountries.length * 5.6);
+const W = totalW  - margin.left - margin.right;
+const H = totalH  - margin.top  - margin.bottom;
+
+const svg = d3.select("#sankey-svg")
+  .attr("width",  totalW)
+  .attr("height", totalH);
+
+const g = svg.append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+const sankey = d3.sankey()
+  .nodeId(d => d.name)
+  .nodeWidth(18)
+  .nodePadding(4)
+  .extent([[0, 0], [W, H]]);
+
+const { nodes, links: sankeyLinks } = sankey({
+  nodes: graph.nodes.map(d => Object.assign({}, d)),
+  links: graph.links.map(d => Object.assign({}, d))
+});
+
+// ─── Colour helpers ──────────────────────────────────────────────────────────
+function nodeColour(node) {
+  if (continentColour[node.name]) return continentColour[node.name];
+  return continentColour[dominantContinent(node.name)] || "#888";
+}
+
+function linkColour(link) {
+  return continentColour[link.continent] || "#888";
+}
+
+// ─── Draw links ──────────────────────────────────────────────────────────────
+g.append("g")
+  .selectAll("path")
+  .data(sankeyLinks)
+  .join("path")
+    .attr("class", "link")
+    .attr("d", d3.sankeyLinkHorizontal())
+    .attr("stroke", d => linkColour(d))
+    .attr("stroke-width", d => Math.max(1, d.width))
+    .on("mousemove", (event, d) => {
+      tooltip
+        .style("opacity", 1)
+        .style("left",  (event.clientX + 14) + "px")
+        .style("top",   (event.clientY - 28) + "px")
+        .html(`<strong>${d.country}</strong> → <strong>${d.continent}</strong><br/>
+               Percentage: <strong>${d.value}%</strong>`);
+    })
+    .on("mouseleave", () => tooltip.style("opacity", 0));
+
+// ─── Draw nodes ──────────────────────────────────────────────────────────────
+const node = g.append("g")
+  .selectAll("g")
+  .data(nodes)
+  .join("g")
+    .attr("class", "node");
+
+node.append("rect")
+  .attr("x",      d => d.x0)
+  .attr("y",      d => d.y0)
+  .attr("width",  d => d.x1 - d.x0)
+  .attr("height", d => Math.max(1, d.y1 - d.y0))
+  .attr("fill",   d => nodeColour(d))
+  .attr("opacity", 0.92)
+  .on("mousemove", (event, d) => {
+    const isContinent = continents.includes(d.name);
+    const total = isContinent
+      ? rawData.filter(r => r.continent === d.name)
+               .reduce((s, r) => s + r.percentage, 0).toFixed(1)
+      : rawData.filter(r => r.country === d.name)
+               .reduce((s, r) => s + r.percentage, 0).toFixed(1);
+    tooltip
+      .style("opacity", 1)
+      .style("left",  (event.clientX + 14) + "px")
+      .style("top",   (event.clientY - 28) + "px")
+      .html(isContinent
+        ? `<strong>Continent:</strong> ${d.name}<br/>Total weight: <strong>${total}</strong>`
+        : `<strong>Country:</strong> ${d.name}<br/>Total weight: <strong>${total}%</strong>`);
+  })
+  .on("mouseleave", () => tooltip.style("opacity", 0));
+
+// ─── Labels ──────────────────────────────────────────────────────────────────
+node.append("text")
+  .attr("x",           d => d.x0 < W / 2 ? d.x0 - 6 : d.x1 + 6)
+  .attr("y",           d => (d.y0 + d.y1) / 2)
+  .attr("dy",          "0.35em")
+  .attr("text-anchor", d => d.x0 < W / 2 ? "end" : "start")
+  .attr("font-size",   d => continents.includes(d.name) ? "13px" : "10.5px")
+  .attr("font-weight", d => continents.includes(d.name) ? "700" : "400")
+  .attr("fill",        d => continents.includes(d.name) ? "#ffffff" : "#c8cce0")
+  .text(d => d.name);
+
+// ─── Tooltip element ─────────────────────────────────────────────────────────
+const tooltip = d3.select("#tooltip");
+
+// ─── Legend ──────────────────────────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+continents.forEach(c => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `<div class="legend-swatch" style="background:${continentColour[c]}"></div>${c}`;
+  legendEl.appendChild(item);
+});
+</script>
+</body>
+</html>

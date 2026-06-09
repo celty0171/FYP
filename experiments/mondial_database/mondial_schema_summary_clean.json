@@ -1,0 +1,1917 @@
+{
+  "tables": {
+    "country": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "capital",
+          "type": "VARCHAR(35)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "area",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "population",
+          "type": "INTEGER",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "code"
+      ],
+      "foreign_keys": []
+    },
+    "country_population": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "year",
+          "type": "INT",
+          "nullable": true
+        },
+        {
+          "name": "population",
+          "type": "INT",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country",
+        "year"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "province": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "population",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "area",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "capital",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "capital_province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name",
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "province_population": {
+      "columns": [
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "year",
+          "type": "INT",
+          "nullable": true
+        },
+        {
+          "name": "population",
+          "type": "DECIMAL",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province",
+        "year"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "province_other_name": {
+      "columns": [
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "other_name",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province",
+        "other_name"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "province_local_name": {
+      "columns": [
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "local_name",
+          "type": "VARCHAR(90)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "country_other_name": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "other_name",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country",
+        "other_name"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "country_local_name": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "local_name",
+          "type": "VARCHAR(120)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "population": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "population_growth",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "infant_mortality",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "politics": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "independence",
+          "type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "was_dependent",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "dependent",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "government",
+          "type": "VARCHAR(120)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "economy": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "gdp",
+          "type": "INT",
+          "nullable": true
+        },
+        {
+          "name": "agriculture",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "service",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "industry",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "inflation",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "unemployment",
+          "type": "NUMERIC(5,2)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "language": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "super_language",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "super_language"
+          ],
+          "references_table": "language",
+          "references_columns": []
+        }
+      ]
+    },
+    "spoken": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "percentage",
+          "type": "NUMERIC(4,1)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name",
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "ethnic_group": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "percentage",
+          "type": "DECIMAL",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name",
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "religion": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "percentage",
+          "type": "DECIMAL",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "name",
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "city": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        },
+        {
+          "name": "population",
+          "type": "DECIMAL",
+          "nullable": true
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "elevation",
+          "type": "INTEGER",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name",
+        "province",
+        "country"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "city_population": {
+      "columns": [
+        {
+          "name": "city",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "year",
+          "type": "DECIMAL",
+          "nullable": true
+        },
+        {
+          "name": "population",
+          "type": "DECIMAL",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province",
+        "city",
+        "year"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "city_other_name": {
+      "columns": [
+        {
+          "name": "city",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "other_name",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province",
+        "city",
+        "other_name"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "city_local_name": {
+      "columns": [
+        {
+          "name": "city",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "local_name",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "country",
+        "province",
+        "city"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "continent": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(20)",
+          "nullable": false
+        },
+        {
+          "name": "area",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "borders": {
+      "columns": [
+        {
+          "name": "country1",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "country2",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "length",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country1",
+        "country2"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country1"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "country2"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        }
+      ]
+    },
+    "encompasses": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "continent",
+          "type": "VARCHAR(20)",
+          "nullable": false
+        },
+        {
+          "name": "percentage",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country",
+        "continent"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "continent"
+          ],
+          "references_table": "continent",
+          "references_columns": []
+        }
+      ]
+    },
+    "organization": {
+      "columns": [
+        {
+          "name": "abbreviation",
+          "type": "VARCHAR(12)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(100)",
+          "nullable": false
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(35)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "established",
+          "type": "DATE",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "abbreviation"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "is_member": {
+      "columns": [
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "organization",
+          "type": "VARCHAR(12)",
+          "nullable": true
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "country",
+        "organization"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "organization"
+          ],
+          "references_table": "organization",
+          "references_columns": []
+        }
+      ]
+    },
+    "mountain": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "mountains",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "elevation",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(10)",
+          "nullable": true
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "desert": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(25)",
+          "nullable": false
+        },
+        {
+          "name": "area",
+          "type": "NUMERIC(10,2)",
+          "nullable": false
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": true
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "island": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "islands",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "area",
+          "type": "NUMERIC(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "elevation",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(12)",
+          "nullable": true
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": true
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(4,1)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "airport": {
+      "columns": [
+        {
+          "name": "iata_code",
+          "type": "VARCHAR(3)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(100)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        },
+        {
+          "name": "island",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "elevation",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "gmt_offset",
+          "type": "INTEGER",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "iata_code"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "sea": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "area",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "depth",
+          "type": "INTEGER",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "lake": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "area",
+          "type": "INTEGER",
+          "nullable": false
+        },
+        {
+          "name": "elevation",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "depth",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "dam_height",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "type",
+          "type": "VARCHAR(12)",
+          "nullable": true
+        },
+        {
+          "name": "latitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "longitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": []
+    },
+    "river": {
+      "columns": [
+        {
+          "name": "name",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "sea",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "length",
+          "type": "NUMERIC(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "area",
+          "type": "DECIMAL",
+          "nullable": true
+        },
+        {
+          "name": "source_latitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "source_longitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "mountains",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "source_elevation",
+          "type": "DECIMAL",
+          "nullable": true
+        },
+        {
+          "name": "estuary_latitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "estuary_longitude",
+          "type": "NUMERIC(5,2)",
+          "nullable": false
+        },
+        {
+          "name": "estuary_elevation",
+          "type": "DECIMAL",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "name"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "sea"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        }
+      ]
+    },
+    "river_through": {
+      "columns": [
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "lake"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_mountain": {
+      "columns": [
+        {
+          "name": "mountain",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "mountain"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "mountain"
+          ],
+          "references_table": "mountain",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_desert": {
+      "columns": [
+        {
+          "name": "desert",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "desert"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "desert"
+          ],
+          "references_table": "desert",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_island": {
+      "columns": [
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "island"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "country"
+          ],
+          "references_table": "country",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_river": {
+      "columns": [
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "river"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_sea": {
+      "columns": [
+        {
+          "name": "sea",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "sea"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "sea"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_lake": {
+      "columns": [
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "lake"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_estuary": {
+      "columns": [
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "river"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "geo_source": {
+      "columns": [
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": true
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "province",
+        "country",
+        "river"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "province",
+            "country"
+          ],
+          "references_table": "province",
+          "references_columns": []
+        }
+      ]
+    },
+    "merges_with": {
+      "columns": [
+        {
+          "name": "sea1",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "sea2",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "sea1",
+        "sea2"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "sea1"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "sea2"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        }
+      ]
+    },
+    "located": {
+      "columns": [
+        {
+          "name": "city",
+          "type": "VARCHAR(35)",
+          "nullable": false
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "sea",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "sea"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "located_on": {
+      "columns": [
+        {
+          "name": "city",
+          "type": "VARCHAR(35)",
+          "nullable": false
+        },
+        {
+          "name": "province",
+          "type": "VARCHAR(48)",
+          "nullable": false
+        },
+        {
+          "name": "country",
+          "type": "VARCHAR(4)",
+          "nullable": false
+        },
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "city",
+        "province",
+        "country",
+        "island"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "city",
+            "province",
+            "country"
+          ],
+          "references_table": "city",
+          "references_columns": []
+        }
+      ]
+    },
+    "island_in": {
+      "columns": [
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "sea",
+          "type": "VARCHAR(50)",
+          "nullable": true
+        },
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [],
+      "foreign_keys": [
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "sea"
+          ],
+          "references_table": "sea",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        }
+      ]
+    },
+    "mountain_on_island": {
+      "columns": [
+        {
+          "name": "mountain",
+          "type": "VARCHAR(50)",
+          "nullable": false
+        },
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "mountain"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "mountain"
+          ],
+          "references_table": "mountain",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        }
+      ]
+    },
+    "lake_on_island": {
+      "columns": [
+        {
+          "name": "lake",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "lake"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "lake"
+          ],
+          "references_table": "lake",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        }
+      ]
+    },
+    "river_on_island": {
+      "columns": [
+        {
+          "name": "river",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "island",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "river"
+      ],
+      "foreign_keys": [
+        {
+          "columns": [
+            "river"
+          ],
+          "references_table": "river",
+          "references_columns": []
+        },
+        {
+          "columns": [
+            "island"
+          ],
+          "references_table": "island",
+          "references_columns": []
+        }
+      ]
+    }
+  }
+}

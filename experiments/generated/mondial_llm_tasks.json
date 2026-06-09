@@ -1,0 +1,2550 @@
+{
+  "dataset": "Mondial",
+  "task_count": 9,
+  "tasks": [
+    {
+      "case_id": "hannan_basic_country_bar",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "country",
+        "selected_columns": [
+          "code",
+          "population"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "code",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "population",
+            "type": "INTEGER",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": false
+          }
+        ],
+        "table_primary_key": [
+          "code"
+        ],
+        "selected_primary_key_columns": [
+          "code"
+        ],
+        "selected_foreign_key_columns": [],
+        "primary_key_foreign_key_columns": [],
+        "primary_key_local_columns": [
+          "code"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": false,
+        "all_table_foreign_keys": [],
+        "table_inferred": {
+          "relationship_kind": "entity",
+          "scalar_columns": [
+            "area",
+            "population"
+          ],
+          "text_columns": [
+            "name",
+            "code",
+            "capital",
+            "province"
+          ],
+          "nullable_columns": [
+            "capital",
+            "province"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "basic_entity",
+        "visualisations": [
+          "bar_chart",
+          "choropleth_map",
+          "word_cloud"
+        ],
+        "mapping": {
+          "key": "country.code",
+          "measure": "country.population",
+          "bar_label": "country.code",
+          "bar_value": "country.population"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_basic_inherited_economy_scatter",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "economy",
+        "selected_columns": [
+          "country",
+          "gdp",
+          "unemployment"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "country",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "CONSTRAINT economy_isa FOREIGN KEY (country) REFERENCES country"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "gdp",
+            "type": "INT",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          },
+          {
+            "name": "unemployment",
+            "type": "NUMERIC(5,2)",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          }
+        ],
+        "table_primary_key": [
+          "country"
+        ],
+        "selected_primary_key_columns": [
+          "country"
+        ],
+        "selected_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_local_columns": [],
+        "full_primary_key_is_foreign_key": true,
+        "has_compound_primary_key": false,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "country"
+            ],
+            "references_table": "country",
+            "references_columns": [],
+            "raw": "CONSTRAINT economy_isa FOREIGN KEY (country) REFERENCES country"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "inherited_key_entity_candidate",
+          "scalar_columns": [
+            "gdp",
+            "agriculture",
+            "service",
+            "industry",
+            "inflation",
+            "unemployment"
+          ],
+          "text_columns": [
+            "country"
+          ],
+          "nullable_columns": [
+            "gdp",
+            "agriculture",
+            "service",
+            "industry",
+            "inflation",
+            "unemployment"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          },
+          "economy": {
+            "columns": [
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4) CONSTRAINT economy_pk PRIMARY KEY"
+              },
+              {
+                "name": "gdp",
+                "type": "INT",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "gdp INT CONSTRAINT economy_gdp CHECK (gdp>=0)"
+              },
+              {
+                "name": "agriculture",
+                "type": "NUMERIC(5,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "agriculture NUMERIC(5,2)"
+              },
+              {
+                "name": "service",
+                "type": "NUMERIC(5,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "service NUMERIC(5,2)"
+              },
+              {
+                "name": "industry",
+                "type": "NUMERIC(5,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "industry NUMERIC(5,2)"
+              },
+              {
+                "name": "inflation",
+                "type": "NUMERIC(5,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "inflation NUMERIC(5,2)"
+              },
+              {
+                "name": "unemployment",
+                "type": "NUMERIC(5,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "unemployment NUMERIC(5,2)"
+              }
+            ],
+            "primary_key": [
+              "country"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "CONSTRAINT economy_isa FOREIGN KEY (country) REFERENCES country"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "inherited_key_entity_candidate",
+              "scalar_columns": [
+                "gdp",
+                "agriculture",
+                "service",
+                "industry",
+                "inflation",
+                "unemployment"
+              ],
+              "text_columns": [
+                "country"
+              ],
+              "nullable_columns": [
+                "gdp",
+                "agriculture",
+                "service",
+                "industry",
+                "inflation",
+                "unemployment"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "basic_entity_inherited_key",
+        "visualisations": [
+          "scatter_chart"
+        ],
+        "mapping": {
+          "key": "economy.country",
+          "x": "economy.gdp",
+          "y": "economy.unemployment"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_basic_lake_bubble",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "lake",
+        "selected_columns": [
+          "name",
+          "elevation",
+          "depth",
+          "dam_height"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "name",
+            "type": "VARCHAR(32)",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "elevation",
+            "type": "INTEGER",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          },
+          {
+            "name": "depth",
+            "type": "INTEGER",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          },
+          {
+            "name": "dam_height",
+            "type": "INTEGER",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          }
+        ],
+        "table_primary_key": [
+          "name"
+        ],
+        "selected_primary_key_columns": [
+          "name"
+        ],
+        "selected_foreign_key_columns": [],
+        "primary_key_foreign_key_columns": [],
+        "primary_key_local_columns": [
+          "name"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": false,
+        "all_table_foreign_keys": [],
+        "table_inferred": {
+          "relationship_kind": "entity",
+          "scalar_columns": [
+            "area",
+            "elevation",
+            "depth",
+            "dam_height",
+            "latitude",
+            "longitude"
+          ],
+          "text_columns": [
+            "name",
+            "river",
+            "type"
+          ],
+          "nullable_columns": [
+            "river",
+            "elevation",
+            "depth",
+            "dam_height",
+            "type"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "lake": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) CONSTRAINT lake_pk PRIMARY KEY"
+              },
+              {
+                "name": "river",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "river VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area INTEGER NOT NULL CONSTRAINT lake_area CHECK (area>=0)"
+              },
+              {
+                "name": "elevation",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "elevation INTEGER NULL"
+              },
+              {
+                "name": "depth",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "depth INTEGER NULL CONSTRAINT lake_depth CHECK (depth>=0)"
+              },
+              {
+                "name": "dam_height",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "dam_height INTEGER NULL CONSTRAINT lake_dam_height CHECK (dam_height>=0)"
+              },
+              {
+                "name": "type",
+                "type": "VARCHAR(12)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "type VARCHAR(12)"
+              },
+              {
+                "name": "latitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "latitude NUMERIC(5,2) NOT NULL CONSTRAINT lake_latitude CHECK (latitude BETWEEN -90 AND 90)"
+              },
+              {
+                "name": "longitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "longitude NUMERIC(5,2) NOT NULL CONSTRAINT lake_longtitude CHECK (longitude BETWEEN -180 AND 180)"
+              }
+            ],
+            "primary_key": [
+              "name"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "elevation",
+                "depth",
+                "dam_height",
+                "latitude",
+                "longitude"
+              ],
+              "text_columns": [
+                "name",
+                "river",
+                "type"
+              ],
+              "nullable_columns": [
+                "river",
+                "elevation",
+                "depth",
+                "dam_height",
+                "type"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "basic_entity",
+        "visualisations": [
+          "bubble_chart",
+          "scatter_chart"
+        ],
+        "mapping": {
+          "key": "lake.name",
+          "x": "lake.elevation",
+          "y": "lake.depth",
+          "size": "lake.dam_height"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_basic_organization_calendar",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "organization",
+        "selected_columns": [
+          "abbreviation",
+          "established"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "abbreviation",
+            "type": "VARCHAR(12)",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "established",
+            "type": "DATE",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          }
+        ],
+        "table_primary_key": [
+          "abbreviation"
+        ],
+        "selected_primary_key_columns": [
+          "abbreviation"
+        ],
+        "selected_foreign_key_columns": [],
+        "primary_key_foreign_key_columns": [],
+        "primary_key_local_columns": [
+          "abbreviation"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": false,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "city",
+              "province",
+              "country"
+            ],
+            "references_table": "city",
+            "references_columns": [],
+            "raw": "CONSTRAINT city_local_name_fk FOREIGN KEY (city, province, country) REFERENCES city"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "entity_with_foreign_key",
+          "scalar_columns": [
+            "established"
+          ],
+          "text_columns": [
+            "abbreviation",
+            "name",
+            "city",
+            "country",
+            "province"
+          ],
+          "nullable_columns": [
+            "city",
+            "country",
+            "province",
+            "established"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "city": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(48)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(48) NOT NULL"
+              },
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4) NOT NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(48)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(48) NOT NULL"
+              },
+              {
+                "name": "population",
+                "type": "DECIMAL",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population DECIMAL NULL"
+              },
+              {
+                "name": "latitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "latitude NUMERIC(5,2) NOT NULL CONSTRAINT city_latitude_range CHECK (latitude BETWEEN -90 AND 90)"
+              },
+              {
+                "name": "longitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "longitude NUMERIC(5,2) NOT NULL CONSTRAINT city_longtitude_range CHECK (longitude BETWEEN -180 AND 180)"
+              },
+              {
+                "name": "elevation",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "elevation INTEGER"
+              }
+            ],
+            "primary_key": [
+              "name",
+              "province",
+              "country"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "province",
+                  "country"
+                ],
+                "references_table": "province",
+                "references_columns": [],
+                "raw": "CONSTRAINT city_province_we FOREIGN KEY (province, country) REFERENCES province"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "weak_entity_candidate",
+              "scalar_columns": [
+                "population",
+                "latitude",
+                "longitude",
+                "elevation"
+              ],
+              "text_columns": [
+                "name",
+                "country",
+                "province"
+              ],
+              "nullable_columns": [
+                "population",
+                "elevation"
+              ]
+            }
+          },
+          "organization": {
+            "columns": [
+              {
+                "name": "abbreviation",
+                "type": "VARCHAR(12)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "abbreviation VARCHAR(12) CONSTRAINT organization_pk PRIMARY KEY"
+              },
+              {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(100) NOT NULL CONSTRAINT organization_name_ck UNIQUE"
+              },
+              {
+                "name": "city",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "city VARCHAR(35) NULL"
+              },
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "established",
+                "type": "DATE",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "established DATE NULL"
+              }
+            ],
+            "primary_key": [
+              "abbreviation"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "city",
+                  "province",
+                  "country"
+                ],
+                "references_table": "city",
+                "references_columns": [],
+                "raw": "CONSTRAINT city_local_name_fk FOREIGN KEY (city, province, country) REFERENCES city"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "entity_with_foreign_key",
+              "scalar_columns": [
+                "established"
+              ],
+              "text_columns": [
+                "abbreviation",
+                "name",
+                "city",
+                "country",
+                "province"
+              ],
+              "nullable_columns": [
+                "city",
+                "country",
+                "province",
+                "established"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "basic_entity",
+        "visualisations": [
+          "calendar_chart",
+          "bar_chart",
+          "word_cloud"
+        ],
+        "mapping": {
+          "key": "organization.abbreviation",
+          "date": "organization.established"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_weak_country_population_line",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "country_population",
+        "selected_columns": [
+          "country",
+          "year",
+          "population"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "country",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [
+                  "code"
+                ],
+                "raw": "inferred from Mondial conceptual schema",
+                "inferred": true
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "year",
+            "type": "INT",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          },
+          {
+            "name": "population",
+            "type": "INT",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": false
+          }
+        ],
+        "table_primary_key": [
+          "country",
+          "year"
+        ],
+        "selected_primary_key_columns": [
+          "country",
+          "year"
+        ],
+        "selected_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_local_columns": [
+          "year"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": true,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "country"
+            ],
+            "references_table": "country",
+            "references_columns": [
+              "code"
+            ],
+            "raw": "inferred from Mondial conceptual schema",
+            "inferred": true
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "weak_entity_candidate",
+          "scalar_columns": [
+            "year",
+            "population"
+          ],
+          "text_columns": [
+            "country"
+          ],
+          "nullable_columns": [
+            "country",
+            "year"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          },
+          "country_population": {
+            "columns": [
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4)"
+              },
+              {
+                "name": "year",
+                "type": "INT",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "year INT CONSTRAINT country_population_year CHECK (year >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INT",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INT NOT NULL CONSTRAINT country_population_population CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "country",
+              "year"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [
+                  "code"
+                ],
+                "raw": "inferred from Mondial conceptual schema",
+                "inferred": true
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "weak_entity_candidate",
+              "scalar_columns": [
+                "year",
+                "population"
+              ],
+              "text_columns": [
+                "country"
+              ],
+              "nullable_columns": [
+                "country",
+                "year"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "weak_entity",
+        "visualisations": [
+          "line_chart"
+        ],
+        "mapping": {
+          "parent_key": "country_population.country",
+          "child_key": "country_population.year",
+          "y": "country_population.population"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_weak_ethnic_group_grouped_bar",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "ethnic_group",
+        "selected_columns": [
+          "country",
+          "name",
+          "percentage"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "country",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "CONSTRAINT ethnic_group_of_we FOREIGN KEY (country) REFERENCES country"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR(50)",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "percentage",
+            "type": "DECIMAL",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          }
+        ],
+        "table_primary_key": [
+          "name",
+          "country"
+        ],
+        "selected_primary_key_columns": [
+          "name",
+          "country"
+        ],
+        "selected_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_foreign_key_columns": [
+          "country"
+        ],
+        "primary_key_local_columns": [
+          "name"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": true,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "country"
+            ],
+            "references_table": "country",
+            "references_columns": [],
+            "raw": "CONSTRAINT ethnic_group_of_we FOREIGN KEY (country) REFERENCES country"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "weak_entity_candidate",
+          "scalar_columns": [
+            "percentage"
+          ],
+          "text_columns": [
+            "country",
+            "name"
+          ],
+          "nullable_columns": [
+            "country",
+            "name",
+            "percentage"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          },
+          "ethnic_group": {
+            "columns": [
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4)"
+              },
+              {
+                "name": "name",
+                "type": "VARCHAR(50)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(50)"
+              },
+              {
+                "name": "percentage",
+                "type": "DECIMAL",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "percentage DECIMAL NULL CONSTRAINT ethnic_group_percent_range CHECK (percentage BETWEEN 0 AND 100)"
+              }
+            ],
+            "primary_key": [
+              "name",
+              "country"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "CONSTRAINT ethnic_group_of_we FOREIGN KEY (country) REFERENCES country"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "weak_entity_candidate",
+              "scalar_columns": [
+                "percentage"
+              ],
+              "text_columns": [
+                "country",
+                "name"
+              ],
+              "nullable_columns": [
+                "country",
+                "name",
+                "percentage"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "weak_entity",
+        "visualisations": [
+          "grouped_bar_chart"
+        ],
+        "mapping": {
+          "parent_key": "ethnic_group.country",
+          "child_key": "ethnic_group.name",
+          "value": "ethnic_group.percentage"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_one_many_airport_island_treemap",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "airport",
+        "selected_columns": [
+          "iata_code",
+          "island",
+          "elevation"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "iata_code",
+            "type": "VARCHAR(3)",
+            "is_primary_key": true,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "island",
+            "type": "VARCHAR(50)",
+            "is_primary_key": false,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "island"
+                ],
+                "references_table": "island",
+                "references_columns": [],
+                "raw": "island VARCHAR(50) NULL CONSTRAINT airport_on_island_fk REFERENCES island(name) ON UPDATE CASCADE"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "elevation",
+            "type": "INTEGER",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": true
+          }
+        ],
+        "table_primary_key": [
+          "iata_code"
+        ],
+        "selected_primary_key_columns": [
+          "iata_code"
+        ],
+        "selected_foreign_key_columns": [
+          "island"
+        ],
+        "primary_key_foreign_key_columns": [],
+        "primary_key_local_columns": [
+          "iata_code"
+        ],
+        "full_primary_key_is_foreign_key": false,
+        "has_compound_primary_key": false,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "island"
+            ],
+            "references_table": "island",
+            "references_columns": [],
+            "raw": "island VARCHAR(50) NULL CONSTRAINT airport_on_island_fk REFERENCES island(name) ON UPDATE CASCADE"
+          },
+          {
+            "columns": [
+              "city",
+              "province",
+              "country"
+            ],
+            "references_table": "city",
+            "references_columns": [],
+            "raw": "CONSTRAINT airport_city_fk FOREIGN KEY (city, province, country) REFERENCES city"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "entity_with_foreign_key",
+          "scalar_columns": [
+            "latitude",
+            "longitude",
+            "elevation",
+            "gmt_offset"
+          ],
+          "text_columns": [
+            "iata_code",
+            "name",
+            "country",
+            "city",
+            "province",
+            "island"
+          ],
+          "nullable_columns": [
+            "name",
+            "country",
+            "city",
+            "province",
+            "island",
+            "elevation"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "airport": {
+            "columns": [
+              {
+                "name": "iata_code",
+                "type": "VARCHAR(3)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "iata_code VARCHAR(3) CONSTRAINT airport_pk PRIMARY KEY"
+              },
+              {
+                "name": "name",
+                "type": "VARCHAR(100)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(100)"
+              },
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4)"
+              },
+              {
+                "name": "city",
+                "type": "VARCHAR(48)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "city VARCHAR(48)"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(48)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(48)"
+              },
+              {
+                "name": "island",
+                "type": "VARCHAR(50)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": true,
+                "raw": "island VARCHAR(50) NULL CONSTRAINT airport_on_island_fk REFERENCES island(name) ON UPDATE CASCADE"
+              },
+              {
+                "name": "latitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "latitude NUMERIC(5,2) NOT NULL CONSTRAINT airport_latitude_range CHECK (latitude BETWEEN -90 AND 90)"
+              },
+              {
+                "name": "longitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "longitude NUMERIC(5,2) NOT NULL CONSTRAINT airport_longtitude_range CHECK (longitude BETWEEN -180 AND 180)"
+              },
+              {
+                "name": "elevation",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "elevation INTEGER NULL"
+              },
+              {
+                "name": "gmt_offset",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "gmt_offset INTEGER NOT NULL"
+              }
+            ],
+            "primary_key": [
+              "iata_code"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "island"
+                ],
+                "references_table": "island",
+                "references_columns": [],
+                "raw": "island VARCHAR(50) NULL CONSTRAINT airport_on_island_fk REFERENCES island(name) ON UPDATE CASCADE"
+              },
+              {
+                "columns": [
+                  "city",
+                  "province",
+                  "country"
+                ],
+                "references_table": "city",
+                "references_columns": [],
+                "raw": "CONSTRAINT airport_city_fk FOREIGN KEY (city, province, country) REFERENCES city"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "entity_with_foreign_key",
+              "scalar_columns": [
+                "latitude",
+                "longitude",
+                "elevation",
+                "gmt_offset"
+              ],
+              "text_columns": [
+                "iata_code",
+                "name",
+                "country",
+                "city",
+                "province",
+                "island"
+              ],
+              "nullable_columns": [
+                "name",
+                "country",
+                "city",
+                "province",
+                "island",
+                "elevation"
+              ]
+            }
+          },
+          "city": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(48)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(48) NOT NULL"
+              },
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "country VARCHAR(4) NOT NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(48)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(48) NOT NULL"
+              },
+              {
+                "name": "population",
+                "type": "DECIMAL",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population DECIMAL NULL"
+              },
+              {
+                "name": "latitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "latitude NUMERIC(5,2) NOT NULL CONSTRAINT city_latitude_range CHECK (latitude BETWEEN -90 AND 90)"
+              },
+              {
+                "name": "longitude",
+                "type": "NUMERIC(5,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "longitude NUMERIC(5,2) NOT NULL CONSTRAINT city_longtitude_range CHECK (longitude BETWEEN -180 AND 180)"
+              },
+              {
+                "name": "elevation",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "elevation INTEGER"
+              }
+            ],
+            "primary_key": [
+              "name",
+              "province",
+              "country"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "province",
+                  "country"
+                ],
+                "references_table": "province",
+                "references_columns": [],
+                "raw": "CONSTRAINT city_province_we FOREIGN KEY (province, country) REFERENCES province"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "weak_entity_candidate",
+              "scalar_columns": [
+                "population",
+                "latitude",
+                "longitude",
+                "elevation"
+              ],
+              "text_columns": [
+                "name",
+                "country",
+                "province"
+              ],
+              "nullable_columns": [
+                "population",
+                "elevation"
+              ]
+            }
+          },
+          "island": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) CONSTRAINT island_pk PRIMARY KEY"
+              },
+              {
+                "name": "islands",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "islands VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NULL CONSTRAINT island_area CHECK (area BETWEEN 0 AND 2175600)"
+              },
+              {
+                "name": "elevation",
+                "type": "INTEGER",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "elevation INTEGER NULL"
+              },
+              {
+                "name": "type",
+                "type": "VARCHAR(12)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "type VARCHAR(12)"
+              },
+              {
+                "name": "latitude",
+                "type": "NUMERIC(4,1)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "latitude NUMERIC(4,1) NULL CONSTRAINT island_latitude CHECK (latitude BETWEEN -90 AND 90)"
+              },
+              {
+                "name": "longitude",
+                "type": "NUMERIC(4,1)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "longitude NUMERIC(4,1) NULL CONSTRAINT island_longtitude CHECK (longitude BETWEEN -180 AND 180)"
+              }
+            ],
+            "primary_key": [
+              "name"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "elevation",
+                "latitude",
+                "longitude"
+              ],
+              "text_columns": [
+                "name",
+                "islands",
+                "type"
+              ],
+              "nullable_columns": [
+                "islands",
+                "area",
+                "elevation",
+                "type",
+                "latitude",
+                "longitude"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "one_many_relationship",
+        "visualisations": [
+          "treemap",
+          "circle_packing"
+        ],
+        "mapping": {
+          "child_key": "airport.iata_code",
+          "parent_key": "airport.island",
+          "size": "airport.elevation"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_many_many_encompasses_sankey",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "encompasses",
+        "selected_columns": [
+          "country",
+          "continent",
+          "percentage"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "country",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country VARCHAR(4) NOT NULL CONSTRAINT encompasses_country_fk REFERENCES country"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "continent",
+            "type": "VARCHAR(20)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "continent"
+                ],
+                "references_table": "continent",
+                "references_columns": [],
+                "raw": "continent VARCHAR(20) NOT NULL CONSTRAINT encompasses_continent_fk REFERENCES continent"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": false
+          },
+          {
+            "name": "percentage",
+            "type": "NUMERIC(10,2)",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": false
+          }
+        ],
+        "table_primary_key": [
+          "country",
+          "continent"
+        ],
+        "selected_primary_key_columns": [
+          "country",
+          "continent"
+        ],
+        "selected_foreign_key_columns": [
+          "continent",
+          "country"
+        ],
+        "primary_key_foreign_key_columns": [
+          "country",
+          "continent"
+        ],
+        "primary_key_local_columns": [],
+        "full_primary_key_is_foreign_key": true,
+        "has_compound_primary_key": true,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "country"
+            ],
+            "references_table": "country",
+            "references_columns": [],
+            "raw": "country VARCHAR(4) NOT NULL CONSTRAINT encompasses_country_fk REFERENCES country"
+          },
+          {
+            "columns": [
+              "continent"
+            ],
+            "references_table": "continent",
+            "references_columns": [],
+            "raw": "continent VARCHAR(20) NOT NULL CONSTRAINT encompasses_continent_fk REFERENCES continent"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "relationship_table_candidate",
+          "scalar_columns": [
+            "percentage"
+          ],
+          "text_columns": [
+            "country",
+            "continent"
+          ],
+          "nullable_columns": []
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "continent": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(20)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(20) CONSTRAINT continent_pk PRIMARY KEY"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL"
+              }
+            ],
+            "primary_key": [
+              "name"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area"
+              ],
+              "text_columns": [
+                "name"
+              ],
+              "nullable_columns": []
+            }
+          },
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          },
+          "encompasses": {
+            "columns": [
+              {
+                "name": "country",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": true,
+                "raw": "country VARCHAR(4) NOT NULL CONSTRAINT encompasses_country_fk REFERENCES country"
+              },
+              {
+                "name": "continent",
+                "type": "VARCHAR(20)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": true,
+                "raw": "continent VARCHAR(20) NOT NULL CONSTRAINT encompasses_continent_fk REFERENCES continent"
+              },
+              {
+                "name": "percentage",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "percentage NUMERIC(10,2) NOT NULL CONSTRAINT encompasses_percentage_range CHECK (percentage BETWEEN 0 AND 100)"
+              }
+            ],
+            "primary_key": [
+              "country",
+              "continent"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "country"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country VARCHAR(4) NOT NULL CONSTRAINT encompasses_country_fk REFERENCES country"
+              },
+              {
+                "columns": [
+                  "continent"
+                ],
+                "references_table": "continent",
+                "references_columns": [],
+                "raw": "continent VARCHAR(20) NOT NULL CONSTRAINT encompasses_continent_fk REFERENCES continent"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "relationship_table_candidate",
+              "scalar_columns": [
+                "percentage"
+              ],
+              "text_columns": [
+                "country",
+                "continent"
+              ],
+              "nullable_columns": []
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "many_many_relationship",
+        "visualisations": [
+          "sankey_diagram"
+        ],
+        "mapping": {
+          "source": "encompasses.country",
+          "target": "encompasses.continent",
+          "weight": "encompasses.percentage"
+        },
+        "transformations": []
+      }
+    },
+    {
+      "case_id": "hannan_reflexive_many_many_borders_chord",
+      "mode": "data_first",
+      "task_type": "schema_pattern_identification_and_visualisation_mapping",
+      "instruction": "A user has selected columns from a single Mondial table. Following the VizER/Hannan ER schema-pattern rules, identify the ER visualisation schema pattern represented by this selection. Explain the schema evidence, infer cardinality constraints, recommend suitable visualisations, and produce a chart-ready mapping.",
+      "selection": {
+        "selected_table": "borders",
+        "selected_columns": [
+          "country1",
+          "country2",
+          "length"
+        ],
+        "selected_column_metadata": [
+          {
+            "name": "country1",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country1"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country1 VARCHAR(4) CONSTRAINT border_country_a_fk REFERENCES country"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "country2",
+            "type": "VARCHAR(4)",
+            "is_primary_key": true,
+            "is_foreign_key": true,
+            "foreign_key_references": [
+              {
+                "columns": [
+                  "country2"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country2 VARCHAR(4) CONSTRAINT border_country_b_fk REFERENCES country"
+              }
+            ],
+            "is_scalar": false,
+            "is_text": true,
+            "nullable": true
+          },
+          {
+            "name": "length",
+            "type": "NUMERIC(10,2)",
+            "is_primary_key": false,
+            "is_foreign_key": false,
+            "foreign_key_references": [],
+            "is_scalar": true,
+            "is_text": false,
+            "nullable": false
+          }
+        ],
+        "table_primary_key": [
+          "country1",
+          "country2"
+        ],
+        "selected_primary_key_columns": [
+          "country1",
+          "country2"
+        ],
+        "selected_foreign_key_columns": [
+          "country1",
+          "country2"
+        ],
+        "primary_key_foreign_key_columns": [
+          "country1",
+          "country2"
+        ],
+        "primary_key_local_columns": [],
+        "full_primary_key_is_foreign_key": true,
+        "has_compound_primary_key": true,
+        "all_table_foreign_keys": [
+          {
+            "columns": [
+              "country1"
+            ],
+            "references_table": "country",
+            "references_columns": [],
+            "raw": "country1 VARCHAR(4) CONSTRAINT border_country_a_fk REFERENCES country"
+          },
+          {
+            "columns": [
+              "country2"
+            ],
+            "references_table": "country",
+            "references_columns": [],
+            "raw": "country2 VARCHAR(4) CONSTRAINT border_country_b_fk REFERENCES country"
+          }
+        ],
+        "table_inferred": {
+          "relationship_kind": "relationship_table_candidate",
+          "scalar_columns": [
+            "length"
+          ],
+          "text_columns": [
+            "country1",
+            "country2"
+          ],
+          "nullable_columns": [
+            "country1",
+            "country2"
+          ]
+        }
+      },
+      "schema_fragment": {
+        "tables": {
+          "borders": {
+            "columns": [
+              {
+                "name": "country1",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": true,
+                "raw": "country1 VARCHAR(4) CONSTRAINT border_country_a_fk REFERENCES country"
+              },
+              {
+                "name": "country2",
+                "type": "VARCHAR(4)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": true,
+                "raw": "country2 VARCHAR(4) CONSTRAINT border_country_b_fk REFERENCES country"
+              },
+              {
+                "name": "length",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "length NUMERIC(10,2) NOT NULL CONSTRAINT border_length CHECK (length > 0)"
+              }
+            ],
+            "primary_key": [
+              "country1",
+              "country2"
+            ],
+            "foreign_keys": [
+              {
+                "columns": [
+                  "country1"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country1 VARCHAR(4) CONSTRAINT border_country_a_fk REFERENCES country"
+              },
+              {
+                "columns": [
+                  "country2"
+                ],
+                "references_table": "country",
+                "references_columns": [],
+                "raw": "country2 VARCHAR(4) CONSTRAINT border_country_b_fk REFERENCES country"
+              }
+            ],
+            "inferred": {
+              "relationship_kind": "relationship_table_candidate",
+              "scalar_columns": [
+                "length"
+              ],
+              "text_columns": [
+                "country1",
+                "country2"
+              ],
+              "nullable_columns": [
+                "country1",
+                "country2"
+              ]
+            }
+          },
+          "country": {
+            "columns": [
+              {
+                "name": "name",
+                "type": "VARCHAR(32)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": true,
+                "foreign_key_inline": false,
+                "raw": "name VARCHAR(32) NOT NULL CONSTRAINT country_name_ck UNIQUE"
+              },
+              {
+                "name": "code",
+                "type": "VARCHAR(4)",
+                "nullable": false,
+                "primary_key_inline": true,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "code VARCHAR(4) CONSTRAINT country_pk PRIMARY KEY"
+              },
+              {
+                "name": "capital",
+                "type": "VARCHAR(35)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "capital VARCHAR(35) NULL"
+              },
+              {
+                "name": "province",
+                "type": "VARCHAR(32)",
+                "nullable": true,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "province VARCHAR(32) NULL"
+              },
+              {
+                "name": "area",
+                "type": "NUMERIC(10,2)",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "area NUMERIC(10,2) NOT NULL CONSTRAINT country_area_range CHECK (area >= 0)"
+              },
+              {
+                "name": "population",
+                "type": "INTEGER",
+                "nullable": false,
+                "primary_key_inline": false,
+                "unique_inline": false,
+                "foreign_key_inline": false,
+                "raw": "population INTEGER NOT NULL CONSTRAINT country_population_range CHECK (population >= 0)"
+              }
+            ],
+            "primary_key": [
+              "code"
+            ],
+            "foreign_keys": [],
+            "inferred": {
+              "relationship_kind": "entity",
+              "scalar_columns": [
+                "area",
+                "population"
+              ],
+              "text_columns": [
+                "name",
+                "code",
+                "capital",
+                "province"
+              ],
+              "nullable_columns": [
+                "capital",
+                "province"
+              ]
+            }
+          }
+        }
+      },
+      "expected_for_evaluation": {
+        "pattern": "reflexive_many_many_relationship",
+        "visualisations": [
+          "chord_diagram",
+          "network_chart"
+        ],
+        "mapping": {
+          "source": "borders.country1",
+          "target": "borders.country2",
+          "weight": "borders.length"
+        },
+        "transformations": []
+      }
+    }
+  ]
+}

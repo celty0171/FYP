@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>South America: Country to Continent (Sankey)</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.subtitle { color: #555; margin-top: 0; font-size: 13px; }
+  #chart { width: 100%; }
+  .node-label { font-size: 12px; fill: #1a1a1a; }
+  .link { fill: none; }
+  .link:hover { stroke-opacity: 0.6; }
+</style>
+</head>
+<body>
+  <h1>South America &mdash; Country to Continent Membership</h1>
+  <p class="subtitle">Only rows where continent = "South America". Flow width = percentage of country on the continent (source: country, target: continent, weight: percentage).</p>
+  <div id="chart"></div>
+
+  <script>
+    // Inline data: [source = country code, target = continent, weight = percentage]
+    var RAW_DATA = [
+  [
+    "NLB",
+    "South America",
+    100
+  ],
+  [
+    "CUR",
+    "South America",
+    100
+  ],
+  [
+    "ARU",
+    "South America",
+    100
+  ],
+  [
+    "YV",
+    "South America",
+    100
+  ],
+  [
+    "GUY",
+    "South America",
+    100
+  ],
+  [
+    "SME",
+    "South America",
+    100
+  ],
+  [
+    "GF",
+    "South America",
+    100
+  ],
+  [
+    "CO",
+    "South America",
+    100
+  ],
+  [
+    "EC",
+    "South America",
+    100
+  ],
+  [
+    "PE",
+    "South America",
+    100
+  ],
+  [
+    "BOL",
+    "South America",
+    100
+  ],
+  [
+    "RCH",
+    "South America",
+    100
+  ],
+  [
+    "RA",
+    "South America",
+    100
+  ],
+  [
+    "PY",
+    "South America",
+    100
+  ],
+  [
+    "ROU",
+    "South America",
+    100
+  ],
+  [
+    "BR",
+    "South America",
+    100
+  ],
+  [
+    "FALK",
+    "South America",
+    100
+  ]
+];
+
+    var nameToIndex = {};
+    var nodes = [];
+    function nodeIndex(name) {
+      if (!(name in nameToIndex)) {
+        nameToIndex[name] = nodes.length;
+        nodes.push({ name: name });
+      }
+      return nameToIndex[name];
+    }
+    var links = RAW_DATA.map(function(d) {
+      return {
+        source: nodeIndex(d[0]),   // country code
+        target: nodeIndex(d[1]),   // continent
+        value: d[2]                // percentage
+      };
+    });
+
+    var graph = { nodes: nodes, links: links };
+
+    var width = 760;
+    var height = Math.max(400, RAW_DATA.length * 26);
+
+    var svg = d3.select("#chart").append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", [0, 0, width, height]);
+
+    var sankey = d3.sankey()
+      .nodeWidth(16)
+      .nodePadding(12)
+      .extent([[10, 20], [width - 10, height - 20]]);
+
+    sankey(graph);
+
+    var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    svg.append("g")
+      .attr("fill", "none")
+      .selectAll("path")
+      .data(graph.links)
+      .join("path")
+        .attr("class", "link")
+        .attr("d", d3.sankeyLinkHorizontal())
+        .attr("stroke", function(d) { return color(d.source.name); })
+        .attr("stroke-width", function(d) { return Math.max(1, d.width); })
+        .attr("stroke-opacity", 0.45)
+      .append("title")
+        .text(function(d) { return d.source.name + " \u2192 " + d.target.name + "\n" + d.value + "%"; });
+
+    var node = svg.append("g")
+      .selectAll("g")
+      .data(graph.nodes)
+      .join("g");
+
+    node.append("rect")
+        .attr("x", function(d) { return d.x0; })
+        .attr("y", function(d) { return d.y0; })
+        .attr("height", function(d) { return Math.max(1, d.y1 - d.y0); })
+        .attr("width", function(d) { return d.x1 - d.x0; })
+        .attr("fill", function(d) { return color(d.name); })
+        .attr("stroke", "#333")
+      .append("title")
+        .text(function(d) { return d.name + "\n" + d.value + "%"; });
+
+    node.append("text")
+        .attr("class", "node-label")
+        .attr("x", function(d) { return d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6; })
+        .attr("y", function(d) { return (d.y1 + d.y0) / 2; })
+        .attr("dy", "0.35em")
+        .attr("text-anchor", function(d) { return d.x0 < width / 2 ? "start" : "end"; })
+        .text(function(d) { return d.name; });
+  </script>
+</body>
+</html>

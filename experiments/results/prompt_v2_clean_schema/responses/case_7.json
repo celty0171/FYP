@@ -1,0 +1,56 @@
+{
+  "case_id": "7",
+  "identified_pattern": "one_many_relationship",
+  "confidence": 1.0,
+  "schema_evidence": {
+    "selected_table": "airport",
+    "selected_columns": ["iata_code", "island", "elevation"],
+    "primary_key_columns": ["iata_code"],
+    "foreign_key_columns": ["island"],
+    "selected_foreign_key_columns": ["island"],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": ["island"],
+    "local_primary_key_columns": ["iata_code"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "Primary key is not compound/all PK columns are not FKs."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "PK is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "PK is not compound; only one PK column, which is not a FK."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": true,
+        "reason": "The selected columns include a FK ('island') not part of the PK."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "A FK is present outside the PK."
+      }
+    ],
+    "cardinality_reasoning": "Each airport is uniquely identified by its IATA code, with a foreign key to 'island' that is not part of the PK, indicating a one-to-many relationship from island to airport."
+  },
+  "recommended_visualisations": ["treemap", "hierarchy tree", "circle packing"],
+  "chart_mapping": {
+    "treemap": ["island", "iata_code", "elevation"],
+    "hierarchy tree": ["island", "iata_code", "elevation"],
+    "circle packing": ["island", "iata_code", "elevation"]
+  },
+  "data_type_reasoning": "Island and IATA code are categorical, elevation is numeric—supports hierarchical or grouped visualization by island.",
+  "limitations": [
+    "Some airports may not be associated with an island.",
+    "Visual clarity may be reduced with many airports per island."
+  ]
+}

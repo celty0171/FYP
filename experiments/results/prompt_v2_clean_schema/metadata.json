@@ -1,0 +1,10 @@
+{
+  "run_id": "prompt_v2_clean_schema_2026_05_27",
+  "model": "gpt-4.1",
+  "prompt_file": "experiments/prompts/mondial_pattern_prompt.md",
+  "pattern_notes_file": "experiments/pattern_notes.md",
+  "schema_context_file": "experiments/generated/mondial_schema_summary_clean.json",
+  "test_cases_file": "experiments/inputs/mondial_blind_cases.json",
+  "gold_file": "experiments/inputs/mondial_gold_patterns.json",
+  "notes": "Prompt version with decision-order rules and expanded schema_evidence output."
+}

@@ -1,0 +1,11 @@
+Description
+Selecting data, transformations and visual encodings in current data visualisation tools is undertaken at a relatively low level of abstraction – namely, on tables of data – and ignores the Conceptual Model of the data. Users, who are likely to be familiar with the conceptual model of their data, may find it hard to understand tabular data representations, and hence hard to select appropriate data transformations and visualisations to meet their needs. Work presenting this approach has been presented in [1,2,4] and tools implementing the approach presented in [3,5]. This project will explore the use of LLMs as the method match “visualisation schema patterns” of [1,2,4] against data and schemas, and thus select the appropriate visualisation of a dataset.
+- Explore which LLM models are best for data analysis, and specifically reasoning about the schame of data (including cardinality constraints over relations/links between data classes).
+- Use prompts to test the ability of the model to (a) reason over the schema of the data, (b) select visualisations based on schema pattern matching, (3) map data in a format suitable for use with a visualization library (such a Google Charts)
+- Evaluate the performance of the prompt based approach, and consider if training of a custom model is required, and conduct such training.
+- Extend the approach to allow building of interactive visualisations.
+[1] P.J. McBrien and A. Poulovassilis. Towards Data Visualisation Based on Conceptual Modelling. Proceedings of ER 2018, pp 91-99
+[2] P.J. McBrien and A. Poulovassilis. Towards data visualisation based on conceptual modelling and schema transformations. Technical Report No. 39, AutoMed, 2018  
+[3] D.Bull Using Database Schemas and Conceptual Modelling to Guide Data Visualisation, MSc Thesis, Imperial College, 2023 (Tool available at schema-driven-visualisation.com, Git repo github.com/david-w-bull/schema-driven-visualisation)
+[4] P.J. McBrien and A. Poulovassilis, A Conceptual Modelling Approach to Visualising Linked Data, OTM Conferences 2019, Pages 227-245
+[5] M.Hannan VizER: Data Visualisation Based on Conceptual Modelling, MEng Final Year Project, Imperial College, 2024 (Git repo github.com/Abdus2609/vizer)

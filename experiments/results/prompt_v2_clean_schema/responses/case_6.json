@@ -1,0 +1,57 @@
+{
+  "case_id": "6",
+  "identified_pattern": "weak_entity",
+  "confidence": 1.0,
+  "schema_evidence": {
+    "selected_table": "ethnic_group",
+    "selected_columns": ["country", "name", "percentage"],
+    "primary_key_columns": ["country", "name"],
+    "foreign_key_columns": ["country"],
+    "selected_foreign_key_columns": ["country"],
+    "foreign_keys_in_primary_key": ["country"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["name"],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "Only one PK column ('country') is a FK; 'name' is local."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "PK is not fully inherited from one parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "Compound PK; 'country' is FK to parent, 'name' is local PK column."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "FK is part of PK and there is a local PK column."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Compound PK with FK and local PK column."
+      }
+    ],
+    "cardinality_reasoning": "The table models a weak entity: each ethnic group ('name') is identified only within the context of a country ('country'), with 'country' as FK and 'name' as local PK."
+  },
+  "recommended_visualisations": ["line chart", "stacked bar chart", "grouped bar chart", "spider chart"],
+  "chart_mapping": {
+    "line chart": ["country", "name", "percentage"],
+    "stacked bar chart": ["country", "name", "percentage"],
+    "grouped bar chart": ["country", "name", "percentage"],
+    "spider chart": ["country", "name", "percentage"]
+  },
+  "data_type_reasoning": "Country is categorical, name is categorical, percentage is numeric—ideal for grouped/stacked comparisons or multi-series charts.",
+  "limitations": [
+    "Ethnic group names may not be standardized across countries.",
+    "Percentage values may not sum to 100% per country."
+  ]
+}
