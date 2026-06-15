@@ -1,0 +1,134 @@
+{
+  "case_id": "3",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": [
+      "name",
+      "elevation",
+      "depth",
+      "dam_height"
+    ],
+    "primary_key_columns": [
+      "name"
+    ],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "name"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "No many-to-many or reflexive relationship detected in the schema."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "No inherited key detected in the schema."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "No weak entity structure detected in the schema."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No one-to-many relationship detected in the schema."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table 'lake' has a single primary key 'name' and no foreign keys, matching the 'basic_entity' pattern."
+      }
+    ],
+    "cardinality_reasoning": "The 'lake' table has a single primary key 'name', which implies that each lake is uniquely identified by its name. The selected columns 'elevation', 'depth', and 'dam_height' are scalar attributes that can be used for visualisation."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "scatter chart",
+    "bubble chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The primary key 'name' can be used as the categorical axis, and 'elevation' can be used as the scalar value.",
+      "schema_pattern_variables": {
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "|k| (number of distinct key values) should be up to ~100 for best visual clarity."
+      ]
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": true,
+      "eligibility_reason": "Two scalar attributes 'elevation' and 'depth' are available for the x and y axes.",
+      "schema_pattern_variables": {
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": true,
+      "eligibility_reason": "Three scalar attributes 'elevation', 'depth', and 'dam_height' are available for x, y, and size respectively.",
+      "schema_pattern_variables": {
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The bar chart is a good choice for visualising scalar attributes of distinct entities (lakes) identified by their names.",
+    "schema_pattern_variables": {
+      "k": "name",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "name",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleLinear for the y-axis.",
+      "google_charts": "Use a bar chart with categorical axis for 'name' and numerical axis for 'elevation'.",
+      "vega_lite": "Use 'x' as 'name' with 'type': 'nominal' and 'y' as 'elevation' with 'type': 'quantitative'."
+    }
+  },
+  "chart_mapping": {
+    "name": "x",
+    "elevation": "y"
+  },
+  "data_type_reasoning": "The 'name' column is a discrete dimension with a relatively small number of distinct values, representing unique lakes. The 'elevation', 'depth', and 'dam_height' columns are scalar dimensions with numeric values, suitable for quantitative visualisation.",
+  "limitations": []
+}

@@ -1,0 +1,332 @@
+{
+  "metadata": {
+    "run_id": "prompt_v7_notes_thinking",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": true,
+    "skip_impl": true,
+    "hybrid": false,
+    "created_utc": "2026-06-15T08:45:43.194127+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/prompt.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "bar chart",
+          "eligible": true,
+          "eligibility_reason": "The entity has a key (code) and a scalar attribute (population) suitable for bar chart encoding",
+          "schema_pattern_variables": {
+            "E": "country",
+            "k": "code",
+            "a1": "population"
+          },
+          "encoding": {
+            "x": "code",
+            "y": "population"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "choropleth map",
+          "eligible": true,
+          "eligibility_reason": "The 'code' column may represent geographical regions (assuming ISO country codes) and 'population' provides scalar values for colour mapping",
+          "schema_pattern_variables": {
+            "E": "country",
+            "k": "code",
+            "a1": "population"
+          },
+          "encoding": {
+            "region": "code",
+            "color": "population"
+          },
+          "required_transformations": [
+            "map country codes to geographical regions"
+          ],
+          "limitations": [
+            "Requires external geographical data mapping codes to regions"
+          ]
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 64.2
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "identified_pattern": "basic_entity_inherited_key",
+      "recommended_visualisations": [
+        {
+          "chart_type": "Bar chart",
+          "eligible": true,
+          "eligibility_reason": "The 'country' (discrete) and 'gdp' (scalar) columns satisfy the requirements for a bar chart.",
+          "schema_pattern_variables": {
+            "E": "economy",
+            "k": "country",
+            "a1": "gdp"
+          },
+          "encoding": {
+            "x": "country",
+            "y": "gdp"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "Scatter diagram",
+          "eligible": true,
+          "eligibility_reason": "The 'gdp' (scalar) and 'unemployment' (scalar) columns satisfy the requirements for a scatter diagram.",
+          "schema_pattern_variables": {
+            "E": "economy",
+            "a1": "gdp",
+            "a2": "unemployment"
+          },
+          "encoding": {
+            "x": "gdp",
+            "y": "unemployment"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "Bubble chart",
+          "eligible": true,
+          "eligibility_reason": "The 'gdp' (scalar), 'unemployment' (scalar), and 'country' (discrete) columns satisfy the requirements for a bubble chart.",
+          "schema_pattern_variables": {
+            "E": "economy",
+            "a1": "gdp",
+            "a2": "unemployment",
+            "a3": "country"
+          },
+          "encoding": {
+            "x": "gdp",
+            "y": "unemployment",
+            "size": "country"
+          },
+          "required_transformations": [],
+          "limitations": []
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 132.6
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "bar chart",
+          "eligible": true,
+          "eligibility_reason": "Entity has a key (name) and scalar attributes (elevation, depth, dam_height)",
+          "schema_pattern_variables": {
+            "E": "lake",
+            "k": "name",
+            "a1": "elevation"
+          },
+          "encoding": {
+            "x": "name",
+            "y": "elevation"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "scatter diagram",
+          "eligible": true,
+          "eligibility_reason": "Entity has two scalar attributes (elevation, depth)",
+          "schema_pattern_variables": {
+            "E": "lake",
+            "a1": "elevation",
+            "a2": "depth"
+          },
+          "encoding": {
+            "x": "elevation",
+            "y": "depth"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "bubble chart",
+          "eligible": true,
+          "eligibility_reason": "Entity has three scalar attributes (elevation, depth, dam_height)",
+          "schema_pattern_variables": {
+            "E": "lake",
+            "a1": "elevation",
+            "a2": "depth",
+            "a3": "dam_height"
+          },
+          "encoding": {
+            "x": "elevation",
+            "y": "depth",
+            "size": "dam_height"
+          },
+          "required_transformations": [],
+          "limitations": []
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 85.0
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "bar chart",
+          "eligible": true,
+          "eligibility_reason": "The selected entity has a key (abbreviation) and a scalar attribute (established) that can be mapped to bar length",
+          "schema_pattern_variables": {
+            "E": "organization",
+            "k": "abbreviation",
+            "a1": "established"
+          },
+          "encoding": {
+            "x": "abbreviation",
+            "y": "established"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "calendar chart",
+          "eligible": true,
+          "eligibility_reason": "The selected entity has a date-valued attribute (established) that can be mapped to a calendar axis",
+          "schema_pattern_variables": {
+            "E": "organization",
+            "a1": "established"
+          },
+          "encoding": {
+            "date": "established"
+          },
+          "required_transformations": [],
+          "limitations": []
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 64.5
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 119.0
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "line_chart",
+          "eligible": true,
+          "eligibility_reason": "Parent key 'country' (discrete) and scalar measure 'percentage' available",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "x": "name",
+            "y": "percentage",
+            "color": "country"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "Requires consistent 'name' values across all 'country' instances for meaningful comparison"
+          ]
+        },
+        {
+          "chart_type": "grouped_bar_chart",
+          "eligible": true,
+          "eligibility_reason": "Scalar measure 'percentage' available for grouping",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "x": "name",
+            "y": "percentage",
+            "color": "country"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "May not show trends over time or within categories"
+          ]
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 79.2
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        "hierarchy tree",
+        "tree map",
+        "circle packing"
+      ],
+      "pattern_ok": true,
+      "seconds": 108.0
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        {
+          "chart_type": "Sankey diagram",
+          "eligible": true,
+          "eligibility_reason": "The relationship table connects two distinct entities (country and continent) with a scalar attribute (percentage) representing flow weight",
+          "schema_pattern_variables": {
+            "E1": "country",
+            "E2": "continent",
+            "k1": "country",
+            "k2": "continent",
+            "R": "encompasses",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "source": "country",
+            "target": "continent",
+            "value": "percentage"
+          },
+          "required_transformations": [],
+          "limitations": []
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 58.0
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "identified_pattern": "reflexive_many_many_relationship",
+      "recommended_visualisations": [
+        "chord diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 57.9
+    }
+  ]
+}

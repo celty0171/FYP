@@ -1,0 +1,123 @@
+{
+  "case_id": "8",
+  "schema_evidence": {
+    "selected_table": "encompasses",
+    "selected_columns": [
+      "country",
+      "continent",
+      "percentage"
+    ],
+    "primary_key_columns": [
+      "country",
+      "continent"
+    ],
+    "foreign_key_columns": [
+      "country",
+      "continent"
+    ],
+    "selected_foreign_key_columns": [
+      "country",
+      "continent"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country",
+      "continent"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "foreign_key_referenced_tables": {
+      "country": "country",
+      "continent": "continent"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": true,
+        "reason": "Primary key is exactly two foreign keys (country \u2192 country, continent \u2192 continent) referencing different tables"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "Foreign keys reference different tables (country and continent)"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "Not a basic entity with inherited key"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "No local primary key columns"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign keys outside primary key"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Not a basic entity"
+      }
+    ],
+    "cardinality_reasoning": "The table 'encompasses' has a compound primary key composed of two foreign keys (country \u2192 country, continent \u2192 continent) referencing different tables, establishing a many-to-many relationship between countries and continents."
+  },
+  "identified_pattern": "many_many_relationship",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    {
+      "chart_type": "Sankey diagram",
+      "eligible": true,
+      "eligibility_reason": "The relationship table connects two distinct entities (country and continent) with a scalar attribute (percentage) representing flow weight",
+      "schema_pattern_variables": {
+        "E1": "country",
+        "E2": "continent",
+        "k1": "country",
+        "k2": "continent",
+        "R": "encompasses",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "source": "country",
+        "target": "continent",
+        "value": "percentage"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Sankey diagram",
+    "selection_reason": "Best fit for many-many relationship with scalar flow attribute",
+    "schema_pattern_variables": {
+      "E1": "country",
+      "E2": "continent",
+      "k1": "country",
+      "k2": "continent",
+      "R": "encompasses",
+      "a1": "percentage"
+    },
+    "encoding": {
+      "source": "country",
+      "target": "continent",
+      "value": "percentage"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3-sankey with source/target/weight encoding",
+      "google_charts": "Use Sankey chart with source/target/weight parameters",
+      "vega_lite": "Use Sankey layout with source, target, and value fields"
+    }
+  },
+  "chart_mapping": {
+    "source": "country",
+    "target": "continent",
+    "value": "percentage"
+  },
+  "data_type_reasoning": "percentage (NUMERIC) is scalar, country (VARCHAR) and continent (VARCHAR) are discrete dimensions. No geographical/temporal/lexical characteristics detected.",
+  "limitations": []
+}

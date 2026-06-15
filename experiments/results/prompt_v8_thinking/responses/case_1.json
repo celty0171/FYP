@@ -1,0 +1,158 @@
+{
+  "case_id": "1",
+  "schema_evidence": {
+    "selected_table": "country",
+    "selected_columns": [
+      "code",
+      "population"
+    ],
+    "primary_key_columns": [
+      "code"
+    ],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "code"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {},
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "No foreign keys in selected columns"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign keys in selected columns"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "Entity has primary key and scalar attributes without foreign keys"
+      }
+    ],
+    "cardinality_reasoning": "The 'country' table has a single-column primary key 'code' with no foreign keys. This represents a basic entity with no parent-child relationships."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    "bar chart",
+    "choropleth map",
+    "word cloud"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "Entity has a key (code) and scalar attribute (population)",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k": "code",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "code",
+        "y": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": true,
+      "eligibility_reason": "Key 'code' could represent geographical regions (assuming country codes map to regions)",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k": "code",
+        "a1": "population"
+      },
+      "encoding": {
+        "region": "code",
+        "color": "population"
+      },
+      "required_transformations": [
+        "map country codes to geographical regions"
+      ],
+      "limitations": [
+        "Requires external geographical mapping of country codes"
+      ]
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": true,
+      "eligibility_reason": "Key 'code' could represent lexical labels (country codes as words)",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k": "code",
+        "a1": "population"
+      },
+      "encoding": {
+        "text": "code",
+        "size": "population"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "May not be semantically meaningful without context"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "Best fit for basic entity with key and scalar attribute",
+    "schema_pattern_variables": {
+      "E": "country",
+      "k": "code",
+      "a1": "population"
+    },
+    "encoding": {
+      "x": "code",
+      "y": "population"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis",
+      "google_charts": "Use Google Charts' BarChart type",
+      "vega_lite": "Use vega-lite's 'bar' mark with 'x' and 'y' encodings"
+    }
+  },
+  "chart_mapping": {
+    "bar chart": {
+      "x": "code",
+      "y": "population"
+    },
+    "choropleth map": {
+      "region": "code",
+      "color": "population"
+    },
+    "word cloud": {
+      "text": "code",
+      "size": "population"
+    }
+  },
+  "data_type_reasoning": "Column 'code' is discrete (VARCHAR(4) with short values), 'population' is scalar (INTEGER with numeric values). 'code' could be interpreted as geographical/lexical depending on context, but this requires external mapping.",
+  "limitations": [
+    "Choropleth map requires external geographical mapping of country codes",
+    "Word cloud may not be semantically meaningful without context"
+  ]
+}

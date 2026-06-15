@@ -1,0 +1,159 @@
+```json
+{
+  "case_id": "3",
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": ["name", "elevation", "depth", "dam_height"],
+    "primary_key_columns": ["name"],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["name"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {},
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The table 'lake' has a single primary key column 'name' and no foreign keys in the primary key. It does not match the many-many relationship pattern."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The table 'lake' has a single primary key column 'name' and no foreign keys in the primary key. It does not match the reflexive many-many relationship pattern."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table 'lake' has a primary key 'name' that is not inherited from a parent entity. It does not match the basic entity with inherited key pattern."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The table 'lake' has a single primary key column 'name' and no foreign keys in the primary key. It does not match the weak entity pattern."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The table 'lake' has no foreign keys not in the primary key. It does not match the one-many relationship pattern."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The table 'lake' has a primary key 'name' and attributes 'elevation', 'depth', and 'dam_height' without any foreign key dependencies. It matches the basic entity pattern."
+      }
+    ],
+    "cardinality_reasoning": "The table 'lake' has a single primary key column 'name' and no foreign keys. It represents a basic entity with no parent-child relationships."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "recommended_visualisations": ["Bar chart", "Calendar chart", "Scatter diagram", "Bubble chart", "Choropleth map", "Word cloud"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Bar chart",
+      "eligible": true,
+      "eligibility_reason": "The selected entity 'lake' has a key 'name' and scalar attributes 'elevation', 'depth', and 'dam_height'.",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Calendar chart",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'lake' does not have a date-valued attribute.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Scatter diagram",
+      "eligible": true,
+      "eligibility_reason": "The selected entity 'lake' has two scalar attributes 'elevation' and 'depth'.",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Bubble chart",
+      "eligible": true,
+      "eligibility_reason": "The selected entity 'lake' has at least three scalar attributes 'elevation', 'depth', and 'dam_height'.",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Choropleth map",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'lake' does not have a geographical region key.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Word cloud",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'lake' does not have a lexical label key.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Bar chart",
+    "selection_reason": "The 'Bar chart' is the most straightforward and appropriate visualization for the selected entity 'lake' with key 'name' and scalar attribute 'elevation'.",
+    "schema_pattern_variables": {
+      "E": "lake",
+      "k": "name",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "name",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleLinear for the y-axis.",
+      "google_charts": "Use the Google Charts Bar Chart type with the 'name' as the category and 'elevation' as the value.",
+      "vega_lite": "Use vega-lite's 'bar' mark with 'name' as the x-axis and 'elevation' as the y-axis."
+    }
+  },
+  "chart_mapping": {
+    "x": "name",
+    "y": "elevation"
+  },
+  "data_type_reasoning": "The selected columns 'elevation', 'depth', and 'dam_height' are all of type INTEGER, which are scalar dimensions. The 'name' column is a discrete dimension as it contains unique identifiers for each lake.",
+  "limitations": []
+}
+```

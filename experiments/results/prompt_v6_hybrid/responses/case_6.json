@@ -1,0 +1,157 @@
+{
+  "case_id": "6",
+  "identified_pattern": "weak_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "ethnic_group",
+    "selected_columns": [
+      "country",
+      "name",
+      "percentage"
+    ],
+    "primary_key_columns": [
+      "name",
+      "country"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "name"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The pattern does not match a many-many or reflexive relationship."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is compound and not fully inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "The entity has a compound primary key, one part of which is a foreign key to a parent entity (country), and a scalar measure (percentage)."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The pattern does not match a one-many relationship."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The entity has a weak entity structure with a foreign key in the primary key."
+      }
+    ],
+    "cardinality_reasoning": "The 'country' column is a foreign key to the 'country' table, indicating a relationship to a parent entity. The 'name' and 'country' columns form a compound primary key, with 'country' being a foreign key. The 'percentage' column is a scalar measure, indicating that this is a weak entity with a local key ('name') and a foreign key ('country')."
+  },
+  "recommended_visualisations": [
+    "line chart",
+    "stacked bar chart",
+    "grouped bar chart",
+    "spider chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "line chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column can be used as the x-axis (scalar), and the 'percentage' column can be used as the y-axis (scalar).",
+      "schema_pattern_variables": {
+        "k2": "country",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "percentage"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "stacked bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'percentage' column can be used as the measure, and the 'country' column can be used as the category. This is best when 'country' values are complete across 'name' (ethnic group).",
+      "schema_pattern_variables": {
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "percentage",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Best when 'country' values are complete across 'name'."
+      ]
+    },
+    {
+      "chart_type": "grouped bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'percentage' column can be used as the measure, and the 'country' column can be used as the category. No completeness is required.",
+      "schema_pattern_variables": {
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "percentage",
+        "color": "name"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "spider chart",
+      "eligible": true,
+      "eligibility_reason": "The 'percentage' column can be used as the measure, and the 'country' column can be used as the category. This is best when 'country' values are complete across 'name' (ethnic group).",
+      "schema_pattern_variables": {
+        "a1": "percentage"
+      },
+      "encoding": {
+        "theta": "country",
+        "r": "percentage",
+        "color": "name"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Best when 'country' values are complete across 'name'."
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "grouped bar chart",
+    "selection_reason": "The grouped bar chart is a good fit for this weak entity pattern, as it allows for the comparison of ethnic group percentages across different countries. The 'country' column can be used as the x-axis, the 'percentage' column as the y-axis, and the 'name' column as the color to differentiate ethnic groups.",
+    "schema_pattern_variables": {
+      "a1": "percentage"
+    },
+    "encoding": {
+      "x": "country",
+      "y": "percentage",
+      "color": "name"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleLinear for the y-axis. Group bars by 'name' using color.",
+      "google_charts": "Use a grouped bar chart with 'country' on the x-axis, 'percentage' on the y-axis, and 'name' as the series.",
+      "vega_lite": "Use a 'bar' mark with 'country' as the x field, 'percentage' as the y field, and 'name' as the color field."
+    }
+  },
+  "chart_mapping": {
+    "x": "country",
+    "y": "percentage",
+    "color": "name"
+  },
+  "data_type_reasoning": "The 'country' column is a foreign key to the 'country' table and is a discrete dimension (short text/code type). The 'name' column is also a discrete dimension (short text/code type). The 'percentage' column is a scalar dimension (DECIMAL type with a natural numeric ordering).",
+  "limitations": []
+}

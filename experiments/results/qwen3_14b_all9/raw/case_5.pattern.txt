@@ -1,0 +1,157 @@
+```json
+{
+  "case_id": "5",
+  "identified_pattern": "one_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": [
+      "country",
+      "year",
+      "population"
+    ],
+    "primary_key_columns": [
+      "country",
+      "year"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "year"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is compound, but not all primary key columns are foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has a local primary key column ('year'), so it is not fully inherited."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is compound, but the foreign key ('country') is part of the primary key and there is a local primary key column ('year'), which matches the 'one_many_relationship' pattern."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": true,
+        "reason": "The selected columns include a foreign key ('country') that is not part of the table's primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The selected columns include a foreign key ('country') that is not part of the primary key, which matches the 'one_many_relationship' pattern."
+      }
+    ],
+    "cardinality_reasoning": "The 'country_population' table has a foreign key ('country') referencing the 'country' table. The primary key of 'country_population' is a compound key consisting of 'country' and 'year'. Since the foreign key is part of the primary key and there is a local primary key column ('year'), this is a one-to-many relationship between 'country' and 'country_population'."
+  },
+  "recommended_visualisations": [
+    "treemap",
+    "hierarchy tree",
+    "circle packing"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "treemap",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column can be used as the parent key, 'year' as the child key, and 'population' as the scalar child measure.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "country",
+        "kc": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "parent_key": "country",
+        "child_key": "year",
+        "child_measure": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "hierarchy tree",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column can be used as the parent key, 'year' as the child key, and 'population' as the scalar child measure.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "country",
+        "kc": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "parent_key": "country",
+        "child_key": "year",
+        "child_measure": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "circle packing",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column can be used as the parent key, 'year' as the child key, and 'population' as the scalar child measure.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "country",
+        "kc": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "parent_key": "country",
+        "child_key": "year",
+        "child_measure": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "treemap",
+    "selection_reason": "The treemap is a suitable visualization for a one-many relationship, where the parent key ('country') is used to group the child key ('year') and the scalar measure ('population') is used to size the treemap segments.",
+    "schema_pattern_variables": {
+      "Ep": "country",
+      "Ec": "country_population",
+      "kp": "country",
+      "kc": "year",
+      "a1": "population"
+    },
+    "encoding": {
+      "parent_key": "country",
+      "child_key": "year",
+      "child_measure": "population"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3-hierarchy to create a treemap with nested data structure.",
+      "google_charts": "Use the Treemap chart type in Google Charts with nested data.",
+      "vega_lite": "Use the 'treemap' mark type in Vega-Lite with a hierarchical data structure."
+    }
+  },
+  "chart_mapping": {
+    "one_many_relationship": [
+      "treemap",
+      "hierarchy tree",
+      "circle packing"
+    ]
+  },
+  "data_type_reasoning": "The 'country' column is a foreign key referencing the 'country' table, 'year' is a local primary key column, and 'population' is a scalar measure. These data types align with the requirements for treemap, hierarchy tree, and circle packing visualizations.",
+  "limitations": []
+}
+```

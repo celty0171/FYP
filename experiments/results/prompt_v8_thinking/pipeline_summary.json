@@ -1,0 +1,117 @@
+{
+  "metadata": {
+    "run_id": "prompt_v8_thinking",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": true,
+    "skip_impl": true,
+    "hybrid": false,
+    "created_utc": "2026-06-15T09:32:06.742217+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/prompt_v8.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "seconds": 71.0
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "pattern_ok": false,
+      "error": "stage1+2: ValueError: No JSON object found in model response"
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 93.2
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "calendar chart",
+        "bar chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 73.6
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "line chart",
+        "grouped bar chart",
+        "stacked bar chart",
+        "spider chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 97.4
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "grouped bar chart",
+        "stacked bar chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 126.2
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        "tree map",
+        "hierarchy tree",
+        "circle packing"
+      ],
+      "pattern_ok": true,
+      "seconds": 116.1
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "Sankey diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 63.8
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "identified_pattern": "reflexive_many_many_relationship",
+      "recommended_visualisations": [
+        "chord diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 64.1
+    }
+  ]
+}

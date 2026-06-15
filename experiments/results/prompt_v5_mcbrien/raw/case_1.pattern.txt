@@ -1,0 +1,82 @@
+```json
+{
+  "case_id": "1",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "country",
+    "selected_columns": ["code", "population"],
+    "primary_key_columns": ["code"],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["code"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      { "rule": "many_many_or_reflexive", "matched": false, "reason": "The primary key is not compound, and no foreign keys are present." },
+      { "rule": "basic_entity_inherited_key", "matched": false, "reason": "The primary key is not inherited from a parent entity." },
+      { "rule": "weak_entity", "matched": false, "reason": "The primary key is not compound and does not contain a foreign key." },
+      { "rule": "one_many_relationship", "matched": false, "reason": "No foreign key is present in the selected columns that is not part of the primary key." },
+      { "rule": "basic_entity", "matched": true, "reason": "The selected table has a primary key and attributes, with no foreign key dependencies." }
+    ],
+    "cardinality_reasoning": "The 'country' table has a single primary key column 'code' and no foreign key dependencies. This indicates a basic entity pattern where each country is uniquely identified by its code and has attributes such as 'population'."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "calendar chart",
+    "scatter chart",
+    "bubble chart",
+    "choropleth map",
+    "word cloud"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'code' column can be used as the key, and 'population' is a scalar dimension. This fits the bar chart pattern where the key is on the x-axis and the scalar attribute is on the y-axis.",
+      "schema_pattern_variables": { "k": "code", "a1": "population" },
+      "encoding": { "x": "code", "y": "population" },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": true,
+      "eligibility_reason": "The 'code' column can be interpreted as a geographical key (country codes), and 'population' is a scalar dimension that can be used to color the map.",
+      "schema_pattern_variables": { "k": "code", "a1": "population" },
+      "encoding": { "geo": "code", "color": "population" },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": true,
+      "eligibility_reason": "The 'code' column can be interpreted as a lexical key (country codes), and 'population' is a scalar dimension that can be used to size the words.",
+      "schema_pattern_variables": { "k": "code", "a1": "population" },
+      "encoding": { "text": "code", "size": "population" },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The bar chart is a straightforward and effective way to visualize the population of each country using the 'code' as the key and 'population' as the scalar attribute.",
+    "schema_pattern_variables": { "k": "code", "a1": "population" },
+    "encoding": { "x": "code", "y": "population" },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleLinear for the y-axis.",
+      "google_charts": "Use a bar chart with the 'code' as the category and 'population' as the value.",
+      "vega_lite": "Use a bar chart with the 'code' as the x-axis and 'population' as the y-axis."
+    }
+  },
+  "chart_mapping": {
+    "code": "x",
+    "population": "y"
+  },
+  "data_type_reasoning": "The 'code' column is a discrete dimension as it contains unique identifiers for countries. The 'population' column is a scalar dimension as it contains numeric values representing the population of each country.",
+  "limitations": []
+}
+```

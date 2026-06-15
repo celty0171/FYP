@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Country GDP Bar Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .bar {
+      fill: steelblue;
+    }
+    .axis-label {
+      font-size: 14px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">Country GDP Comparison</div>
+  <svg width="960" height="500"></svg>
+
+  <script>
+    const data = [
+      {"country": "AL", "gdp": 12800, "unemployment": 16.9},
+      {"country": "GR", "gdp": 243300, "unemployment": 27.9},
+      {"country": "CY", "gdp": 21780, "unemployment": 17.4},
+      {"country": "AD", "gdp": null, "unemployment": null},
+      {"country": "MK", "gdp": 10650, "unemployment": 28.6},
+      {"country": "SRB", "gdp": 43680, "unemployment": 20.1},
+      {"country": "MNE", "gdp": 4518, "unemployment": 19.1},
+      {"country": "KOS", "gdp": 7150, "unemployment": 30.9},
+      {"country": "AND", "gdp": 4800, "unemployment": 4},
+      {"country": "F", "gdp": 2739000, "unemployment": 10.2},
+      {"country": "E", "gdp": 1356000, "unemployment": 26.3},
+      {"country": "CZ", "gdp": 194800, "unemployment": 7.1},
+      {"country": "SK", "gdp": 96960, "unemployment": 14.4},
+      {"country": "D", "gdp": 3593000, "unemployment": 5.3},
+      {"country": "H", "gdp": 130600, "unemployment": 10.5},
+      {"country": "I", "gdp": 2068000, "unemployment": 12.4},
+      {"country": "CH", "gdp": 646200, "unemployment": 3.2},
+      {"country": "FL", "gdp": 5113, "unemployment": 2.3},
+      {"country": "A", "gdp": 417900, "unemployment": 4.9},
+      {"country": "EST", "gdp": 24280, "unemployment": 10.9},
+      {"country": "LV", "gdp": 30380, "unemployment": 9.8},
+      {"country": "LT", "gdp": 46710, "unemployment": 12.4},
+      {"country": "BY", "gdp": 69240, "unemployment": 1},
+      {"country": "PL", "gdp": 513900, "unemployment": 10.3},
+      {"country": "UA", "gdp": 175500, "unemployment": 8},
+      {"country": "R", "gdp": 2113000, "unemployment": 5.8},
+      {"country": "B", "gdp": 507400, "unemployment": 8.8},
+      {"country": "L", "gdp": 60540, "unemployment": 4.9},
+      {"country": "NL", "gdp": 722300, "unemployment": 8.3},
+      {"country": "SLO", "gdp": 46820, "unemployment": 13.1},
+      {"country": "HR", "gdp": 59140, "unemployment": 21.6},
+      {"country": "BIH", "gdp": 18870, "unemployment": 44.3},
+      {"country": "BG", "gdp": 53700, "unemployment": 11.6},
+      {"country": "RO", "gdp": 188900, "unemployment": 7.3},
+      {"country": "DK", "gdp": 324300, "unemployment": 6},
+      {"country": "IS", "gdp": 14590, "unemployment": 4.5},
+      {"country": "FO", "gdp": 2320, "unemployment": 6.8},
+      {"country": "IRL", "gdp": 220900, "unemployment": 13.5},
+      {"country": "SF", "gdp": 259600, "unemployment": 8.1},
+      {"country": "N", "gdp": 515800, "unemployment": 3.6},
+      {"country": "S", "gdp": 552000, "unemployment": 8.1},
+      {"country": "MC", "gdp": 5748, "unemployment": 2},
+      {"country": "V", "gdp": null, "unemployment": null},
+      {"country": "CEU", "gdp": null, "unemployment": null},
+      {"country": "MEL", "gdp": null, "unemployment": null},
+      {"country": "RSM", "gdp": 1866, "unemployment": 7},
+      {"country": "M", "gdp": 9541, "unemployment": 6.4},
+      {"country": "GBM", "gdp": 4076, "unemployment": 2},
+      {"country": "MD", "gdp": 7932, "unemployment": 5.8},
+      {"country": "P", "gdp": 219300, "unemployment": 16.8},
+      {"country": "SVA", "gdp": null, "unemployment": null},
+      {"country": "GB", "gdp": 2490000, "unemployment": 7.2},
+      {"country": "GBZ", "gdp": 1106, "unemployment": 3},
+      {"country": "GBG", "gdp": 2742, "unemployment": 0.9},
+      {"country": "GBJ", "gdp": 5100, "unemployment": 1.7},
+      {"country": "ARM", "gdp": 10440, "unemployment": 17.3},
+      {"country": "GE", "gdp": 15950, "unemployment": 15},
+      {"country": "AZ", "gdp": 76010, "unemployment": 6},
+      {"country": "TR", "gdp": 821800, "unemployment": 9.3},
+      {"country": "RL", "gdp": 43490, "unemployment": null},
+      {"country": "WB", "gdp": 3700, "unemployment": null},
+      {"country": "GAZA", "gdp": 1700, "unemployment": null},
+      {"country": "IL", "gdp": 272700, "unemployment": 5.8},
+      {"country": "SYR", "gdp": 64700, "unemployment": 17.8},
+      {"country": "JOR", "gdp": 34080, "unemployment": 14},
+      {"country": "SA", "gdp": 718500, "unemployment": 10.5},
+      {"country": "BRN", "gdp": 28360, "unemployment": 15},
+      {"country": "Q", "gdp": 213100, "unemployment": 0.3},
+      {"country": "UAE", "gdp": 390000, "unemployment": 2.4},
+      {"country": "OM", "gdp": 81950, "unemployment": 15},
+      {"country": "YE", "gdp": 43890, "unemployment": 35},
+      {"country": "KWT", "gdp": 179500, "unemployment": 3.4},
+      {"country": "IRQ", "gdp": 221800, "unemployment": 16},
+      {"country": "IR", "gdp": 411900, "unemployment": 16},
+      {"country": "AFG", "gdp": 20650, "unemployment": 35},
+      {"country": "TM", "gdp": 40560, "unemployment": 60},
+      {"country": "UZ", "gdp": 55180, "unemployment": 4.9},
+      {"country": "TJ", "gdp": 8513, "unemployment": 2.5},
+      {"country": "KG", "gdp": 7234, "unemployment": 8.6},
+      {"country": "KZ", "gdp": 224900, "unemployment": 5.3},
+      {"country": "MNG", "gdp": 11140, "unemployment": 9},
+      {"country": "MV", "gdp": 2270, "unemployment": 28},
+      {"country": "PK", "gdp": 236500, "unemployment": 6.6},
+      {"country": "IND", "gdp": 1670000, "unemployment": 8.8},
+      {"country": "NEP", "gdp": 19340, "unemployment": 46},
+      {"country": "BHT", "gdp": 2133, "unemployment": 2.1},
+      {"country": "BD", "gdp": 140200, "unemployment": 5},
+      {"country": "MYA", "gdp": 59430, "unemployment": 5.2},
+      {"country": "CL", "gdp": 65120, "unemployment": 5.1},
+      {"country": "CN", "gdp": 9330000, "unemployment": 4.1},
+      {"country": "RC", "gdp": 484700, "unemployment": 4.1},
+      {"country": "HK", "gdp": 272100, "unemployment": 3.1},
+      {"country": "MAC", "gdp": 51680, "unemployment": 1.8},
+      {"country": "KP", "gdp": 28000, "unemployment": null},
+      {"country": "ROK", "gdp": 1198000, "unemployment": 3.2},
+      {"country": "J", "gdp": 5007000, "unemployment": 4.1},
+      {"country": "RP", "gdp": 272200, "unemployment": 7.4},
+      {"country": "VN", "gdp": 170000, "unemployment": 1.3},
+      {"country": "K", "gdp": 15640, "unemployment": 0},
+      {"country": "LAO", "gdp": 10100, "unemployment": 1.9},
+      {"country": "THA", "gdp": 400900, "unemployment": 0.7},
+      {"country": "MAL", "gdp": 312400, "unemployment": 3.1},
+      {"country": "BRU", "gdp": 16560, "unemployment": 2.6},
+      {"country": "SGP", "gdp": 295700, "unemployment": 1.9},
+      {"country": "RI", "gdp": 867500, "unemployment": 6.6},
+      {"country": "TL", "gdp": 6129, "unemployment": 18.4},
+      {"country": "PNG", "gdp": 16100, "unemployment": 1.9},
+      {"country": "SOL", "gdp": 1099, "unemployment": null},
+      {"country": "VU", "gdp": 828, "unemployment": 1.7},
+      {"country": "NCL", "gdp": 9280, "unemployment": 17.1},
+      {"country": "AUS", "gdp": 1488000, "unemployment": 5.7},
+      {"country": "CX", "gdp": null, "unemployment": null},
+      {"country": "CC", "gdp": null, "unemployment": null},
+      {"country": "NF", "gdp": null, "unemployment": null},
+      {"country": "NZ", "gdp": 181100, "unemployment": 6.4},
+      {"country": "PAL", "gdp": 221, "unemployment": 4.2},
+      {"country": "MP", "gdp": 733, "unemployment": 11.2},
+      {"country": "GU", "gdp": 4600, "unemployment": 8.2},
+      {"country": "FSM", "gdp": 339, "unemployment": 22},
+      {"country": "MH", "gdp": 193, "unemployment": 36}
+    ];
+
+    const svg = d3.select("svg"),
+          margin = {top: 20, right: 30, bottom: 40, left: 50},
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+      .range([0, width])
+      .padding(0.1);
+
+    const y = d3.scaleLinear()
+      .range([height, 0]);
+
+    const filteredData = data.filter(d => d.gdp !== null);
+
+    x.domain(filteredData.map(d => d.country));
+    y.domain([0, d3.max(filteredData, d => d.gdp)]);
+
+    g.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
+
+    g.append("g")
+      .call(d3.axisLeft(y))
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", "0.71em")
+      .attr("text-anchor", "end")
+      .text("GDP (USD)");
+
+    g.selectAll(".bar")
+      .data(filteredData)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", d => x(d.country))
+      .attr("y", d => y(d.gdp))
+      .attr("width", x.bandwidth())
+      .attr("height", d => height - y(d.gdp));
+  </script>
+</body>
+</html>

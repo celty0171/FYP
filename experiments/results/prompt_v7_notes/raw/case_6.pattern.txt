@@ -1,0 +1,147 @@
+```json
+{
+  "case_id": "6",
+  "schema_evidence": {
+    "selected_table": "ethnic_group",
+    "selected_columns": ["country", "name", "percentage"],
+    "primary_key_columns": ["name", "country"],
+    "foreign_key_columns": ["country"],
+    "selected_foreign_key_columns": ["country"],
+    "foreign_keys_in_primary_key": ["country"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["name"],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "country": "country"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of exactly two foreign keys."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of exactly two foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has a local primary key column ('name') and a foreign key column ('country') in the primary key."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "The primary key is compound and contains a foreign key ('country') and a local primary key column ('name')."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign key ('country') is part of the primary key, not outside of it."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table has a foreign key ('country') in the primary key, which disqualifies it from being a basic entity."
+      }
+    ],
+    "cardinality_reasoning": "The 'ethnic_group' table has a compound primary key consisting of 'name' (local) and 'country' (foreign key to 'country'). This indicates a weak entity relationship, where 'country' is the parent entity and 'name' is the local key identifying the ethnic group within a country."
+  },
+  "identified_pattern": "weak_entity",
+  "confidence": 0.95,
+  "recommended_visualisations": ["Line chart", "Stacked bar chart", "Grouped bar chart", "Spider chart"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Line chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' (k1) is the parent key, and 'name' (k2) is the local child key. 'percentage' (a1) is a scalar attribute that can be used for the y-axis.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "name",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "percentage",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": ["Requires that 'name' (k2) has scalar values for the x-axis."]
+    },
+    {
+      "chart_type": "Stacked bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' (k1) is the parent key, and 'name' (k2) is the local child key. 'percentage' (a1) is a scalar attribute that can be used for the stack length.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "name",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "percentage",
+        "color": "name"
+      },
+      "required_transformations": ["Ensure that each 'country' has the same or similar set of 'name' values for the stacked bars to be comparable."]
+    },
+    {
+      "chart_type": "Grouped bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' (k1) is the parent key, and 'name' (k2) is the local child key. 'percentage' (a1) is a scalar attribute that can be used for the bar length.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "name",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "percentage",
+        "color": "name"
+      },
+      "required_transformations": [],
+      "limitations": ["Does not require completeness of 'name' values across 'country'."]
+    },
+    {
+      "chart_type": "Spider chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' (k1) is the parent key, and 'name' (k2) is the local child key. 'percentage' (a1) is a scalar attribute that can be used for the ring/spoke intersection.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "name",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "theta": "name",
+        "r": "percentage",
+        "color": "country"
+      },
+      "required_transformations": ["Best when 'name' (k2) has complete values across 'country' (k1)."]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Stacked bar chart",
+    "selection_reason": "The 'country' (k1) is the parent key, and 'name' (k2) is the local child key. 'percentage' (a1) is a scalar attribute that can be used for the stack length. This chart is suitable for comparing the distribution of ethnic groups across countries.",
+    "schema_pattern_variables": {
+      "k1": "country",
+      "k2": "name",
+      "a1": "percentage"
+    },
+    "encoding": {
+      "x": "country",
+      "y": "percentage",
+      "color": "name"
+    },
+    "required_transformations": ["Ensure that each 'country' has the same or similar set of 'name' values for the stacked bars to be comparable."]
+  },
+  "chart_mapping": {
+    "x": "country",
+    "y": "percentage",
+    "color": "name"
+  },
+  "data_type_reasoning": "The 'percentage' column is a scalar dimension (DECIMAL type), suitable for use in the y-axis of a stacked bar chart. The 'name' column is a discrete dimension (VARCHAR type), suitable for use as a color encoding. The 'country' column is a discrete dimension (VARCHAR type), suitable for use as the x-axis.",
+  "limitations": ["Requires that each 'country' has the same or similar set of 'name' values for the stacked bars to be comparable."]
+}
+```

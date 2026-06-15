@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Airport Elevation Bar Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .bar {
+      fill: steelblue;
+    }
+    .axis-label {
+      font-size: 14px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">Airport Elevation by IATA Code</div>
+  <svg width="960" height="500"></svg>
+
+  <script>
+    const data = [
+      {"iata_code": "HEA", "island": null, "elevation": 977},
+      {"iata_code": "KBL", "island": null, "elevation": 1792},
+      {"iata_code": "TIA", "island": null, "elevation": 38},
+      {"iata_code": "TEE", "island": null, "elevation": 811},
+      {"iata_code": "BLJ", "island": null, "elevation": 822},
+      {"iata_code": "BJA", "island": null, "elevation": 6},
+      {"iata_code": "TMR", "island": null, "elevation": 1377},
+      {"iata_code": "BSK", "island": null, "elevation": 88},
+      {"iata_code": "CZL", "island": null, "elevation": 691},
+      {"iata_code": "QSF", "island": null, "elevation": 1024},
+      {"iata_code": "ORN", "island": null, "elevation": 90},
+      {"iata_code": "GHA", "island": null, "elevation": 461},
+      {"iata_code": "AAE", "island": null, "elevation": 5},
+      {"iata_code": "ALG", "island": null, "elevation": 25},
+      {"iata_code": "TLM", "island": null, "elevation": 248},
+      {"iata_code": "PPG", "island": "Tutuila", "elevation": 10},
+      {"iata_code": "VPE", "island": null, "elevation": 1087},
+      {"iata_code": "SDD", "island": null, "elevation": 1762},
+      {"iata_code": "CAB", "island": null, "elevation": 20},
+      {"iata_code": "SPP", "island": null, "elevation": 1363},
+      {"iata_code": "LAD", "island": null, "elevation": 74},
+      {"iata_code": "NOV", "island": null, "elevation": 1703},
+      {"iata_code": "AXA", "island": "Anguilla", "elevation": 39},
+      {"iata_code": "ANU", "island": "Antigua", "elevation": 19},
+      {"iata_code": "IRJ", "island": null, "elevation": 438},
+      {"iata_code": "JUJ", "island": null, "elevation": 920},
+      {"iata_code": "BHI", "island": null, "elevation": 75},
+      {"iata_code": "TUC", "island": null, "elevation": 456},
+      {"iata_code": "LUQ", "island": null, "elevation": 710},
+      {"iata_code": "SDE", "island": null, "elevation": 200},
+      {"iata_code": "SFN", "island": null, "elevation": 17},
+      {"iata_code": "CNQ", "island": null, "elevation": 62},
+      {"iata_code": "NQN", "island": null, "elevation": 273},
+      {"iata_code": "SLA", "island": null, "elevation": 1246},
+      {"iata_code": "AEP", "island": null, "elevation": 5},
+      {"iata_code": "EZE", "island": null, "elevation": 20},
+      {"iata_code": "USH", "island": null, "elevation": 22},
+      {"iata_code": "FMA", "island": null, "elevation": 59},
+      {"iata_code": "PSS", "island": null, "elevation": 131},
+      {"iata_code": "ROS", "island": null, "elevation": 26},
+      {"iata_code": "RES", "island": null, "elevation": 53},
+      {"iata_code": "RGL", "island": null, "elevation": 19},
+      {"iata_code": "CRD", "island": null, "elevation": 58},
+      {"iata_code": "MDQ", "island": null, "elevation": 22},
+      {"iata_code": "MDZ", "island": null, "elevation": 704},
+      {"iata_code": "COR", "island": null, "elevation": 489},
+      {"iata_code": "EVN", "island": null, "elevation": 865},
+      {"iata_code": "AUA", "island": "Aruba", "elevation": 18},
+      {"iata_code": "MEL", "island": null, "elevation": 132},
+      {"iata_code": "SYD", "island": null, "elevation": 6},
+      {"iata_code": "CNS", "island": null, "elevation": 3},
+      {"iata_code": "TSV", "island": null, "elevation": 5},
+      {"iata_code": "BNE", "island": null, "elevation": 4},
+      {"iata_code": "CBR", "island": null, "elevation": 575},
+      {"iata_code": "ADL", "island": null, "elevation": 6},
+      {"iata_code": "NTL", "island": null, "elevation": 9},
+      {"iata_code": "DRW", "island": null, "elevation": 31},
+      {"iata_code": "PER", "island": null, "elevation": 20},
+      {"iata_code": "HBA", "island": "Tasmania", "elevation": 4},
+      {"iata_code": "SZG", "island": null, "elevation": 430},
+      {"iata_code": "LNZ", "island": null, "elevation": 298},
+      {"iata_code": "INN", "island": null, "elevation": 581},
+      {"iata_code": "VIE", "island": null, "elevation": 183},
+      {"iata_code": "GRZ", "island": null, "elevation": 340},
+      {"iata_code": "KLU", "island": null, "elevation": 138},
+      {"iata_code": "GYD", "island": null, "elevation": 3},
+      {"iata_code": "NAS", "island": "New Providence", "elevation": 5},
+      {"iata_code": "BAH", "island": "Bahrain", "elevation": 2},
+      {"iata_code": "DAC", "island": null, "elevation": 9},
+      {"iata_code": "CGP", "island": null, "elevation": 4},
+      {"iata_code": "BGI", "island": "Barbados", "elevation": 52},
+      {"iata_code": "MSQ", "island": null, "elevation": 204},
+      {"iata_code": "ANR", "island": null, "elevation": 12},
+      {"iata_code": "CRL", "island": null, "elevation": 187},
+      {"iata_code": "LGG", "island": null, "elevation": 201},
+      {"iata_code": "BRU", "island": null, "elevation": 56},
+      {"iata_code": "BZE", "island": null, "elevation": 5},
+      {"iata_code": "COO", "island": null, "elevation": 6},
+      {"iata_code": "BDA", "island": "Grand Bermuda", "elevation": 4},
+      {"iata_code": "PBH", "island": null, "elevation": 2235},
+      {"iata_code": "CIJ", "island": null, "elevation": 272},
+      {"iata_code": "LPB", "island": null, "elevation": 4063},
+      {"iata_code": "VVI", "island": null, "elevation": 373},
+      {"iata_code": "SRE", "island": null, "elevation": 2905},
+      {"iata_code": "TDD", "island": null, "elevation": 155},
+      {"iata_code": "TJA", "island": null, "elevation": 1855},
+      {"iata_code": "CBB", "island": null, "elevation": 2549},
+      {"iata_code": "SJJ", "island": null, "elevation": 521},
+      {"iata_code": "GBE", "island": null, "elevation": 1006},
+      {"iata_code": "REC", "island": null, "elevation": 10},
+      {"iata_code": "BSB", "island": null, "elevation": 1061},
+      {"iata_code": "BVB", "island": null, "elevation": 84},
+      {"iata_code": "RBR", "island": null, "elevation": 193},
+      {"iata_code": "UDI", "island": null, "elevation": 943},
+      {"iata_code": "MCZ", "island": null, "elevation": 118},
+      {"iata_code": "MCP", "island": null, "elevation": 17},
+      {"iata_code": "MAO", "island": null, "elevation": 80},
+      {"iata_code": "VIX", "island": null, "elevation": 3},
+      {"iata_code": "CWB", "island": null, "elevation": 911},
+      {"iata_code": "STM", "island": null, "elevation": 60},
+      {"iata_code": "LDB", "island": null, "elevation": 569},
+      {"iata_code": "CGB", "island": null, "elevation": 188},
+      {"iata_code": "CGR", "island": null, "elevation": 559},
+      {"iata_code": "CGH", "island": null, "elevation": 802},
+      {"iata_code": "SDU", "island": null, "elevation": 3},
+      {"iata_code": "SSA", "island": null, "elevation": 20},
+      {"iata_code": "CNF", "island": null, "elevation": 828},
+      {"iata_code": "SLZ", "island": null, "elevation": 54},
+      {"iata_code": "CPQ", "island": null, "elevation": 612},
+      {"iata_code": "VCP", "island": null, "elevation": 662},
+      {"iata_code": "AJU", "island": null, "elevation": 7},
+      {"iata_code": "UBA", "island": null, "elevation": 809},
+      {"iata_code": "BEL", "island": null, "elevation": 16},
+      {"iata_code": "THE", "island": null, "elevation": 67},
+      {"iata_code": "NAT", "island": null, "elevation": 52},
+      {"iata_code": "PET", "island": null, "elevation": 18},
+      {"iata_code": "RAO", "island": null, "elevation": 549},
+      {"iata_code": "RVD", "island": null, "elevation": 684},
+      {"iata_code": "GVR", "island": null, "elevation": 171},
+      {"iata_code": "IPN", "island": null, "elevation": 239}
+    ];
+
+    const svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+    const margin = { top: 20, right: 30, bottom: 50, left: 50 },
+      innerWidth = width - margin.left - margin.right,
+      innerHeight = height - margin.top - margin.bottom;
+
+    const x = d3.scaleBand()
+      .range([0, innerWidth])
+      .padding(0.1);
+
+    const y = d3.scaleLinear()
+      .range([innerHeight, 0]);
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const keys = data.map(d => d.iata_code);
+    const values = data.map(d => d.elevation);
+
+    x.domain(keys);
+    y.domain([0, d3.max(values)]);
+
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
+
+    g.append("g")
+      .call(d3.axisLeft(y))
+      .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -40)
+      .attr("x", -innerHeight / 2)
+      .attr("dy", "1em")
+      .attr("class", "axis-label")
+      .text("Elevation (m)");
+
+    g.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", d => x(d.iata_code))
+      .attr("y", d => y(d.elevation))
+      .attr("width", x.bandwidth())
+      .attr("height", d => innerHeight - y(d.elevation));
+  </script>
+</body>
+</html>

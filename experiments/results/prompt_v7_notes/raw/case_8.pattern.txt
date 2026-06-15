@@ -1,0 +1,110 @@
+```json
+{
+  "case_id": "8",
+  "schema_evidence": {
+    "selected_table": "encompasses",
+    "selected_columns": ["country", "continent", "percentage"],
+    "primary_key_columns": ["country", "continent"],
+    "foreign_key_columns": ["country", "continent"],
+    "selected_foreign_key_columns": ["country", "continent"],
+    "foreign_keys_in_primary_key": ["country", "continent"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "foreign_key_referenced_tables": {
+      "country": "country",
+      "continent": "continent"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is composed of two foreign keys, but they reference different tables (country and continent), so this is not a reflexive many-many relationship."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The two foreign keys in the primary key reference different tables (country and continent), so this is not a reflexive many-many relationship."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has a compound primary key composed entirely of foreign keys, but it is not a basic entity with inherited key because it is a relationship table."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is composed entirely of foreign keys, so it is not a weak entity."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign keys are part of the primary key, so this is not a one-many relationship."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table is not a basic entity because it is a relationship table."
+      }
+    ],
+    "cardinality_reasoning": "The table 'encompasses' has a compound primary key composed of two foreign keys: 'country' (references 'country') and 'continent' (references 'continent'). This indicates a many-many relationship between 'country' and 'continent', as each country can be part of multiple continents and vice versa."
+  },
+  "identified_pattern": "many_many_relationship",
+  "confidence": 0.95,
+  "recommended_visualisations": ["Sankey diagram"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Sankey diagram",
+      "eligible": true,
+      "eligibility_reason": "The table 'encompasses' represents a many-many relationship between 'country' and 'continent', with a scalar attribute 'percentage' that can be used as the flow width between the two entities.",
+      "schema_pattern_variables": {
+        "E1": "country",
+        "E2": "continent",
+        "k1": "country",
+        "k2": "continent",
+        "R": "encompasses",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "source": "country",
+        "target": "continent",
+        "width": "percentage"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Sankey diagram",
+    "selection_reason": "The 'encompasses' table represents a many-many relationship between 'country' and 'continent', with the 'percentage' attribute providing a scalar measure for the flow width between the two entities.",
+    "schema_pattern_variables": {
+      "E1": "country",
+      "E2": "continent",
+      "k1": "country",
+      "k2": "continent",
+      "R": "encompasses",
+      "a1": "percentage"
+    },
+    "encoding": {
+      "source": "country",
+      "target": "continent",
+      "width": "percentage"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use D3's Sankey layout to visualize the flow between countries and continents based on the percentage.",
+      "google_charts": "Use Google Charts' Sankey diagram to represent the relationship between countries and continents with the percentage as the flow width.",
+      "vega_lite": "Use Vega-Lite's Sankey transform to create a flow diagram between countries and continents based on the percentage."
+    }
+  },
+  "chart_mapping": {
+    "source": "country",
+    "target": "continent",
+    "width": "percentage"
+  },
+  "data_type_reasoning": "The 'percentage' column is a numeric type (NUMERIC(10,2)), which qualifies it as a scalar dimension. The 'country' and 'continent' columns are foreign keys referencing other tables and are treated as discrete dimensions since they represent distinct entities.",
+  "limitations": []
+}
+```

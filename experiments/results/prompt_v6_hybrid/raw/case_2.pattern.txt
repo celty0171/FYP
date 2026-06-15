@@ -1,0 +1,103 @@
+```json
+{
+  "case_id": "2",
+  "identified_pattern": "basic_entity_inherited_key",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "economy",
+    "selected_columns": ["country", "gdp", "unemployment"],
+    "primary_key_columns": ["country"],
+    "foreign_key_columns": ["country"],
+    "selected_foreign_key_columns": ["country"],
+    "foreign_keys_in_primary_key": ["country"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["country"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "rule_decision_trace": [
+      { "rule": "many_many_or_reflexive", "matched": false, "reason": "The selected table 'economy' does not represent a many-to-many or reflexive relationship." },
+      { "rule": "basic_entity_inherited_key", "matched": true, "reason": "The 'economy' table has a primary key 'country' that is a foreign key referencing the 'country' table, indicating an inherited key structure." },
+      { "rule": "weak_entity", "matched": false, "reason": "The 'economy' table does not have a local key in addition to a foreign key, which is required for a weak entity." },
+      { "rule": "one_many_relationship", "matched": false, "reason": "The 'economy' table does not represent a one-to-many relationship with another entity." },
+      { "rule": "basic_entity", "matched": false, "reason": "The 'economy' table has a foreign key in its primary key, which disqualifies it from being a basic entity." }
+    ],
+    "cardinality_reasoning": "The 'country' column in the 'economy' table is a foreign key referencing the 'country' table, which has a primary key 'code'. This implies a one-to-many relationship between 'country' (in 'country' table) and 'economy' (in 'economy' table). Each country in the 'country' table can have multiple entries in the 'economy' table."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "scatter chart",
+    "choropleth map"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column can act as the key (discrete dimension), and 'gdp' or 'unemployment' can be scalar attributes for the bar height.",
+      "schema_pattern_variables": {
+        "k": "country",
+        "a1": "gdp"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "gdp"
+      },
+      "required_transformations": [],
+      "limitations": ["|k| (number of distinct country values) should be up to ~100 for optimal readability."]
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": true,
+      "eligibility_reason": "Both 'gdp' and 'unemployment' are scalar attributes, making them suitable for the x and y axes.",
+      "schema_pattern_variables": {
+        "a1": "gdp",
+        "a2": "unemployment"
+      },
+      "encoding": {
+        "x": "gdp",
+        "y": "unemployment"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": true,
+      "eligibility_reason": "The 'country' column is a geographical key (as it references the 'country' table), and 'gdp' or 'unemployment' can be used as scalar values for shading.",
+      "schema_pattern_variables": {
+        "k": "country",
+        "a1": "gdp"
+      },
+      "encoding": {
+        "geo": "country",
+        "color": "gdp"
+      },
+      "required_transformations": ["The 'country' column must be mapped to a geographical region (e.g., country code or name) for the choropleth map to be rendered correctly."],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The bar chart is a good fit for this pattern as it allows for a clear comparison of GDP values across different countries, which are discrete entities.",
+    "schema_pattern_variables": {
+      "k": "country",
+      "a1": "gdp"
+    },
+    "encoding": {
+      "x": "country",
+      "y": "gdp"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use D3's bar chart with ordinal scale for x-axis and linear scale for y-axis.",
+      "google_charts": "Use Google Charts' Bar Chart with 'country' as the category and 'gdp' as the value.",
+      "vega_lite": "Use Vega-Lite's bar chart with 'country' as the x-axis and 'gdp' as the y-axis."
+    }
+  },
+  "chart_mapping": {
+    "country": "x",
+    "gdp": "y"
+  },
+  "data_type_reasoning": "The 'country' column is a discrete dimension as it represents distinct entities (countries), and it is a foreign key referencing the 'country' table. The 'gdp' and 'unemployment' columns are scalar dimensions as they are numeric values with a natural ordering. 'gdp' can be used as a scalar measure for bar height or scatter plot axes, while 'unemployment' can also be used as a scalar measure for scatter plots.",
+  "limitations": ["The 'country' column may not be directly mapped to geographical regions without additional data (e.g., country names or codes).", "The 'gdp' and 'unemployment' columns may contain null values, which could affect the visualisation."]
+}
+```

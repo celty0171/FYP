@@ -1,0 +1,132 @@
+```json
+{
+  "case_id": "5",
+  "identified_pattern": "one_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": ["country", "year", "population"],
+    "primary_key_columns": ["country", "year"],
+    "foreign_key_columns": ["country"],
+    "selected_foreign_key_columns": ["country"],
+    "foreign_keys_in_primary_key": ["country"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": ["year"],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is compound but not all columns are foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is compound and contains a local key column ('year')."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is compound but the foreign key is part of the primary key and there is a local key column ('year')."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": true,
+        "reason": "The selected table has a foreign key ('country') that is not part of the primary key, indicating a hierarchical relationship with the 'country' entity."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The selected table has a foreign key ('country') that is not part of the primary key, which disqualifies it as a basic entity."
+      }
+    ],
+    "cardinality_reasoning": "The 'country_population' table has a foreign key to the 'country' table, indicating a one-many relationship. Each country can have multiple entries in the 'country_population' table, one for each year. The primary key of 'country_population' is a compound key consisting of 'country' (foreign key) and 'year' (local key)."
+  },
+  "recommended_visualisations": [
+    {
+      "chart_type": "treemap",
+      "eligible": true,
+      "eligibility_reason": "The 'population' column is a scalar dimension, and the 'country' and 'year' columns can be used to group data.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "code",
+        "kc": "country",
+        "a1": "population"
+      },
+      "encoding": {
+        "grouping": ["country", "year"],
+        "size": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "hierarchy tree",
+      "eligible": true,
+      "eligibility_reason": "The 'country' and 'year' columns can be used to represent the parent-child relationship, and the 'population' column can be used to color the links.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "code",
+        "kc": "country",
+        "a1": "population"
+      },
+      "encoding": {
+        "parent": "country",
+        "child": "year",
+        "color": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "circle packing",
+      "eligible": true,
+      "eligibility_reason": "The 'population' column is a scalar dimension, and the 'country' and 'year' columns can be used to group data.",
+      "schema_pattern_variables": {
+        "Ep": "country",
+        "Ec": "country_population",
+        "kp": "code",
+        "kc": "country",
+        "a1": "population"
+      },
+      "encoding": {
+        "grouping": ["country", "year"],
+        "size": "population"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "treemap",
+    "selection_reason": "The treemap is a suitable choice for visualizing hierarchical data with scalar measures, such as population, grouped by country and year.",
+    "schema_pattern_variables": {
+      "Ep": "country",
+      "Ec": "country_population",
+      "kp": "code",
+      "kc": "country",
+      "a1": "population"
+    },
+    "encoding": {
+      "grouping": ["country", "year"],
+      "size": "population"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3-hierarchy to create the treemap layout.",
+      "google_charts": "Use the Google Charts Treemap chart type.",
+      "vega_lite": "Use the 'treemap' mark type in Vega-Lite."
+    }
+  },
+  "chart_mapping": {
+    "country": "grouping",
+    "year": "grouping",
+    "population": "size"
+  },
+  "data_type_reasoning": "The 'country' column is a discrete dimension (short text/code type), the 'year' column is a scalar dimension (integer type), and the 'population' column is a scalar dimension (integer type). The 'country' column can be used to group data, while the 'year' and 'population' columns can be used to represent scalar values.",
+  "limitations": []
+}
+```

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sankey Diagram: Country to Continent</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .node rect {
+      cursor: move;
+      fill-opacity: 0.9;
+      shape-render: crispEdges;
+    }
+    .node text {
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    .link {
+      fill: none;
+      stroke: #000;
+      stroke-opacity: 0.2;
+    }
+    .link:hover {
+      stroke-opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <h2>Country to Continent Sankey Diagram</h2>
+  <svg width="1200" height="800"></svg>
+
+  <script>
+    const data = [
+      {"country": "AL", "continent": "Europe", "percentage": 100},
+      {"country": "GR", "continent": "Europe", "percentage": 100},
+      {"country": "CY", "continent": "Europe", "percentage": 100},
+      {"country": "AD", "continent": "Europe", "percentage": 100},
+      {"country": "MK", "continent": "Europe", "percentage": 100},
+      {"country": "SRB", "continent": "Europe", "percentage": 100},
+      {"country": "MNE", "continent": "Europe", "percentage": 100},
+      {"country": "KOS", "continent": "Europe", "percentage": 100},
+      {"country": "AND", "continent": "Europe", "percentage": 100},
+      {"country": "F", "continent": "Europe", "percentage": 100},
+      {"country": "E", "continent": "Europe", "percentage": 100},
+      {"country": "CZ", "continent": "Europe", "percentage": 100},
+      {"country": "SK", "continent": "Europe", "percentage": 100},
+      {"country": "D", "continent": "Europe", "percentage": 100},
+      {"country": "H", "continent": "Europe", "percentage": 100},
+      {"country": "I", "continent": "Europe", "percentage": 100},
+      {"country": "CH", "continent": "Europe", "percentage": 100},
+      {"country": "FL", "continent": "Europe", "percentage": 100},
+      {"country": "A", "continent": "Europe", "percentage": 100},
+      {"country": "EST", "continent": "Europe", "percentage": 100},
+      {"country": "LV", "continent": "Europe", "percentage": 100},
+      {"country": "LT", "continent": "Europe", "percentage": 100},
+      {"country": "BY", "continent": "Europe", "percentage": 100},
+      {"country": "PL", "continent": "Europe", "percentage": 100},
+      {"country": "UA", "continent": "Europe", "percentage": 100},
+      {"country": "R", "continent": "Europe", "percentage": 23.15},
+      {"country": "R", "continent": "Asia", "percentage": 76.85},
+      {"country": "B", "continent": "Europe", "percentage": 100},
+      {"country": "L", "continent": "Europe", "percentage": 100},
+      {"country": "NL", "continent": "Europe", "percentage": 100},
+      {"country": "SLO", "continent": "Europe", "percentage": 100},
+      {"country": "HR", "continent": "Europe", "percentage": 100},
+      {"country": "BIH", "continent": "Europe", "percentage": 100},
+      {"country": "BG", "continent": "Europe", "percentage": 100},
+      {"country": "RO", "continent": "Europe", "percentage": 100},
+      {"country": "DK", "continent": "Europe", "percentage": 100},
+      {"country": "IS", "continent": "Europe", "percentage": 100},
+      {"country": "FO", "continent": "Europe", "percentage": 100},
+      {"country": "IRL", "continent": "Europe", "percentage": 100},
+      {"country": "SF", "continent": "Europe", "percentage": 100},
+      {"country": "N", "continent": "Europe", "percentage": 100},
+      {"country": "S", "continent": "Europe", "percentage": 100},
+      {"country": "MC", "continent": "Europe", "percentage": 100},
+      {"country": "V", "continent": "Europe", "percentage": 100},
+      {"country": "CEU", "continent": "Africa", "percentage": 100},
+      {"country": "MEL", "continent": "Africa", "percentage": 100},
+      {"country": "RSM", "continent": "Europe", "percentage": 100},
+      {"country": "M", "continent": "Europe", "percentage": 100},
+      {"country": "GBM", "continent": "Europe", "percentage": 100},
+      {"country": "MD", "continent": "Europe", "percentage": 100},
+      {"country": "P", "continent": "Europe", "percentage": 100},
+      {"country": "SVA", "continent": "Europe", "percentage": 100},
+      {"country": "GB", "continent": "Europe", "percentage": 100},
+      {"country": "GBZ", "continent": "Europe", "percentage": 100},
+      {"country": "GBG", "continent": "Europe", "percentage": 100},
+      {"country": "GBJ", "continent": "Europe", "percentage": 100},
+      {"country": "ARM", "continent": "Asia", "percentage": 100},
+      {"country": "GE", "continent": "Asia", "percentage": 100},
+      {"country": "AZ", "continent": "Asia", "percentage": 100},
+      {"country": "TR", "continent": "Europe", "percentage": 3},
+      {"country": "TR", "continent": "Asia", "percentage": 97},
+      {"country": "RL", "continent": "Asia", "percentage": 100},
+      {"country": "WB", "continent": "Asia", "percentage": 100},
+      {"country": "GAZA", "continent": "Asia", "percentage": 100},
+      {"country": "IL", "continent": "Asia", "percentage": 100},
+      {"country": "SYR", "continent": "Asia", "percentage": 100},
+      {"country": "JOR", "continent": "Asia", "percentage": 100},
+      {"country": "SA", "continent": "Asia", "percentage": 100},
+      {"country": "BRN", "continent": "Asia", "percentage": 100},
+      {"country": "Q", "continent": "Asia", "percentage": 100},
+      {"country": "UAE", "continent": "Asia", "percentage": 100},
+      {"country": "OM", "continent": "Asia", "percentage": 100},
+      {"country": "YE", "continent": "Asia", "percentage": 100},
+      {"country": "KWT", "continent": "Asia", "percentage": 100},
+      {"country": "IRQ", "continent": "Asia", "percentage": 100},
+      {"country": "IR", "continent": "Asia", "percentage": 100},
+      {"country": "AFG", "continent": "Asia", "percentage": 100},
+      {"country": "TM", "continent": "Asia", "percentage": 100},
+      {"country": "UZ", "continent": "Asia", "percentage": 100},
+      {"country": "TJ", "continent": "Asia", "percentage": 100},
+      {"country": "KG", "continent": "Asia", "percentage": 100},
+      {"country": "KZ", "continent": "Europe", "percentage": 5.4},
+      {"country": "KZ", "continent": "Asia", "percentage": 94.6},
+      {"country": "MNG", "continent": "Asia", "percentage": 100},
+      {"country": "MV", "continent": "Asia", "percentage": 100},
+      {"country": "PK", "continent": "Asia", "percentage": 100},
+      {"country": "IND", "continent": "Asia", "percentage": 100},
+      {"country": "NEP", "continent": "Asia", "percentage": 100},
+      {"country": "BHT", "continent": "Asia", "percentage": 100},
+      {"country": "BD", "continent": "Asia", "percentage": 100},
+      {"country": "MYA", "continent": "Asia", "percentage": 100},
+      {"country": "CL", "continent": "Asia", "percentage": 100},
+      {"country": "CN", "continent": "Asia", "percentage": 100},
+      {"country": "RC", "continent": "Asia", "percentage": 100},
+      {"country": "HK", "continent": "Asia", "percentage": 100},
+      {"country": "MAC", "continent": "Asia", "percentage": 100},
+      {"country": "KP", "continent": "Asia", "percentage": 100},
+      {"country": "ROK", "continent": "Asia", "percentage": 100},
+      {"country": "J", "continent": "Asia", "percentage": 100},
+      {"country": "RP", "continent": "Asia", "percentage": 100},
+      {"country": "VN", "continent": "Asia", "percentage": 100},
+      {"country": "K", "continent": "Asia", "percentage": 100},
+      {"country": "LAO", "continent": "Asia", "percentage": 100},
+      {"country": "THA", "continent": "Asia", "percentage": 100},
+      {"country": "MAL", "continent": "Asia", "percentage": 100},
+      {"country": "BRU", "continent": "Asia", "percentage": 100},
+      {"country": "SGP", "continent": "Asia", "percentage": 100},
+      {"country": "RI", "continent": "Asia", "percentage": 78},
+      {"country": "RI", "continent": "Australia/Oceania", "percentage": 22},
+      {"country": "TL", "continent": "Asia", "percentage": 100},
+      {"country": "PNG", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "SOL", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "VU", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "NCL", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "AUS", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "CX", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "CC", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "NF", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "NZ", "continent": "Australia/Oceania", "percentage": 100},
+      {"country": "PAL", "continent": "Australia/Oceania", "percentage": 100}
+    ];
+
+    const svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+    const format = d3.format(",.0f");
+
+    const link = svg.append("g").attr("class", "links");
+    const node = svg.append("g").attr("class", "nodes");
+
+    const sankey = d3.sankey()
+      .nodeWidth(30)
+      .nodePadding(10)
+      .size([width, height]);
+
+    const graph = {
+      nodes: [],
+      links: []
+    };
+
+    // Create nodes
+    const nodeMap = {};
+    data.forEach(d => {
+      if (!nodeMap[d.country]) {
+        nodeMap[d.country] = { name: d.country };
+      }
+      if (!nodeMap[d.continent]) {
+        nodeMap[d.continent] = { name: d.continent };
+      }
+    });
+
+    graph.nodes = Object.values(nodeMap);
+
+    // Create links
+    data.forEach(d => {
+      graph.links.push({
+        source: nodeMap[d.country],
+        target: nodeMap[d.continent],
+        value: d.percentage
+      });
+    });
+
+    sankey(graph);
+
+    const linkData = link.selectAll(".link")
+      .data(graph.links)
+      .enter().append("path")
+      .attr("class", "link")
+      .attr("d", d3.sankey.link())
+      .style("stroke-width", d => Math.max(1, d.width))
+      .append("title")
+      .text(d => `${d.source.name} → ${d.target.name}\n${format(d.value)}`);
+
+    const nodeData = node.selectAll(".node")
+      .data(graph.nodes)
+      .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+    nodeData.append("rect")
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0)
+      .attr("fill", d => d.color || "steelblue");
+
+    nodeData.append("text")
+      .attr("x", d => d.x1 - d.x0 + 4)
+      .attr("y", d => (d.y1 - d.y0) / 2)
+      .attr("dy", ".35em")
+      .attr("text-anchor", "start")
+      .text(d => d.name);
+  </script>
+</body>
+</html>

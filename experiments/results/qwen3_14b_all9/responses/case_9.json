@@ -1,0 +1,150 @@
+{
+  "case_id": "9",
+  "identified_pattern": "many_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "borders",
+    "selected_columns": [
+      "country1",
+      "country2",
+      "length"
+    ],
+    "primary_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "selected_foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": true,
+        "reason": "The primary key consists of two foreign keys ('country1' and 'country2') referencing the same parent table 'country'."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has no local primary key columns."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is fully composed of foreign keys, not a mix of foreign and local keys."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected columns include foreign keys that are part of the primary key, not foreign keys outside the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table has no local primary key columns and is not a basic entity."
+      }
+    ],
+    "cardinality_reasoning": "The 'borders' table represents a many-to-many relationship between 'country1' and 'country2', as both are foreign keys referencing the 'country' table and form the compound primary key."
+  },
+  "recommended_visualisations": [
+    "sankey diagram",
+    "chord diagram"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "sankey diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a many-many relationship between two entities ('country1' and 'country2'), and the 'length' column provides a scalar measure for the flow between them.",
+      "schema_pattern_variables": {
+        "E1": "country",
+        "E2": "country",
+        "R": "borders",
+        "k1": "country1",
+        "k2": "country2",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [
+        "map country codes to country names for better readability"
+      ],
+      "limitations": [
+        "requires country names for better interpretation of the nodes"
+      ]
+    },
+    {
+      "chart_type": "chord diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a reflexive many-many relationship between the same entity ('country'), and the 'length' column provides a scalar measure for the connection width.",
+      "schema_pattern_variables": {
+        "E": "country",
+        "R": "borders",
+        "k1": "country1",
+        "k2": "country2",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [
+        "map country codes to country names for better readability"
+      ],
+      "limitations": [
+        "requires country names for better interpretation of the nodes"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "chord diagram",
+    "selection_reason": "The 'borders' table represents a reflexive many-many relationship between the same entity ('country'), and the 'length' column provides a scalar measure for the connection width. A chord diagram is especially suitable for this pattern.",
+    "schema_pattern_variables": {
+      "E": "country",
+      "R": "borders",
+      "k1": "country1",
+      "k2": "country2",
+      "a1": "length"
+    },
+    "encoding": {
+      "source": "country1",
+      "target": "country2",
+      "width": "length"
+    },
+    "required_transformations": [
+      "map country codes to country names for better readability"
+    ],
+    "library_notes": {
+      "d3": "Use D3's chord layout with the 'length' as the width of the connections.",
+      "google_charts": "Not directly supported; consider using a D3-based library for chord diagrams.",
+      "vega_lite": "Use Vega-Lite's 'chord' mark type with the 'length' as the width of the connections."
+    }
+  },
+  "chart_mapping": {
+    "chord diagram": {
+      "source": "country1",
+      "target": "country2",
+      "width": "length"
+    }
+  },
+  "data_type_reasoning": "The 'country1' and 'country2' columns are foreign keys referencing the 'country' table, and the 'length' column is a numeric scalar that can be used as the width of the connections in a chord diagram.",
+  "limitations": [
+    "Requires mapping country codes to country names for better readability",
+    "The chord diagram may become complex with a large number of countries."
+  ]
+}

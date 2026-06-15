@@ -1,0 +1,132 @@
+{
+  "case_id": "9",
+  "identified_pattern": "many_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "borders",
+    "selected_columns": [
+      "country1",
+      "country2",
+      "length"
+    ],
+    "primary_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "selected_foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": true,
+        "reason": "The primary key consists of two foreign key columns (country1 and country2), which reference the same parent entity 'country'."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a single parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key does not combine foreign key and local key columns."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected columns do not include a foreign key that is not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table is not a basic entity as it represents a relationship between two entities."
+      }
+    ],
+    "cardinality_reasoning": "The 'borders' table represents a many-to-many relationship between two instances of the 'country' entity. Each border is defined by a pair of countries (country1 and country2), and the 'length' attribute represents the scalar measure of the relationship."
+  },
+  "recommended_visualisations": [
+    "sankey diagram",
+    "chord diagram"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "sankey diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a many-many relationship between two entities (country1 and country2), with a scalar attribute 'length' that can be used as the flow width.",
+      "schema_pattern_variables": {
+        "E1": "country",
+        "E2": "country",
+        "k1": "country1",
+        "k2": "country2",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "chord diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a reflexive many-many relationship between the same entity 'country', with a scalar attribute 'length' that can be used as the connection width.",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k1": "country1",
+        "k2": "country2",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "chord diagram",
+    "selection_reason": "The 'borders' table represents a reflexive many-many relationship between the same entity 'country', and the 'length' attribute can be used as the connection width in a chord diagram.",
+    "schema_pattern_variables": {
+      "E": "country",
+      "k1": "country1",
+      "k2": "country2",
+      "a1": "length"
+    },
+    "encoding": {
+      "source": "country1",
+      "target": "country2",
+      "width": "length"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3-chord to create the chord diagram with the 'length' attribute as the connection width.",
+      "google_charts": "Use the Sankey chart type in Google Charts, but note that it may not support chord diagrams directly.",
+      "vega_lite": "Use Vega-Lite's 'chord' mark type to create the chord diagram with the 'length' attribute as the connection width."
+    }
+  },
+  "chart_mapping": {
+    "country1": "source",
+    "country2": "target",
+    "length": "width"
+  },
+  "data_type_reasoning": "The 'country1' and 'country2' columns are discrete dimensions as they represent identifiers of countries. The 'length' column is a scalar dimension as it represents a numeric value with a natural ordering.",
+  "limitations": []
+}

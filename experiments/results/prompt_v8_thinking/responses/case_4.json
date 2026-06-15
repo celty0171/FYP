@@ -1,0 +1,140 @@
+{
+  "case_id": "4",
+  "schema_evidence": {
+    "selected_table": "organization",
+    "selected_columns": [
+      "abbreviation",
+      "established"
+    ],
+    "primary_key_columns": [
+      "abbreviation"
+    ],
+    "foreign_key_columns": [
+      "city",
+      "province",
+      "country"
+    ],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "abbreviation"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "city": [
+        "city",
+        "province",
+        "country"
+      ]
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "No foreign key columns are selected"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key columns are selected"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected columns contain a primary key (abbreviation) and attributes (established) without foreign-key dependencies"
+      }
+    ],
+    "cardinality_reasoning": "The selected table 'organization' has a single-column primary key (abbreviation) and no foreign key columns are selected. This matches the basic entity pattern where instances are identified by a key and described by attributes."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    "calendar chart",
+    "bar chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "calendar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'established' column is a DATE type (temporal scalar dimension) which can be used to place entries on a calendar.",
+      "schema_pattern_variables": {
+        "E": "organization",
+        "k": "abbreviation",
+        "a1": "established"
+      },
+      "encoding": {
+        "x": "established",
+        "color": "abbreviation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'abbreviation' (discrete) can be used as the x-axis and 'established' (scalar temporal) as the y-axis.",
+      "schema_pattern_variables": {
+        "E": "organization",
+        "k": "abbreviation",
+        "a1": "established"
+      },
+      "encoding": {
+        "x": "abbreviation",
+        "y": "established"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Discrete x-axis may not be ideal for temporal data"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "calendar chart",
+    "selection_reason": "The 'established' column is a temporal scalar dimension, making it ideal for a calendar chart to visualize when organizations were established.",
+    "schema_pattern_variables": {
+      "E": "organization",
+      "k": "abbreviation",
+      "a1": "established"
+    },
+    "encoding": {
+      "x": "established",
+      "color": "abbreviation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.timeScale for temporal axis",
+      "google_charts": "Use Google Charts' Timeline or Calendar chart type",
+      "vega_lite": "Use 'time' scale for 'established' field"
+    }
+  },
+  "chart_mapping": {
+    "calendar chart": {
+      "x": "established",
+      "color": "abbreviation"
+    },
+    "bar chart": {
+      "x": "abbreviation",
+      "y": "established"
+    }
+  },
+  "data_type_reasoning": "The 'abbreviation' column is a VARCHAR (discrete dimension) while 'established' is a DATE (scalar temporal dimension). The DATE type supports temporal visualizations like calendar charts.",
+  "limitations": []
+}

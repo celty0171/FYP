@@ -1,0 +1,321 @@
+{
+  "metadata": {
+    "run_id": "prompt_v5_mcbrien",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": false,
+    "skip_impl": true,
+    "created_utc": "2026-06-14T14:43:19.291752+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/mondial_pattern_prompt_mcbrien.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "calendar chart",
+        "scatter chart",
+        "bubble chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "seconds": 42.2
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        "treemap",
+        "hierarchy tree",
+        "circle packing"
+      ],
+      "pattern_ok": true,
+      "seconds": 53.4
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "calendar chart",
+        "scatter chart",
+        "bubble chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "seconds": 50.3
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "calendar chart",
+        "scatter chart",
+        "bubble chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "seconds": 54.5
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        {
+          "chart_type": "treemap",
+          "eligible": true,
+          "eligibility_reason": "The 'population' column is a scalar dimension, and the 'country' and 'year' columns can be used to group data.",
+          "schema_pattern_variables": {
+            "Ep": "country",
+            "Ec": "country_population",
+            "kp": "code",
+            "kc": "country",
+            "a1": "population"
+          },
+          "encoding": {
+            "grouping": [
+              "country",
+              "year"
+            ],
+            "size": "population"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "hierarchy tree",
+          "eligible": true,
+          "eligibility_reason": "The 'country' and 'year' columns can be used to represent the parent-child relationship, and the 'population' column can be used to color the links.",
+          "schema_pattern_variables": {
+            "Ep": "country",
+            "Ec": "country_population",
+            "kp": "code",
+            "kc": "country",
+            "a1": "population"
+          },
+          "encoding": {
+            "parent": "country",
+            "child": "year",
+            "color": "population"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "circle packing",
+          "eligible": true,
+          "eligibility_reason": "The 'population' column is a scalar dimension, and the 'country' and 'year' columns can be used to group data.",
+          "schema_pattern_variables": {
+            "Ep": "country",
+            "Ec": "country_population",
+            "kp": "code",
+            "kc": "country",
+            "a1": "population"
+          },
+          "encoding": {
+            "grouping": [
+              "country",
+              "year"
+            ],
+            "size": "population"
+          },
+          "required_transformations": [],
+          "limitations": []
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 49.0
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "line chart",
+          "eligible": true,
+          "eligibility_reason": "The 'name' column (local key) can be used as the x-axis (scalar), and 'percentage' (scalar) can be used as the y-axis.",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "x": "name",
+            "y": "percentage"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "stacked bar chart",
+          "eligible": true,
+          "eligibility_reason": "The 'percentage' column (scalar) can be used as the bar height, and 'name' (local key) can be used as the category. This works best when 'name' values are complete across 'country'.",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "x": "country",
+            "y": "percentage",
+            "color": "name"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "Requires completeness of 'name' values across 'country' for best results."
+          ]
+        },
+        {
+          "chart_type": "grouped bar chart",
+          "eligible": true,
+          "eligibility_reason": "The 'percentage' column (scalar) can be used as the bar height, and 'name' (local key) can be used as the category. This does not require completeness of 'name' values across 'country'.",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "x": "country",
+            "y": "percentage",
+            "color": "name"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "spider chart",
+          "eligible": true,
+          "eligibility_reason": "The 'percentage' column (scalar) can be used as the radial axis, and 'name' (local key) can be used as the category. This works best when 'name' values are complete across 'country'.",
+          "schema_pattern_variables": {
+            "k1": "country",
+            "k2": "name",
+            "a1": "percentage"
+          },
+          "encoding": {
+            "theta": "name",
+            "r": "percentage"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "Requires completeness of 'name' values across 'country' for best results."
+          ]
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 58.1
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        {
+          "chart_type": "bar chart",
+          "eligible": true,
+          "eligibility_reason": "The primary key 'iata_code' is discrete and 'elevation' is a scalar dimension.",
+          "schema_pattern_variables": {
+            "k": "iata_code",
+            "a1": "elevation"
+          },
+          "encoding": {
+            "x": "iata_code",
+            "y": "elevation"
+          },
+          "required_transformations": [],
+          "limitations": []
+        },
+        {
+          "chart_type": "scatter chart",
+          "eligible": true,
+          "eligibility_reason": "The 'island' column is discrete and 'elevation' is a scalar dimension. However, 'island' is not a scalar dimension, so this chart is not eligible.",
+          "schema_pattern_variables": {
+            "a1": "island",
+            "a2": "elevation"
+          },
+          "encoding": {
+            "x": "island",
+            "y": "elevation"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "'island' is a discrete dimension, not a scalar dimension."
+          ]
+        },
+        {
+          "chart_type": "choropleth map",
+          "eligible": false,
+          "eligibility_reason": "'island' is not a geographical dimension.",
+          "schema_pattern_variables": {
+            "k": "island",
+            "a1": "elevation"
+          },
+          "encoding": {
+            "geo": "island",
+            "color": "elevation"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "'island' is not a geographical dimension."
+          ]
+        },
+        {
+          "chart_type": "word cloud",
+          "eligible": false,
+          "eligibility_reason": "'island' is not a lexical dimension.",
+          "schema_pattern_variables": {
+            "k": "island",
+            "a1": "elevation"
+          },
+          "encoding": {
+            "text": "island",
+            "size": "elevation"
+          },
+          "required_transformations": [],
+          "limitations": [
+            "'island' is not a lexical dimension."
+          ]
+        }
+      ],
+      "pattern_ok": true,
+      "seconds": 49.2
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "sankey diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 38.3
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "sankey diagram",
+        "chord diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 44.5
+    }
+  ]
+}

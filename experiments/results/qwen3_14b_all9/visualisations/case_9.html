@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chord Diagram: Country Borders</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    svg {
+      display: block;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align: center;">Country Borders Chord Diagram</h2>
+  <svg width="960" height="600"></svg>
+
+  <script>
+    const data = [
+      {"country1": "AL", "country2": "GR", "length": 282},
+      {"country1": "AL", "country2": "MK", "length": 151},
+      {"country1": "AL", "country2": "MNE", "length": 172},
+      {"country1": "AL", "country2": "KOS", "length": 112},
+      {"country1": "GR", "country2": "MK", "length": 228},
+      {"country1": "GR", "country2": "TR", "length": 206},
+      {"country1": "AD", "country2": "CY", "length": 156},
+      {"country1": "MK", "country2": "SRB", "length": 62},
+      {"country1": "MNE", "country2": "SRB", "length": 124},
+      {"country1": "KOS", "country2": "MNE", "length": 79},
+      {"country1": "KOS", "country2": "SRB", "length": 352},
+      {"country1": "KOS", "country2": "MK", "length": 159},
+      {"country1": "AND", "country2": "F", "length": 60},
+      {"country1": "AND", "country2": "E", "length": 65},
+      {"country1": "F", "country2": "I", "length": 488},
+      {"country1": "F", "country2": "L", "length": 73},
+      {"country1": "F", "country2": "MC", "length": 4.4},
+      {"country1": "E", "country2": "F", "length": 623},
+      {"country1": "E", "country2": "GBZ", "length": 1.2},
+      {"country1": "E", "country2": "P", "length": 1214},
+      {"country1": "CZ", "country2": "D", "length": 646},
+      {"country1": "CZ", "country2": "SK", "length": 215},
+      {"country1": "CZ", "country2": "PL", "length": 658},
+      {"country1": "SK", "country2": "UA", "length": 90},
+      {"country1": "D", "country2": "F", "length": 451},
+      {"country1": "D", "country2": "PL", "length": 456},
+      {"country1": "D", "country2": "L", "length": 138},
+      {"country1": "D", "country2": "NL", "length": 577},
+      {"country1": "D", "country2": "DK", "length": 68},
+      {"country1": "H", "country2": "SRB", "length": 151},
+      {"country1": "H", "country2": "SK", "length": 515},
+      {"country1": "H", "country2": "SLO", "length": 102},
+      {"country1": "H", "country2": "UA", "length": 103},
+      {"country1": "H", "country2": "HR", "length": 329},
+      {"country1": "H", "country2": "RO", "length": 443},
+      {"country1": "I", "country2": "SLO", "length": 235},
+      {"country1": "I", "country2": "V", "length": 3.2},
+      {"country1": "I", "country2": "RSM", "length": 39},
+      {"country1": "CH", "country2": "F", "length": 573},
+      {"country1": "CH", "country2": "D", "length": 334},
+      {"country1": "CH", "country2": "I", "length": 740},
+      {"country1": "CH", "country2": "FL", "length": 41},
+      {"country1": "A", "country2": "CZ", "length": 362},
+      {"country1": "A", "country2": "D", "length": 784},
+      {"country1": "A", "country2": "H", "length": 366},
+      {"country1": "A", "country2": "I", "length": 430},
+      {"country1": "A", "country2": "FL", "length": 37},
+      {"country1": "A", "country2": "SK", "length": 91},
+      {"country1": "A", "country2": "SLO", "length": 324},
+      {"country1": "A", "country2": "CH", "length": 164},
+      {"country1": "EST", "country2": "LV", "length": 267},
+      {"country1": "EST", "country2": "R", "length": 324},
+      {"country1": "LV", "country2": "R", "length": 332},
+      {"country1": "LT", "country2": "LV", "length": 453},
+      {"country1": "LT", "country2": "PL", "length": 91},
+      {"country1": "LT", "country2": "R", "length": 261},
+      {"country1": "BY", "country2": "LV", "length": 141},
+      {"country1": "BY", "country2": "LT", "length": 502},
+      {"country1": "BY", "country2": "PL", "length": 605},
+      {"country1": "BY", "country2": "UA", "length": 891},
+      {"country1": "BY", "country2": "R", "length": 1312},
+      {"country1": "PL", "country2": "SK", "length": 444},
+      {"country1": "PL", "country2": "UA", "length": 428},
+      {"country1": "PL", "country2": "R", "length": 209},
+      {"country1": "R", "country2": "UA", "length": 1944},
+      {"country1": "R", "country2": "SF", "length": 1309},
+      {"country1": "B", "country2": "F", "length": 620},
+      {"country1": "B", "country2": "D", "length": 167},
+      {"country1": "B", "country2": "L", "length": 148},
+      {"country1": "B", "country2": "NL", "length": 450},
+      {"country1": "HR", "country2": "SRB", "length": 241},
+      {"country1": "HR", "country2": "MNE", "length": 25},
+      {"country1": "HR", "country2": "SLO", "length": 546},
+      {"country1": "BIH", "country2": "SRB", "length": 357},
+      {"country1": "BIH", "country2": "MNE", "length": 249},
+      {"country1": "BIH", "country2": "HR", "length": 932},
+      {"country1": "BG", "country2": "GR", "length": 494},
+      {"country1": "BG", "country2": "MK", "length": 148},
+      {"country1": "BG", "country2": "SRB", "length": 318},
+      {"country1": "BG", "country2": "RO", "length": 608},
+      {"country1": "BG", "country2": "TR", "length": 240},
+      {"country1": "RO", "country2": "SRB", "length": 476},
+      {"country1": "RO", "country2": "UA", "length": 531},
+      {"country1": "N", "country2": "R", "length": 191},
+      {"country1": "N", "country2": "SF", "length": 729},
+      {"country1": "N", "country2": "S", "length": 1619},
+      {"country1": "S", "country2": "SF", "length": 586},
+      {"country1": "CEU", "country2": "MA", "length": 6.3},
+      {"country1": "MD", "country2": "UA", "length": 939},
+      {"country1": "MD", "country2": "RO", "length": 450},
+      {"country1": "GB", "country2": "IRL", "length": 360},
+      {"country1": "ARM", "country2": "TR", "length": 268},
+      {"country1": "ARM", "country2": "IR", "length": 35},
+      {"country1": "ARM", "country2": "GE", "length": 164},
+      {"country1": "ARM", "country2": "AZ", "length": 787},
+      {"country1": "GE", "country2": "R", "length": 894},
+      {"country1": "GE", "country2": "TR", "length": 252},
+      {"country1": "AZ", "country2": "R", "length": 338},
+      {"country1": "AZ", "country2": "TR", "length": 9},
+      {"country1": "AZ", "country2": "IR", "length": 611},
+      {"country1": "AZ", "country2": "GE", "length": 322},
+      {"country1": "RL", "country2": "SYR", "length": 375},
+      {"country1": "GAZA", "country2": "IL", "length": 51},
+      {"country1": "IL", "country2": "JOR", "length": 238},
+      {"country1": "IL", "country2": "SYR", "length": 76},
+      {"country1": "IL", "country2": "RL", "length": 79},
+      {"country1": "IL", "country2": "WB", "length": 307},
+      {"country1": "SYR", "country2": "TR", "length": 822},
+      {"country1": "JOR", "country2": "SA", "length": 728},
+      {"country1": "JOR", "country2": "SYR", "length": 375},
+      {"country1": "JOR", "country2": "WB", "length": 97},
+      {"country1": "SA", "country2": "UAE", "length": 457},
+      {"country1": "SA", "country2": "YE", "length": 1458},
+      {"country1": "Q", "country2": "SA", "length": 60},
+      {"country1": "OM", "country2": "SA", "length": 676},
+      {"country1": "OM", "country2": "UAE", "length": 410},
+      {"country1": "OM", "country2": "YE", "length": 288},
+      {"country1": "KWT", "country2": "SA", "length": 222},
+      {"country1": "IRQ", "country2": "TR", "length": 331},
+      {"country1": "IRQ", "country2": "JOR", "length": 181}
+    ];
+
+    const countryMap = {
+      "AL": "Albania",
+      "GR": "Greece",
+      "MK": "North Macedonia",
+      "MNE": "Montenegro",
+      "KOS": "Kosovo",
+      "SRB": "Serbia",
+      "AD": "Andorra",
+      "CY": "Cyprus",
+      "AND": "Andorra",
+      "F": "France",
+      "E": "Spain",
+      "P": "Portugal",
+      "CZ": "Czech Republic",
+      "D": "Germany",
+      "SK": "Slovakia",
+      "PL": "Poland",
+      "UA": "Ukraine",
+      "R": "Russia",
+      "SF": "Finland",
+      "NL": "Netherlands",
+      "DK": "Denmark",
+      "H": "Hungary",
+      "SLO": "Slovenia",
+      "HR": "Croatia",
+      "RO": "Romania",
+      "I": "Italy",
+      "V": "Vatican City",
+      "RSM": "San Marino",
+      "CH": "Switzerland",
+      "FL": "Liechtenstein",
+      "A": "Austria",
+      "EST": "Estonia",
+      "LV": "Latvia",
+      "LT": "Lithuania",
+      "BY": "Belarus",
+      "BG": "Bulgaria",
+      "BIH": "Bosnia and Herzegovina",
+      "MD": "Moldova",
+      "GB": "United Kingdom",
+      "IRL": "Ireland",
+      "ARM": "Armenia",
+      "IR": "Iran",
+      "GE": "Georgia",
+      "AZ": "Azerbaijan",
+      "RL": "Lebanon",
+      "SYR": "Syria",
+      "IL": "Israel",
+      "JOR": "Jordan",
+      "SA": "Saudi Arabia",
+      "UAE": "United Arab Emirates",
+      "YE": "Yemen",
+      "Q": "Qatar",
+      "OM": "Oman",
+      "KWT": "Kuwait",
+      "IRQ": "Iraq"
+    };
+
+    const width = 960;
+    const height = 600;
+    const svg = d3.select("svg");
+
+    const chord = d3.chord()
+      .padding(0.02)
+      .sortSubgroups(d3.descending);
+
+    const arc = d3.arc()
+      .innerRadius(200)
+      .outerRadius(250);
+
+    const ribbon = d3.ribbon()
+      .radius(225);
+
+    const matrix = d3.chordMatrix()
+      .columns(Object.keys(countryMap))
+      .matrix((d, i, j) => {
+        const source = countryMap[d.country1];
+        const target = countryMap[d.country2];
+        const index = i * matrix.columns.length + j;
+        return d.length;
+      });
+
+    const chords = chord(matrix);
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${width / 2},${height / 2})`);
+
+    const path = g.selectAll("path")
+      .data(chords)
+      .enter().append("path")
+      .attr("d", ribbon)
+      .style("fill", d => d3.interpolateHsl(d.source.index, d.target.index))
+      .style("opacity", 0.6);
+
+    const group = g.selectAll("g")
+      .data(matrix.groups)
+      .enter().append("g");
+
+    group.append("path")
+      .attr("d", arc)
+      .style("fill", d => d3.interpolateHsl(d.index, d.index))
+      .style("stroke", "#fff");
+
+    group.append("text")
+      .each(d => d.angle = (d.startAngle + d.endAngle) / 2)
+      .attr("dy", ".35em")
+      .attr("text-anchor", d => d.angle > Math.PI ? "end" : null)
+      .attr("transform", d => `rotate(${d.angle * 180 / Math.PI - 90})`)
+      .text(d => countryMap[matrix.columns[d.index]]);
+  </script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+{
+  "case_id": "5",
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": [
+      "country",
+      "year",
+      "population"
+    ],
+    "primary_key_columns": [
+      "country",
+      "year"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "year"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "country": "country"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "Primary key has only one foreign key column (country), not two."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "Primary key has only one foreign key column (country), not two."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "Local primary key column (year) exists, so not inherited-only."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "Primary key combines foreign key (country) with local key (year)."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key outside primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Primary key includes foreign key (country)."
+      }
+    ],
+    "cardinality_reasoning": "The 'country' foreign key (to country.code) is part of the compound primary key with 'year', indicating a weak entity where each (country, year) pair is uniquely identified by the combination."
+  },
+  "identified_pattern": "weak_entity",
+  "confidence": 0.95,
+  "recommended_visualisations": [
+    "line chart",
+    "stacked bar chart",
+    "grouped bar chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "line chart",
+      "eligible": true,
+      "eligibility_reason": "Parent key (country) is discrete, local key (year) is scalar, and population is scalar.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "year",
+        "y": "population",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Requires completeness of 'year' values across all 'country' entries for meaningful comparison."
+      ]
+    },
+    {
+      "chart_type": "stacked bar chart",
+      "eligible": true,
+      "eligibility_reason": "Parent key (country) is discrete, local key (year) is scalar, and population is scalar.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "population",
+        "stack": "year"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Requires completeness of 'year' values across all 'country' entries for meaningful comparison."
+      ]
+    },
+    {
+      "chart_type": "grouped bar chart",
+      "eligible": true,
+      "eligibility_reason": "Parent key (country) is discrete, local key (year) is scalar, and population is scalar.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "year",
+        "y": "population",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "line chart",
+    "selection_reason": "Best for showing population trends over time (year) for each country (discrete).",
+    "schema_pattern_variables": {
+      "k1": "country",
+      "k2": "year",
+      "a1": "population"
+    },
+    "encoding": {
+      "x": "year",
+      "y": "population",
+      "color": "country"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.line() with x(year) and y(population), grouped by country.",
+      "google_charts": "Use LineChart with series: {0: {targetAxis: 'left'}, 1: {targetAxis: 'right'}} for multiple countries.",
+      "vega_lite": "Use 'line' mark with x: year, y: population, color: country."
+    }
+  },
+  "chart_mapping": {
+    "line chart": {
+      "x": "year",
+      "y": "population",
+      "color": "country"
+    },
+    "stacked bar chart": {
+      "x": "country",
+      "y": "population",
+      "stack": "year"
+    },
+    "grouped bar chart": {
+      "x": "year",
+      "y": "population",
+      "color": "country"
+    }
+  },
+  "data_type_reasoning": "year (INT) is scalar, population (INT) is scalar, country (VARCHAR) is discrete (country codes).",
+  "limitations": [
+    "Stacked bar chart requires complete 'year' coverage across all 'country' entries."
+  ]
+}

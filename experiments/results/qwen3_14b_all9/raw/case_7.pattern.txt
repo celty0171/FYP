@@ -1,0 +1,157 @@
+```json
+{
+  "case_id": "7",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "airport",
+    "selected_columns": [
+      "iata_code",
+      "island",
+      "elevation"
+    ],
+    "primary_key_columns": [
+      "iata_code"
+    ],
+    "foreign_key_columns": [
+      "island",
+      "city",
+      "province",
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "island"
+    ],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [
+      "island"
+    ],
+    "local_primary_key_columns": [
+      "iata_code"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign key 'island' is not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table has a primary key and attributes, with no selected foreign key dependency in the primary key."
+      }
+    ],
+    "cardinality_reasoning": "The selected table 'airport' has a single primary key column 'iata_code' and includes a foreign key 'island' that is not part of the primary key. This matches the 'basic_entity' pattern."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "scatter chart",
+    "choropleth map"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The selected table has a scalar attribute 'elevation' that can be used as a measure.",
+      "schema_pattern_variables": {
+        "E": "airport",
+        "k": "iata_code",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "iata_code",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": true,
+      "eligibility_reason": "The selected table has two scalar attributes 'latitude' and 'longitude' (not selected) and 'elevation' that can be used for scatter plots. However, 'latitude' and 'longitude' are not selected, so this chart is not fully eligible.",
+      "schema_pattern_variables": {
+        "E": "airport",
+        "k": "iata_code",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "island"
+      },
+      "required_transformations": [
+        "Include 'latitude' and 'longitude' in selected columns for full eligibility."
+      ],
+      "limitations": [
+        "Missing 'latitude' and 'longitude' for full scatter chart eligibility."
+      ]
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": true,
+      "eligibility_reason": "The selected table has a geographical key 'island' and a scalar attribute 'elevation' that can be used as a measure.",
+      "schema_pattern_variables": {
+        "E": "airport",
+        "k": "iata_code",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "location": "island",
+        "color": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The bar chart is a suitable visualization for the selected table 'airport' with the primary key 'iata_code' and scalar attribute 'elevation'.",
+    "schema_pattern_variables": {
+      "E": "airport",
+      "k": "iata_code",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "iata_code",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis.",
+      "google_charts": "Use Google Charts' BarChart type with 'iata_code' on x-axis and 'elevation' on y-axis.",
+      "vega_lite": "Use vega-lite's 'bar' mark with 'iata_code' on x and 'elevation' on y."
+    }
+  },
+  "chart_mapping": {
+    "bar chart": {
+      "x": "iata_code",
+      "y": "elevation"
+    },
+    "choropleth map": {
+      "location": "island",
+      "color": "elevation"
+    }
+  },
+  "data_type_reasoning": "The selected table 'airport' has a primary key 'iata_code' and scalar attributes 'island' (foreign key) and 'elevation'. The 'elevation' attribute is a scalar measure suitable for bar charts and choropleth maps.",
+  "limitations": [
+    "The 'island' foreign key is not part of the primary key, so it cannot be used for relationship-based visualizations.",
+    "The 'latitude' and 'longitude' attributes are not selected, so scatter charts are not fully eligible."
+  ]
+}
+```

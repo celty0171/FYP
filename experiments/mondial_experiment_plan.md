@@ -81,7 +81,7 @@ Maximum score: 12 per case.
 From repository root:
 
 ```bash
-python experiments/scripts/extract_mondial_schema.py --schema "C:/Users/ROG/Desktop/fyp/mondial_schema.sql" --out experiments/generated/mondial_schema_summary.json
+python experiments/scripts/extract_mondial_schema.py --schema experiments/mondial_database/mondial_schema.sql --out experiments/generated/mondial_schema_summary.json
 python experiments/scripts/generate_clean_schema_summary.py --schema experiments/generated/mondial_schema_summary.json --out experiments/generated/mondial_schema_summary_clean.json
 python experiments/scripts/generate_tasks.py --schema experiments/generated/mondial_schema_summary.json --patterns experiments/inputs/mondial_gold_patterns.json --out experiments/generated/mondial_llm_tasks.json
 python experiments/scripts/classify_vizer_pattern.py --schema experiments/generated/mondial_schema_summary.json --cases experiments/inputs/mondial_blind_cases.json --out experiments/generated/vizer_rule_predictions.json

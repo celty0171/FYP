@@ -1,0 +1,183 @@
+{
+  "case_id": "5",
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": [
+      "country",
+      "year",
+      "population"
+    ],
+    "primary_key_columns": [
+      "country",
+      "year"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "year"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "country": [
+        "country"
+      ]
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "Primary key has two columns but not all are foreign keys"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "Primary key has two columns but not all are foreign keys"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "Not all primary key columns are inherited foreign keys"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "Compound primary key contains foreign key 'country' and local key 'year'"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key outside primary key"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Primary key contains foreign key column"
+      }
+    ],
+    "cardinality_reasoning": "The 'country_population' table has a compound primary key combining foreign key 'country' (references 'country.code') and local key 'year'. This represents a weak entity where each 'country' (parent) has multiple 'year' (child) entries with population data."
+  },
+  "identified_pattern": "weak_entity",
+  "confidence": 0.95,
+  "recommended_visualisations": [
+    "line chart",
+    "grouped bar chart",
+    "stacked bar chart",
+    "spider chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "line chart",
+      "eligible": true,
+      "eligibility_reason": "Parent key 'country' (discrete) and scalar 'year' (x-axis), scalar 'population' (y-axis)",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "year",
+        "y": "population",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Requires data completeness for 'year' across all 'country' values"
+      ]
+    },
+    {
+      "chart_type": "grouped bar chart",
+      "eligible": true,
+      "eligibility_reason": "Scalar 'population' (bar height) grouped by 'country' (discrete) and 'year' (discrete)",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "population",
+        "color": "year"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "stacked bar chart",
+      "eligible": true,
+      "eligibility_reason": "Scalar 'population' (stack height) for each 'country' (discrete) across 'year' (discrete)",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "population",
+        "color": "year"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Requires data completeness for 'year' across all 'country' values"
+      ]
+    },
+    {
+      "chart_type": "spider chart",
+      "eligible": true,
+      "eligibility_reason": "Scalar 'population' (radial distance) for each 'country' (discrete) across 'year' (discrete)",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "theta": "year",
+        "r": "population",
+        "color": "country"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "Requires data completeness for 'year' across all 'country' values"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "line chart",
+    "selection_reason": "Best for showing population trends over time for each country with clear x-y axis mapping",
+    "schema_pattern_variables": {
+      "k1": "country",
+      "k2": "year",
+      "a1": "population"
+    },
+    "encoding": {
+      "x": "year",
+      "y": "population",
+      "color": "country"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.line() with stacked scales for multiple countries",
+      "google_charts": "Use LineChart with series: {0: {targetAxis: 'right'}}",
+      "vega_lite": "Use 'line' mark with 'x' and 'y' channels and 'color' for country"
+    }
+  },
+  "chart_mapping": {
+    "country": "k1",
+    "year": "k2",
+    "population": "a1"
+  },
+  "data_type_reasoning": "Columns 'year' and 'population' are scalar (INT type). 'country' is discrete (VARCHAR) but acts as a foreign key to the parent entity. 'year' can be interpreted as a temporal dimension.",
+  "limitations": [
+    "Stacked/spider charts require complete 'year' data for all 'country' values",
+    "Line chart effectiveness depends on sufficient 'year' coverage for each 'country'"
+  ]
+}

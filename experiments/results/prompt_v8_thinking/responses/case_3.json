@@ -1,0 +1,154 @@
+{
+  "case_id": "3",
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": [
+      "name",
+      "elevation",
+      "depth",
+      "dam_height"
+    ],
+    "primary_key_columns": [
+      "name"
+    ],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "name"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {},
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has no foreign keys, so this rule does not apply."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The table has no foreign keys, so this rule does not apply."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected columns contain a primary key (name) and attributes (elevation, depth, dam_height) without foreign-key dependencies."
+      }
+    ],
+    "cardinality_reasoning": "The 'lake' table has a single-column primary key (name) with no foreign keys. This indicates a basic entity with no hierarchical or relational dependencies."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    "bar chart",
+    "scatter diagram",
+    "bubble chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The selected entity has a key (name) and scalar attributes (elevation).",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter diagram",
+      "eligible": true,
+      "eligibility_reason": "The selected entity has two scalar attributes (elevation, depth).",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": true,
+      "eligibility_reason": "The selected entity has three scalar attributes (elevation, depth, dam_height).",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The bar chart is the most straightforward visualization for a basic entity with a single scalar attribute (elevation).",
+    "schema_pattern_variables": {
+      "E": "lake",
+      "k": "name",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "name",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis.",
+      "google_charts": "Use a bar chart with 'name' on the x-axis and 'elevation' on the y-axis.",
+      "vega_lite": "Use a bar mark with 'name' as x and 'elevation' as y."
+    }
+  },
+  "chart_mapping": {
+    "bar chart": {
+      "x": "name",
+      "y": "elevation"
+    },
+    "scatter diagram": {
+      "x": "elevation",
+      "y": "depth"
+    },
+    "bubble chart": {
+      "x": "elevation",
+      "y": "depth",
+      "size": "dam_height"
+    }
+  },
+  "data_type_reasoning": "The 'name' column is a discrete dimension (VARCHAR), while 'elevation', 'depth', and 'dam_height' are scalar dimensions (INTEGER). No geographical or temporal attributes are selected.",
+  "limitations": []
+}

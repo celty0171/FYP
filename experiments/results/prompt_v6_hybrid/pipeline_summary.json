@@ -1,0 +1,134 @@
+{
+  "metadata": {
+    "run_id": "prompt_v6_hybrid",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": false,
+    "skip_impl": true,
+    "hybrid": true,
+    "created_utc": "2026-06-14T15:11:27.251135+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/mondial_pattern_prompt_mcbrien_hybrid.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "deterministic_pattern": "basic_entity",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "choropleth map"
+      ],
+      "pattern_ok": true,
+      "seconds": 39.2
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "deterministic_pattern": "basic_entity_inherited_key",
+      "identified_pattern": "basic_entity_inherited_key",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "choropleth map"
+      ],
+      "pattern_ok": true,
+      "seconds": 52.6
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "deterministic_pattern": "basic_entity",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "bubble chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 43.2
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "deterministic_pattern": "basic_entity",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "calendar chart",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "seconds": 44.4
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "deterministic_pattern": "weak_entity",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 55.9
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "deterministic_pattern": "weak_entity",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "pattern_ok": true,
+      "seconds": 54.6
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "deterministic_pattern": "one_many_relationship",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        "treemap",
+        "hierarchy tree",
+        "circle packing"
+      ],
+      "pattern_ok": true,
+      "seconds": 51.8
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "deterministic_pattern": "many_many_relationship",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "sankey diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 39.5
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "deterministic_pattern": "reflexive_many_many_relationship",
+      "identified_pattern": "reflexive_many_many_relationship",
+      "recommended_visualisations": [
+        "chord diagram"
+      ],
+      "pattern_ok": true,
+      "seconds": 43.7
+    }
+  ]
+}

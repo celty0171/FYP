@@ -1,0 +1,164 @@
+{
+  "case_id": "4",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "organization",
+    "selected_columns": [
+      "abbreviation",
+      "established"
+    ],
+    "primary_key_columns": [
+      "abbreviation"
+    ],
+    "foreign_key_columns": [
+      "city",
+      "province",
+      "country"
+    ],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [
+      "city",
+      "province",
+      "country"
+    ],
+    "local_primary_key_columns": [
+      "abbreviation"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is not compound, and not all primary key columns are foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound and does not mix foreign and local key columns."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign key columns are not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table has a single primary key column and no selected foreign key columns are part of the primary key."
+      }
+    ],
+    "cardinality_reasoning": "The 'organization' table has a single primary key column 'abbreviation', and the selected columns do not include any foreign key columns that are part of the primary key. This indicates a basic entity pattern with no hierarchical or many-to-many relationships."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "calendar chart",
+    "scatter chart",
+    "bubble chart",
+    "choropleth map",
+    "word cloud"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'abbreviation' column is a discrete dimension (short text), and 'established' is a scalar dimension (DATE). This fits the bar chart pattern with key 'abbreviation' and scalar 'established'.",
+      "schema_pattern_variables": {
+        "E": "organization",
+        "k": "abbreviation",
+        "a1": "established"
+      },
+      "encoding": {
+        "x": "abbreviation",
+        "y": "established"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "calendar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'established' column is a temporal scalar dimension, which is suitable for a calendar chart.",
+      "schema_pattern_variables": {
+        "E": "organization",
+        "a1": "established"
+      },
+      "encoding": {
+        "time": "established"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": false,
+      "eligibility_reason": "A scatter chart requires two scalar attributes, but only one scalar attribute ('established') is available.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": false,
+      "eligibility_reason": "A bubble chart requires three scalar attributes, but only one scalar attribute ('established') is available.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": false,
+      "eligibility_reason": "The 'abbreviation' column is not a geographical dimension, so a choropleth map is not applicable.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": false,
+      "eligibility_reason": "The 'abbreviation' column is not a lexical dimension (it is a short code, not a word/label), so a word cloud is not applicable.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The 'abbreviation' column is a discrete dimension, and 'established' is a scalar dimension (DATE), making a bar chart a suitable choice for visualizing the distribution of organizations by their establishment dates.",
+    "schema_pattern_variables": {
+      "E": "organization",
+      "k": "abbreviation",
+      "a1": "established"
+    },
+    "encoding": {
+      "x": "abbreviation",
+      "y": "established"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleTime for the y-axis.",
+      "google_charts": "Use a bar chart with categorical x-axis and date y-axis.",
+      "vega_lite": "Use a bar chart with 'x' as 'abbreviation' and 'y' as 'established'."
+    }
+  },
+  "chart_mapping": {
+    "abbreviation": "x",
+    "established": "y"
+  },
+  "data_type_reasoning": "The 'abbreviation' column is a discrete dimension (short text/code), and the 'established' column is a scalar dimension (DATE). The 'abbreviation' is not a geographical, temporal, or lexical dimension, and 'established' is a temporal scalar dimension.",
+  "limitations": [
+    "Only one scalar dimension is available, limiting the types of charts that can be used.",
+    "The 'abbreviation' is not a geographical or lexical dimension, so choropleth or word cloud charts are not applicable."
+  ]
+}

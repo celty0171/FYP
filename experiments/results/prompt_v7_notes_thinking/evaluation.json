@@ -1,0 +1,380 @@
+{
+  "metadata": {
+    "run_id": "prompt_v7_notes_thinking",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": true,
+    "skip_impl": true,
+    "hybrid": false,
+    "created_utc": "2026-06-15T08:45:43.194127+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/prompt.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "summary": {
+    "case_count": 9,
+    "pattern_matches": 9,
+    "pattern_accuracy": 1.0,
+    "schema_evidence_matches": 8,
+    "schema_evidence_accuracy": 0.8888888888888888,
+    "visualisation_any_overlap": 9,
+    "visualisation_overlap_rate": 1.0,
+    "exact_visualisation_set_matches": 1,
+    "exact_visualisation_set_rate": 0.1111111111111111,
+    "pattern_confusions": {}
+  },
+  "results": [
+    {
+      "case_id": "1",
+      "gold_case_id": "hannan_basic_country_bar",
+      "selected_table": "country",
+      "expected_pattern": "basic_entity",
+      "actual_pattern": "basic_entity",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "bar_chart",
+        "choropleth_map",
+        "word_cloud"
+      ],
+      "actual_visualisations": [
+        "bar_chart",
+        "choropleth_map"
+      ],
+      "visualisation_overlap": [
+        "bar_chart",
+        "choropleth_map"
+      ],
+      "missing_expected_visualisations": [
+        "word_cloud"
+      ],
+      "unexpected_visualisations": [],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 1.0
+    },
+    {
+      "case_id": "2",
+      "gold_case_id": "hannan_basic_inherited_economy_scatter",
+      "selected_table": "economy",
+      "expected_pattern": "basic_entity_inherited_key",
+      "actual_pattern": "basic_entity_inherited_key",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "scatter_chart"
+      ],
+      "actual_visualisations": [
+        "bar_chart",
+        "bubble_chart",
+        "scatter_chart"
+      ],
+      "visualisation_overlap": [
+        "scatter_chart"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [
+        "bar_chart",
+        "bubble_chart"
+      ],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 1.0
+    },
+    {
+      "case_id": "3",
+      "gold_case_id": "hannan_basic_lake_bubble",
+      "selected_table": "lake",
+      "expected_pattern": "basic_entity",
+      "actual_pattern": "basic_entity",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "bubble_chart",
+        "scatter_chart"
+      ],
+      "actual_visualisations": [
+        "bar_chart",
+        "bubble_chart",
+        "scatter_chart"
+      ],
+      "visualisation_overlap": [
+        "bubble_chart",
+        "scatter_chart"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [
+        "bar_chart"
+      ],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 1.0
+    },
+    {
+      "case_id": "4",
+      "gold_case_id": "hannan_basic_organization_calendar",
+      "selected_table": "organization",
+      "expected_pattern": "basic_entity",
+      "actual_pattern": "basic_entity",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "bar_chart",
+        "calendar_chart",
+        "word_cloud"
+      ],
+      "actual_visualisations": [
+        "bar_chart",
+        "calendar_chart"
+      ],
+      "visualisation_overlap": [
+        "bar_chart",
+        "calendar_chart"
+      ],
+      "missing_expected_visualisations": [
+        "word_cloud"
+      ],
+      "unexpected_visualisations": [],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": false,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": false,
+        "mismatched_fields": [
+          "foreign_key_columns"
+        ]
+      },
+      "confidence": 1.0
+    },
+    {
+      "case_id": "5",
+      "gold_case_id": "hannan_weak_country_population_line",
+      "selected_table": "country_population",
+      "expected_pattern": "weak_entity",
+      "actual_pattern": "weak_entity",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "line_chart"
+      ],
+      "actual_visualisations": [
+        "grouped_bar_chart",
+        "line_chart",
+        "stacked_bar_chart"
+      ],
+      "visualisation_overlap": [
+        "line_chart"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [
+        "grouped_bar_chart",
+        "stacked_bar_chart"
+      ],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 0.95
+    },
+    {
+      "case_id": "6",
+      "gold_case_id": "hannan_weak_ethnic_group_grouped_bar",
+      "selected_table": "ethnic_group",
+      "expected_pattern": "weak_entity",
+      "actual_pattern": "weak_entity",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "grouped_bar_chart"
+      ],
+      "actual_visualisations": [
+        "grouped_bar_chart",
+        "line_chart"
+      ],
+      "visualisation_overlap": [
+        "grouped_bar_chart"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [
+        "line_chart"
+      ],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 0.95
+    },
+    {
+      "case_id": "7",
+      "gold_case_id": "hannan_one_many_airport_island_treemap",
+      "selected_table": "airport",
+      "expected_pattern": "one_many_relationship",
+      "actual_pattern": "one_many_relationship",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "circle_packing",
+        "treemap"
+      ],
+      "actual_visualisations": [
+        "circle_packing",
+        "hierarchy_tree",
+        "treemap"
+      ],
+      "visualisation_overlap": [
+        "circle_packing",
+        "treemap"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [
+        "hierarchy_tree"
+      ],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 0.95
+    },
+    {
+      "case_id": "8",
+      "gold_case_id": "hannan_many_many_encompasses_sankey",
+      "selected_table": "encompasses",
+      "expected_pattern": "many_many_relationship",
+      "actual_pattern": "many_many_relationship",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "sankey_diagram"
+      ],
+      "actual_visualisations": [
+        "sankey_diagram"
+      ],
+      "visualisation_overlap": [
+        "sankey_diagram"
+      ],
+      "missing_expected_visualisations": [],
+      "unexpected_visualisations": [],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 1.0
+    },
+    {
+      "case_id": "9",
+      "gold_case_id": "hannan_reflexive_many_many_borders_chord",
+      "selected_table": "borders",
+      "expected_pattern": "reflexive_many_many_relationship",
+      "actual_pattern": "reflexive_many_many_relationship",
+      "pattern_match": true,
+      "expected_visualisations": [
+        "chord_diagram",
+        "network_chart"
+      ],
+      "actual_visualisations": [
+        "chord_diagram"
+      ],
+      "visualisation_overlap": [
+        "chord_diagram"
+      ],
+      "missing_expected_visualisations": [
+        "network_chart"
+      ],
+      "unexpected_visualisations": [],
+      "schema_evidence": {
+        "checks": {
+          "primary_key_columns": true,
+          "foreign_key_columns": true,
+          "selected_foreign_key_columns": true,
+          "foreign_keys_in_primary_key": true,
+          "foreign_keys_not_in_primary_key": true,
+          "local_primary_key_columns": true,
+          "primary_key_is_compound": true,
+          "all_primary_key_columns_are_foreign_keys": true
+        },
+        "all_match": true,
+        "mismatched_fields": []
+      },
+      "confidence": 1.0
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "case_id": "8",
+  "identified_pattern": "many_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "encompasses",
+    "selected_columns": [
+      "country",
+      "continent",
+      "percentage"
+    ],
+    "primary_key_columns": [
+      "country",
+      "continent"
+    ],
+    "foreign_key_columns": [
+      "country",
+      "continent"
+    ],
+    "selected_foreign_key_columns": [
+      "country",
+      "continent"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country",
+      "continent"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "country",
+      "continent"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": true,
+        "reason": "The table 'encompasses' has a compound primary key consisting of two foreign keys ('country' and 'continent'), indicating a many-to-many relationship between 'country' and 'continent'."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table 'encompasses' is not an entity with an inherited key."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The table 'encompasses' does not represent a weak entity with a local key and a parent key."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The table 'encompasses' does not represent a one-to-many relationship."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table 'encompasses' is not a basic entity with a single primary key."
+      }
+    ],
+    "cardinality_reasoning": "The 'encompasses' table has a compound primary key consisting of 'country' and 'continent', both of which are foreign keys referencing the 'country' and 'continent' tables, respectively. This structure indicates a many-to-many relationship between countries and continents, as a single country can be part of multiple continents and vice versa."
+  },
+  "recommended_visualisations": [
+    "sankey diagram"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "sankey diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'encompasses' table represents a many-many relationship with a scalar attribute 'percentage' that can be used to represent the width of the links.",
+      "schema_pattern_variables": {
+        "E1": "country",
+        "E2": "continent",
+        "a1": "percentage"
+      },
+      "encoding": {
+        "source": "country",
+        "target": "continent",
+        "width": "percentage"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "sankey diagram",
+    "selection_reason": "The 'encompasses' table represents a many-many relationship with a scalar attribute 'percentage' that can be used to represent the width of the links in a Sankey diagram.",
+    "schema_pattern_variables": {
+      "E1": "country",
+      "E2": "continent",
+      "a1": "percentage"
+    },
+    "encoding": {
+      "source": "country",
+      "target": "continent",
+      "width": "percentage"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use D3's Sankey layout to visualize the flow between countries and continents with the 'percentage' as the link width.",
+      "google_charts": "Google Charts supports Sankey diagrams and can be used to visualize the relationship with the 'percentage' as the link width.",
+      "vega_lite": "Vega-Lite can be used to create a Sankey diagram by specifying the 'source', 'target', and 'value' (percentage) fields."
+    }
+  },
+  "chart_mapping": {
+    "source": "country",
+    "target": "continent",
+    "value": "percentage"
+  },
+  "data_type_reasoning": "The 'country' and 'continent' columns are discrete dimensions as they represent short text/code types (VARCHAR). The 'percentage' column is a scalar dimension as it is a numeric type (NUMERIC(10,2)) and can be used to represent the width of the links in the Sankey diagram.",
+  "limitations": []
+}

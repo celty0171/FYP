@@ -1,0 +1,16 @@
+{
+  "run_id": "prompt_v7_notes",
+  "model": "Qwen3-14B",
+  "base_url": "http://localhost:8001/v1",
+  "library": "d3",
+  "temperature": 0.0,
+  "enable_thinking": false,
+  "skip_impl": true,
+  "hybrid": false,
+  "created_utc": "2026-06-15T08:16:33.614146+00:00",
+  "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+  "cases_file": "experiments/inputs/mondial_blind_cases.json",
+  "pattern_prompt_file": "experiments/prompts/prompt.md",
+  "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+  "case_count": 9
+}

@@ -32,6 +32,10 @@ VISUALISATION_ALIASES = {
 
 
 def normalise_label(value: Any) -> str:
+    # Some runs (e.g. with Qwen thinking mode) emit recommended_visualisations as
+    # objects {"chart_type": ..., ...} rather than plain strings; read the name.
+    if isinstance(value, dict):
+        value = value.get("chart_type") or value.get("type") or value.get("name") or ""
     label = str(value).strip().lower()
     label = re.sub(r"[^a-z0-9]+", "_", label).strip("_")
     return VISUALISATION_ALIASES.get(label, label)

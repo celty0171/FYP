@@ -1,0 +1,159 @@
+{
+  "case_id": "3",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": [
+      "name",
+      "elevation",
+      "depth",
+      "dam_height"
+    ],
+    "primary_key_columns": [
+      "name"
+    ],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "name"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is not compound, and no foreign keys are present."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound and does not contain a foreign key."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign key is present in the selected columns that is not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table has a single primary key column and no foreign keys, matching the basic entity pattern."
+      }
+    ],
+    "cardinality_reasoning": "The 'lake' table has a single primary key column 'name', and no foreign keys. This indicates a basic entity with no hierarchical or relationship dependencies."
+  },
+  "recommended_visualisations": [
+    "bar chart",
+    "calendar chart",
+    "scatter chart",
+    "bubble chart",
+    "choropleth map",
+    "word cloud"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'name' column is a discrete dimension (key), and 'elevation' is a scalar dimension. This fits the bar chart pattern with one scalar attribute.",
+      "schema_pattern_variables": {
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": true,
+      "eligibility_reason": "The 'elevation' and 'depth' columns are both scalar dimensions, making them suitable for a scatter chart.",
+      "schema_pattern_variables": {
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": true,
+      "eligibility_reason": "The 'elevation', 'depth', and 'dam_height' columns are all scalar dimensions, making them suitable for a bubble chart.",
+      "schema_pattern_variables": {
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": false,
+      "eligibility_reason": "The 'name' column is not a geographical dimension, and no geographical attributes are present in the selected columns.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": [
+        "No geographical attributes available for choropleth mapping."
+      ]
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": false,
+      "eligibility_reason": "The 'name' column is not a lexical dimension suitable for a word cloud, as it represents unique lake names rather than words/labels.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": [
+        "'name' is not a lexical dimension suitable for a word cloud."
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The 'name' column is a discrete dimension (key), and 'elevation' is a scalar dimension. This fits the bar chart pattern with one scalar attribute.",
+    "schema_pattern_variables": {
+      "k": "name",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "name",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis.",
+      "google_charts": "Use a bar chart with 'name' on the x-axis and 'elevation' on the y-axis.",
+      "vega_lite": "Use a bar chart with 'name' as the x field and 'elevation' as the y field."
+    }
+  },
+  "chart_mapping": {
+    "name": "discrete",
+    "elevation": "scalar",
+    "depth": "scalar",
+    "dam_height": "scalar"
+  },
+  "data_type_reasoning": "The 'name' column is a discrete dimension as it represents unique identifiers for lakes. The 'elevation', 'depth', and 'dam_height' columns are scalar dimensions as they are numeric values with a natural ordering. None of the selected columns are geographical, temporal, or lexical in nature.",
+  "limitations": []
+}

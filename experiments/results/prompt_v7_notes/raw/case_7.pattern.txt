@@ -1,0 +1,146 @@
+```json
+{
+  "case_id": "7",
+  "schema_evidence": {
+    "selected_table": "airport",
+    "selected_columns": ["iata_code", "island", "elevation"],
+    "primary_key_columns": ["iata_code"],
+    "foreign_key_columns": ["island", "city", "province", "country"],
+    "selected_foreign_key_columns": ["island"],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": ["island"],
+    "local_primary_key_columns": ["iata_code"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "island": "island",
+      "city": "city"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of two foreign keys."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of two foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound, and no foreign key is part of the primary key."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The foreign key 'island' is not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table 'airport' has a primary key 'iata_code' and attributes 'island' and 'elevation' without any foreign key being part of the primary key."
+      }
+    ],
+    "cardinality_reasoning": "The selected table 'airport' has a primary key 'iata_code' and a foreign key 'island' that is not part of the primary key. This indicates a one-many relationship between 'airport' and 'island', but since the foreign key is not part of the primary key, the selected data represents a basic entity with attributes."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "recommended_visualisations": ["Bar chart", "Calendar chart", "Scatter diagram", "Bubble chart", "Choropleth map", "Word cloud"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Bar chart",
+      "eligible": true,
+      "eligibility_reason": "The selected entity 'airport' has a key 'iata_code' and a scalar attribute 'elevation'.",
+      "schema_pattern_variables": {
+        "E": "airport",
+        "k": "iata_code",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "iata_code",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Calendar chart",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'airport' does not have a date-valued attribute.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Scatter diagram",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'airport' does not have two scalar attributes.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Bubble chart",
+      "eligible": false,
+      "eligibility_reason": "The selected entity 'airport' does not have at least three scalar attributes.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Choropleth map",
+      "eligible": false,
+      "eligibility_reason": "The key 'iata_code' cannot be interpreted as a geographical region.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Word cloud",
+      "eligible": false,
+      "eligibility_reason": "The key 'iata_code' cannot be interpreted as words/lexical labels.",
+      "schema_pattern_variables": {},
+      "encoding": {},
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Bar chart",
+    "selection_reason": "The selected entity 'airport' has a key 'iata_code' and a scalar attribute 'elevation', making it suitable for a bar chart.",
+    "schema_pattern_variables": {
+      "E": "airport",
+      "k": "iata_code",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "iata_code",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis.",
+      "google_charts": "Use Google Charts' BarChart type with x-axis as 'iata_code' and y-axis as 'elevation'.",
+      "vega_lite": "Use vega-lite's bar chart with x as 'iata_code' and y as 'elevation'."
+    }
+  },
+  "chart_mapping": {
+    "x": "iata_code",
+    "y": "elevation"
+  },
+  "data_type_reasoning": "The selected columns 'iata_code' is a discrete dimension (short text/code), 'island' is a discrete dimension (short text/code), and 'elevation' is a scalar dimension (integer).",
+  "limitations": []
+}
+```

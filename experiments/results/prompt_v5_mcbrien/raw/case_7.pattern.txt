@@ -1,0 +1,135 @@
+```json
+{
+  "case_id": "7",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "airport",
+    "selected_columns": ["iata_code", "island", "elevation"],
+    "primary_key_columns": ["iata_code"],
+    "foreign_key_columns": ["island", "city", "province", "country"],
+    "selected_foreign_key_columns": ["island"],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": ["island"],
+    "local_primary_key_columns": ["iata_code"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": false,
+        "reason": "The primary key is not compound, so this rule does not apply."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The primary key is not inherited from a parent entity."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The primary key is not compound and does not contain a foreign key."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign key 'island' is not part of the primary key."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "The selected table 'airport' has a simple primary key and no foreign key is part of the primary key."
+      }
+    ],
+    "cardinality_reasoning": "The 'airport' table has a simple primary key 'iata_code' and no foreign key is part of the primary key. The selected foreign key 'island' is not part of the primary key, so the pattern is 'basic_entity'."
+  },
+  "recommended_visualisations": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The primary key 'iata_code' is discrete and 'elevation' is a scalar dimension.",
+      "schema_pattern_variables": {
+        "k": "iata_code",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "iata_code",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter chart",
+      "eligible": true,
+      "eligibility_reason": "The 'island' column is discrete and 'elevation' is a scalar dimension. However, 'island' is not a scalar dimension, so this chart is not eligible.",
+      "schema_pattern_variables": {
+        "a1": "island",
+        "a2": "elevation"
+      },
+      "encoding": {
+        "x": "island",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": ["'island' is a discrete dimension, not a scalar dimension."]
+    },
+    {
+      "chart_type": "choropleth map",
+      "eligible": false,
+      "eligibility_reason": "'island' is not a geographical dimension.",
+      "schema_pattern_variables": {
+        "k": "island",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "geo": "island",
+        "color": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": ["'island' is not a geographical dimension."]
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": false,
+      "eligibility_reason": "'island' is not a lexical dimension.",
+      "schema_pattern_variables": {
+        "k": "island",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "text": "island",
+        "size": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": ["'island' is not a lexical dimension."]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The 'iata_code' is a discrete dimension and 'elevation' is a scalar dimension, making a bar chart a suitable choice.",
+    "schema_pattern_variables": {
+      "k": "iata_code",
+      "a1": "elevation"
+    },
+    "encoding": {
+      "x": "iata_code",
+      "y": "elevation"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis.",
+      "google_charts": "Use a bar chart with categorical x-axis and numerical y-axis.",
+      "vega_lite": "Use 'x': {'field': 'iata_code', 'type': 'nominal'}, 'y': {'field': 'elevation', 'type': 'quantitative'}."
+    }
+  },
+  "chart_mapping": {
+    "bar chart": {
+      "x": "iata_code",
+      "y": "elevation"
+    }
+  },
+  "data_type_reasoning": "The 'iata_code' is a discrete dimension as it is a short text code. 'elevation' is a scalar dimension as it is an integer. 'island' is a discrete dimension but not a geographical, temporal, or lexical dimension.",
+  "limitations": []
+}
+```

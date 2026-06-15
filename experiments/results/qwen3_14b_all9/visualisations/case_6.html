@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ethnic Distribution by Country</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    .bar {
+      fill: steelblue;
+    }
+    .bar:hover {
+      fill: orange;
+    }
+    .label {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Ethnic Distribution by Country (Stacked Bar Chart)</h2>
+  <svg width="960" height="500"></svg>
+  <script>
+    const data = [
+      {"country": "AL", "name": "Albanian", "percentage": 97},
+      {"country": "AL", "name": "Greek", "percentage": 0.9},
+      {"country": "AL", "name": "Macedonian", "percentage": 0.9},
+      {"country": "AL", "name": "Roma", "percentage": 0.3},
+      {"country": "AL", "name": "Aromanian", "percentage": 0.3},
+      {"country": "GR", "name": "Greek", "percentage": 91},
+      {"country": "GR", "name": "Albanian", "percentage": 4.4},
+      {"country": "GR", "name": "Roma", "percentage": 2},
+      {"country": "GR", "name": "Macedonian", "percentage": 1.5},
+      {"country": "GR", "name": "Turkish", "percentage": 1},
+      {"country": "GR", "name": "Aromanian", "percentage": 0.4},
+      {"country": "CY", "name": "Greek Cypriots", "percentage": 58.2},
+      {"country": "CY", "name": "Turkish", "percentage": 13},
+      {"country": "CY", "name": "Turkish Cypriots", "percentage": 11},
+      {"country": "CY", "name": "Greek", "percentage": 2.8},
+      {"country": "CY", "name": "British", "percentage": 2.5},
+      {"country": "CY", "name": "Romanian", "percentage": 2.2},
+      {"country": "CY", "name": "Bulgarian", "percentage": 1.8},
+      {"country": "CY", "name": "Filipino", "percentage": 1.2},
+      {"country": "AD", "name": "Greek Cypriots", "percentage": 60},
+      {"country": "AD", "name": "British", "percentage": 40},
+      {"country": "MK", "name": "Macedonian", "percentage": 64.2},
+      {"country": "MK", "name": "Albanian", "percentage": 25.2},
+      {"country": "MK", "name": "Turkish", "percentage": 3.9},
+      {"country": "MK", "name": "Roma", "percentage": 2.7},
+      {"country": "MK", "name": "Serb", "percentage": 1.8},
+      {"country": "MK", "name": "Bosniak", "percentage": 0.8},
+      {"country": "MK", "name": "Aromanian", "percentage": 0.5},
+      {"country": "SRB", "name": "Serb", "percentage": 83.3},
+      {"country": "SRB", "name": "Hungarian", "percentage": 3.5},
+      {"country": "SRB", "name": "Roma", "percentage": 2.1},
+      {"country": "SRB", "name": "Bosniak", "percentage": 2.0},
+      {"country": "SRB", "name": "Croat", "percentage": 0.8},
+      {"country": "SRB", "name": "Slovak", "percentage": 0.7},
+      {"country": "SRB", "name": "Aromanian", "percentage": 0.5},
+      {"country": "SRB", "name": "Montenegrin", "percentage": 0.5},
+      {"country": "SRB", "name": "Macedonian", "percentage": 0.3},
+      {"country": "SRB", "name": "Bulgarian", "percentage": 0.3},
+      {"country": "MNE", "name": "Montenegrin", "percentage": 45.3},
+      {"country": "MNE", "name": "Serb", "percentage": 29.2},
+      {"country": "MNE", "name": "Bosniak", "percentage": 12.0},
+      {"country": "MNE", "name": "Albanian", "percentage": 4.9},
+      {"country": "MNE", "name": "Croat", "percentage": 1.0},
+      {"country": "MNE", "name": "Roma", "percentage": 0.8},
+      {"country": "KOS", "name": "Albanian", "percentage": 92.9},
+      {"country": "KOS", "name": "Bosniak", "percentage": 1.6},
+      {"country": "KOS", "name": "Serb", "percentage": 1.5},
+      {"country": "KOS", "name": "Roma", "percentage": 1.4},
+      {"country": "KOS", "name": "Turk", "percentage": 1.1},
+      {"country": "AND", "name": "Andorran", "percentage": 48.8},
+      {"country": "AND", "name": "Spanish", "percentage": 25.1},
+      {"country": "AND", "name": "Portuguese", "percentage": 13},
+      {"country": "AND", "name": "French", "percentage": 4},
+      {"country": "AND", "name": "Arab", "percentage": 3},
+      {"country": "AND", "name": "African", "percentage": 3},
+      {"country": "F", "name": "French", "percentage": 75},
+      {"country": "F", "name": "Arab", "percentage": 7},
+      {"country": "F", "name": "Italian", "percentage": 5},
+      {"country": "F", "name": "West African", "percentage": 3.3},
+      {"country": "F", "name": "Asian", "percentage": 1.7},
+      {"country": "F", "name": "Portuguese", "percentage": 1.2},
+      {"country": "F", "name": "Berber", "percentage": 1},
+      {"country": "F", "name": "Turk", "percentage": 0.8},
+      {"country": "E", "name": "Spanish", "percentage": 86.4},
+      {"country": "E", "name": "Mestizo", "percentage": 5},
+      {"country": "E", "name": "Arab", "percentage": 3.5},
+      {"country": "E", "name": "Romanian", "percentage": 1.8},
+      {"country": "E", "name": "Roma", "percentage": 1.6},
+      {"country": "E", "name": "British", "percentage": 0.8},
+      {"country": "CZ", "name": "Czech", "percentage": 90},
+      {"country": "CZ", "name": "Moravian", "percentage": 5.0},
+      {"country": "CZ", "name": "Slovak", "percentage": 1.4},
+      {"country": "CZ", "name": "Polish", "percentage": 0.6},
+      {"country": "CZ", "name": "German", "percentage": 0.5},
+      {"country": "CZ", "name": "Roma", "percentage": 0.3},
+      {"country": "CZ", "name": "Hungarian", "percentage": 0.2},
+      {"country": "SK", "name": "Slovak", "percentage": 80.7},
+      {"country": "SK", "name": "Hungarian", "percentage": 8.5},
+      {"country": "SK", "name": "Roma", "percentage": 2},
+      {"country": "SK", "name": "Czech", "percentage": 0.6},
+      {"country": "SK", "name": "Ukrainian", "percentage": 0.6},
+      {"country": "SK", "name": "German", "percentage": 0.1},
+      {"country": "SK", "name": "Polish", "percentage": 0.1},
+      {"country": "D", "name": "German", "percentage": 82},
+      {"country": "D", "name": "Turk", "percentage": 2.5},
+      {"country": "D", "name": "Polish", "percentage": 2.5},
+      {"country": "D", "name": "Arab", "percentage": 1.5},
+      {"country": "D", "name": "Italian", "percentage": 1.0},
+      {"country": "D", "name": "Romanian", "percentage": 1.0},
+      {"country": "D", "name": "Roma", "percentage": 1.0},
+      {"country": "D", "name": "Russian", "percentage": 1.0},
+      {"country": "D", "name": "Ukrainian", "percentage": 1.0},
+      {"country": "D", "name": "Greek", "percentage": 0.5},
+      {"country": "D", "name": "Serb", "percentage": 0.5},
+      {"country": "D", "name": "Kurd", "percentage": 0.5},
+      {"country": "H", "name": "Hungarian", "percentage": 92},
+      {"country": "H", "name": "Roma", "percentage": 3.1},
+      {"country": "H", "name": "German", "percentage": 1.3},
+      {"country": "H", "name": "Slovak", "percentage": 0.3},
+      {"country": "H", "name": "Romanian", "percentage": 0.3},
+      {"country": "H", "name": "Croat", "percentage": 0.2},
+      {"country": "I", "name": "Italian", "percentage": 90.4},
+      {"country": "I", "name": "Sardinian", "percentage": 1.6},
+      {"country": "I", "name": "Romanian", "percentage": 1.4},
+      {"country": "I", "name": "Arab", "percentage": 1.0},
+      {"country": "I", "name": "Albanian", "percentage": 0.8},
+      {"country": "I", "name": "German", "percentage": 0.6},
+      {"country": "I", "name": "Chinese", "percentage": 0.5},
+      {"country": "I", "name": "Slovene", "percentage": 0.2},
+      {"country": "I", "name": "Roma", "percentage": 0.2},
+      {"country": "CH", "name": "German", "percentage": 65},
+      {"country": "CH", "name": "French", "percentage": 22},
+      {"country": "CH", "name": "Italian", "percentage": 8},
+      {"country": "CH", "name": "Romansch", "percentage": 1},
+      {"country": "FL", "name": "Alemannic", "percentage": 85.7},
+      {"country": "FL", "name": "Italian", "percentage": 3.5},
+      {"country": "FL", "name": "Portuguese", "percentage": 1.9},
+      {"country": "FL", "name": "Turk", "percentage": 1.3},
+      {"country": "FL", "name": "Albanian", "percentage": 1.1},
+      {"country": "A", "name": "Austrian", "percentage": 85}
+    ];
+
+    const svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+    const margin = { top: 20, right: 30, bottom: 30, left: 40 },
+      widthInner = width - margin.left - margin.right,
+      heightInner = height - margin.top - margin.bottom;
+
+    const x = d3.scaleBand()
+      .range([0, widthInner])
+      .padding(0.1);
+
+    const y = d3.scaleLinear()
+      .range([heightInner, 0]);
+
+    const color = d3.scaleOrdinal()
+      .range(d3.schemeCategory10);
+
+    const stack = d3.stack()
+      .offset(d3.stackOffsetExpand)
+      .order(d3.stackOrderNone);
+
+    const keys = d3.map(data, d => d.name).keys();
+
+    const groupedData = d3.rollup(data, v => v, d => d.country, d => d.name)
+      .map(([country, name], values) => ({
+        country,
+        name,
+        percentage: values[0].percentage
+      }));
+
+    const countries = d3.map(groupedData, d => d.country).keys();
+
+    const layers = d3.groups(groupedData, d => d.country)
+      .map(([country, group]) => {
+        return group.map(d => ({ name: d.name, value: d.percentage }));
+      });
+
+    const stackedData = stack(layers);
+
+    x.domain(countries);
+    y.domain([0, d3.max(stackedData, layer => d3.max(layer, d => d[1]))]);
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const bar = g.selectAll(".group")
+      .data(stackedData)
+      .enter().append("g")
+      .attr("class", "group")
+      .attr("fill", (d, i) => color(i))
+      .attr("data-country", d => d.key);
+
+    bar.selectAll("rect")
+      .data(d => d)
+      .enter().append("rect")
+      .attr("x", d => x(d.key))
+      .attr("y", d => y(d[1]))
+      .attr("height", d => y(d[0]) - y(d[1]))
+      .attr("width", x.bandwidth());
+
+    const xAxis = g.append("g")
+      .attr("transform", `translate(0,${heightInner})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
+
+    const yAxis = g.append("g")
+      .call(d3.axisLeft(y));
+
+    const legend = g.append("g")
+      .attr("transform", `translate(${widthInner + 10},0)`);
+
+    legend.selectAll("rect")
+      .data(keys)
+      .enter().append("rect")
+      .attr("x", 0)
+      .attr("y", (d, i) => i * 20)
+      .attr("width", 18)
+      .attr("height", 18)
+      .attr("fill", (d, i) => color(i));
+
+    legend.selectAll("text")
+      .data(keys)
+      .enter().append("text")
+      .attr("x", 24)
+      .attr("y", (d, i) => i * 20 + 9)
+      .attr("dy", ".35em")
+      .text(d => d);
+  </script>
+</body>
+</html>

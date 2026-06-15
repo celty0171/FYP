@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lake Elevation Bar Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .chart {
+      width: 900px;
+      height: 500px;
+      margin: 20px auto;
+    }
+    .bar {
+      fill: steelblue;
+    }
+    .axis-label {
+      font-size: 14px;
+    }
+    .title {
+      text-align: center;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">Lake Elevation Bar Chart</div>
+  <div class="chart" id="chart"></div>
+
+  <script>
+    const data = [
+      {"name": "Inarijärvi", "elevation": 119, "depth": 92, "dam_height": null},
+      {"name": "Oulujärvi", "elevation": 123, "depth": 35, "dam_height": null},
+      {"name": "Saimaa", "elevation": 76, "depth": 85, "dam_height": null},
+      {"name": "Päijänne", "elevation": 78, "depth": 95, "dam_height": null},
+      {"name": "Mjoesa-See", "elevation": 123, "depth": 449, "dam_height": null},
+      {"name": "Storuman", "elevation": 419, "depth": 139, "dam_height": null},
+      {"name": "Siljan", "elevation": 161, "depth": 134, "dam_height": null},
+      {"name": "Mälaren", "elevation": 0.7, "depth": 66, "dam_height": null},
+      {"name": "Vänern", "elevation": 44, "depth": 106, "dam_height": null},
+      {"name": "Vättern", "elevation": 88, "depth": 119, "dam_height": null},
+      {"name": "Arresø", "elevation": 3.9, "depth": 5.6, "dam_height": null},
+      {"name": "Lough Neagh", "elevation": 15, "depth": 25, "dam_height": null},
+      {"name": "Loch Ness", "elevation": 16, "depth": 226, "dam_height": null},
+      {"name": "Loch Lomond", "elevation": 7.9, "depth": 190, "dam_height": null},
+      {"name": "Bodensee", "elevation": 395, "depth": 254, "dam_height": null},
+      {"name": "Chiemsee", "elevation": 518, "depth": 73, "dam_height": null},
+      {"name": "Starnberger See", "elevation": 584, "depth": 127.7, "dam_height": null},
+      {"name": "Ammersee", "elevation": 533, "depth": 81.1, "dam_height": null},
+      {"name": "Laacher Maar", "elevation": 275, "depth": 53, "dam_height": null},
+      {"name": "Lac Leman", "elevation": 372, "depth": 310, "dam_height": null},
+      {"name": "Lac de Serre-Ponçon", "elevation": 785, "depth": 120, "dam_height": 124},
+      {"name": "Zürichsee", "elevation": 406, "depth": 136, "dam_height": null},
+      {"name": "Thunersee", "elevation": 558, "depth": 217, "dam_height": null},
+      {"name": "Brienzersee", "elevation": 564, "depth": 260, "dam_height": null},
+      {"name": "Lac de Neuchâtel", "elevation": 429, "depth": 153, "dam_height": null},
+      {"name": "Bielersee", "elevation": 428, "depth": 74, "dam_height": null},
+      {"name": "Vierwaldstättersee", "elevation": 434, "depth": 214, "dam_height": null},
+      {"name": "Lago Maggiore", "elevation": 193, "depth": 372, "dam_height": null},
+      {"name": "Lago di Lugano", "elevation": 271, "depth": 288, "dam_height": null},
+      {"name": "Lago di Como", "elevation": 197, "depth": 425, "dam_height": null},
+      {"name": "Lago di Garda", "elevation": 65, "depth": 346, "dam_height": null},
+      {"name": "Lago Trasimeno", "elevation": 259, "depth": 7, "dam_height": null},
+      {"name": "Lago di Bolsena", "elevation": 335, "depth": 151, "dam_height": null},
+      {"name": "Lago di Bracciano", "elevation": 164, "depth": 165, "dam_height": null},
+      {"name": "Lago Albano", "elevation": 291, "depth": 170, "dam_height": null},
+      {"name": "Lago Omodeo", "elevation": 118, "depth": 60, "dam_height": null},
+      {"name": "Laguna de Gallocanta", "elevation": 995, "depth": 1.5, "dam_height": null},
+      {"name": "Neusiedlersee", "elevation": 115.5, "depth": 1.8, "dam_height": null},
+      {"name": "Balaton", "elevation": 104, "depth": 12.5, "dam_height": null},
+      {"name": "Orava Reservoir", "elevation": 601, "depth": 38, "dam_height": 28},
+      {"name": "Lake Skutari", "elevation": 7, "depth": 44, "dam_height": null},
+      {"name": "Lake Prespa", "elevation": 849, "depth": 54, "dam_height": null},
+      {"name": "Lake Ohrid", "elevation": 695, "depth": 289, "dam_height": null},
+      {"name": "Kiev Reservoir", "elevation": 99, "depth": 8, "dam_height": null},
+      {"name": "Kakhovka Reservoir", "elevation": 44, "depth": 26, "dam_height": null},
+      {"name": "Kremenchuk Reservoir", "elevation": 44, "depth": 28, "dam_height": null},
+      {"name": "Rybinsk Reservoir", "elevation": 102, "depth": 28, "dam_height": null},
+      {"name": "Kuybyshev Reservoir", "elevation": 53, "depth": 41, "dam_height": null},
+      {"name": "Kama Reservoir", "elevation": 108.5, "depth": 30, "dam_height": 37},
+      {"name": "Lower Kama Reservoir", "elevation": 63, "depth": 41, "dam_height": 30},
+      {"name": "Ozero Ladoga", "elevation": 4, "depth": 225, "dam_height": null},
+      {"name": "Ozero Onega", "elevation": 33, "depth": 127, "dam_height": null},
+      {"name": "Wygozero", "elevation": 89, "depth": 18, "dam_height": null},
+      {"name": "Ozero Pskovskoje", "elevation": 30, "depth": 14.6, "dam_height": null},
+      {"name": "Novosibirsk Reservoir", "elevation": 114, "depth": 25, "dam_height": 33},
+      {"name": "Ozero Keta", "elevation": 85, "depth": 180, "dam_height": null},
+      {"name": "Ozero Khantayskoye", "elevation": 65, "depth": 420, "dam_height": null},
+      {"name": "Ozero Taimyr", "elevation": 5, "depth": 26, "dam_height": null},
+      {"name": "Ozero Baikal", "elevation": 455, "depth": 1637, "dam_height": null},
+      {"name": "Ozero Chanka", "elevation": 68, "depth": 10.6, "dam_height": null},
+      {"name": "Koltsevoye Lake", "elevation": 384, "depth": null, "dam_height": null},
+      {"name": "Dead Sea", "elevation": -422, "depth": 378, "dam_height": null},
+      {"name": "Lake Genezareth", "elevation": -212, "depth": 46, "dam_height": null},
+      {"name": "Lake Assad", "elevation": 310, "depth": null, "dam_height": 60},
+      {"name": "Lake Van", "elevation": 1719, "depth": 457, "dam_height": null},
+      {"name": "Tuz Gölü", "elevation": 905, "depth": 1, "dam_height": null},
+      {"name": "Nemrut Gölü", "elevation": 2200, "depth": 155, "dam_height": null},
+      {"name": "Lake Keban", "elevation": 820, "depth": null, "dam_height": 207},
+      {"name": "Atatürk Baraj Gölü", "elevation": 542, "depth": null, "dam_height": 169},
+      {"name": "Lake Sevan", "elevation": 1904, "depth": 79, "dam_height": null},
+      {"name": "Lake Urmia", "elevation": 1280, "depth": 7, "dam_height": null},
+      {"name": "Daryacheh ye Namak", "elevation": 790, "depth": 1, "dam_height": null},
+      {"name": "Lake Hamun", "elevation": 500, "depth": null, "dam_height": null},
+      {"name": "Caspian Sea", "elevation": -28, "depth": 995, "dam_height": null},
+      {"name": "Garabogazköl", "elevation": -28, "depth": 7, "dam_height": null},
+      {"name": "North Aral Sea", "elevation": 40, "depth": 18, "dam_height": null},
+      {"name": "South Aral Sea", "elevation": 29, "depth": 15, "dam_height": null},
+      {"name": "Bukhtarma Reservoir", "elevation": 388, "depth": null, "dam_height": 90},
+      {"name": "Ozero Balchash", "elevation": 342, "depth": 26, "dam_height": null},
+      {"name": "Issyk-Kul", "elevation": 1609, "depth": 668, "dam_height": null},
+      {"name": "Koli Sarez", "elevation": 3250, "depth": 500, "dam_height": null},
+      {"name": "Karakul", "elevation": 4020, "depth": 230, "dam_height": null},
+      {"name": "Lop Nor", "elevation": 780, "depth": 0, "dam_height": null},
+      {"name": "Aydingkol", "elevation": -155, "depth": 0, "dam_height": null},
+      {"name": "Uws Nuur", "elevation": 753, "depth": 20, "dam_height": null},
+      {"name": "Chöwsgöl Nuur", "elevation": 1624, "depth": 262, "dam_height": null},
+      {"name": "Hulun Nur", "elevation": 539, "depth": 9, "dam_height": null},
+      {"name": "Qinghai Lake", "elevation": 3195, "depth": 27, "dam_height": null},
+      {"name": "Nam Co", "elevation": 4718, "depth": 125, "dam_height": null},
+      {"name": "Manasarovar", "elevation": 4586, "depth": 77, "dam_height": null},
+      {"name": "Rakshastal", "elevation": 4572, "depth": null, "dam_height": null},
+      {"name": "Hongze Hu", "elevation": 15, "depth": null, "dam_height": 5.1},
+      {"name": "Tai Hu", "elevation": 15, "depth": null, "dam_height": null},
+      {"name": "Poyang Hu", "elevation": 16.5, "depth": 25, "dam_height": null},
+      {"name": "Xiluodu", "elevation": 600, "depth": null, "dam_height": 285.5},
+      {"name": "Three Gorges Reservoir", "elevation": 175, "depth": null, "dam_height": 181},
+      {"name": "Dongting Hu", "elevation": 33, "depth": 31, "dam_height": null},
+      {"name": "Heaven Lake", "elevation": 2189, "depth": 384, "dam_height": null},
+      {"name": "Lake Biwa", "elevation": 85, "depth": 104, "dam_height": null},
+      {"name": "Lake Kussharo", "elevation": 121, "depth": 117, "dam_height": null},
+      {"name": "Lake Tazawa", "elevation": 290, "depth": 423, "dam_height": null},
+      {"name": "Lake Pinatubo", "elevation": 900, "depth": 600, "dam_height": null},
+      {"name": "Lake Taal", "elevation": 5, "depth": 172, "dam_height": null},
+      {"name": "Taal Crater Lake", "elevation": 5, "depth": 172, "dam_height": null},
+      {"name": "Laguna de Bay", "elevation": 1, "depth": 20, "dam_height": null},
+      {"name": "Lake Lanao", "elevation": 700, "depth": 112, "dam_height": null},
+      {"name": "Lake Toba", "elevation": 905, "depth": 505, "dam_height": null},
+      {"name": "Danau Kumbang", "elevation": 2560, "depth": null, "dam_height": null},
+      {"name": "Segara Anak", "elevation": 2008, "depth": 190, "dam_height": null},
+      {"name": "Tonle Sap", "elevation": 0.5, "depth": 10, "dam_height": null},
+      {"name": "Lake Bhumibol", "elevation": 250, "depth": null, "dam_height": 154},
+      {"name": "Lake Sirikit", "elevation": 160, "depth": null, "dam_height": 113},
+      {"name": "Songkhla Lake", "elevation": 0, "depth": null, "dam_height": null},
+      {"name": "Lake Nasser", "elevation": 183, "depth": 180, "dam_height": null},
+      {"name": "Chott Melrhir", "elevation": -40, "depth": 3, "dam_height": null},
+      {"name": "Lake Kossou", "elevation": 195, "depth": null, "dam_height": 58},
+      {"name": "Lake Volta", "elevation": 85, "depth": 75, "dam_height": null},
+      {"name": "Lake Bosumtwi", "elevation": 107, "depth": 81, "dam_height": null},
+      {"name": "Lake Kainji", "elevation": 140, "depth": 12, "dam_height": 65},
+      {"name": "Chad Lake", "elevation": 250, "depth": 7, "dam_height": null}
+    ];
+
+    const margin = { top: 20, right: 30, bottom: 50, left: 50 };
+    const width = 900 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand()
+      .range([0, width])
+      .padding(0.1)
+      .domain(data.map(d => d.name));
+
+    const y = d3.scaleLinear()
+      .range([height, 0])
+      .domain([d3.min(data, d => d.elevation), d3.max(data, d => d.elevation)]);
+
+    svg.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
+
+    svg.append("g")
+      .call(d3.axisLeft(y));
+
+    svg.selectAll(".bar")
+      .data(data)
+      .enter()
+      .append("rect")
+      .attr("class", "bar")
+      .attr("x", d => x(d.name))
+      .attr("y", d => y(d.elevation))
+      .attr("width", x.bandwidth())
+      .attr("height", d => height - y(d.elevation));
+
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height + margin.bottom - 10)
+      .attr("text-anchor", "middle")
+      .attr("class", "axis-label")
+      .text("Lake Name");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", -margin.left + 10)
+      .attr("text-anchor", "middle")
+      .attr("class", "axis-label")
+      .text("Elevation (m)");
+  </script>
+</body>
+</html>

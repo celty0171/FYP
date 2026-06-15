@@ -1,0 +1,195 @@
+{
+  "case_id": "3",
+  "schema_evidence": {
+    "selected_table": "lake",
+    "selected_columns": [
+      "name",
+      "elevation",
+      "depth",
+      "dam_height"
+    ],
+    "primary_key_columns": [
+      "name"
+    ],
+    "foreign_key_columns": [],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "name"
+    ],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {},
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not compound"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "No foreign keys in selected columns"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "No foreign keys in primary key"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "No foreign keys in selected columns"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": true,
+        "reason": "Selected table has primary key and attributes without foreign keys"
+      }
+    ],
+    "cardinality_reasoning": "The 'lake' table has a single-column primary key 'name' with no foreign key dependencies. No parent-child relationships are expressed through foreign keys."
+  },
+  "identified_pattern": "basic_entity",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "Entity has a key (name) and scalar attributes (elevation, depth, dam_height)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter diagram",
+      "eligible": true,
+      "eligibility_reason": "Entity has two scalar attributes (elevation, depth)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": true,
+      "eligibility_reason": "Entity has three scalar attributes (elevation, depth, dam_height)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "Entity has a key (name) and scalar attributes (elevation, depth, dam_height)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "k": "name",
+        "a1": "elevation"
+      },
+      "encoding": {
+        "x": "name",
+        "y": "elevation"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter diagram",
+      "eligible": true,
+      "eligibility_reason": "Entity has two scalar attributes (elevation, depth)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "bubble chart",
+      "eligible": true,
+      "eligibility_reason": "Entity has three scalar attributes (elevation, depth, dam_height)",
+      "schema_pattern_variables": {
+        "E": "lake",
+        "a1": "elevation",
+        "a2": "depth",
+        "a3": "dam_height"
+      },
+      "encoding": {
+        "x": "elevation",
+        "y": "depth",
+        "size": "dam_height"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bubble chart",
+    "selection_reason": "Best use of three scalar attributes (elevation, depth, dam_height) for spatial representation",
+    "schema_pattern_variables": {
+      "E": "lake",
+      "a1": "elevation",
+      "a2": "depth",
+      "a3": "dam_height"
+    },
+    "encoding": {
+      "x": "elevation",
+      "y": "depth",
+      "size": "dam_height"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.pack() for bubble layout",
+      "google_charts": "Use Google Charts' Bubble Chart type",
+      "vega_lite": "Use vega-lite's 'point' mark with size encoding"
+    }
+  },
+  "chart_mapping": {
+    "bubble chart": {
+      "x": "elevation",
+      "y": "depth",
+      "size": "dam_height"
+    }
+  },
+  "data_type_reasoning": "Selected columns: 'name' (discrete), 'elevation' (scalar), 'depth' (scalar), 'dam_height' (scalar). All numeric attributes are treated as scalar dimensions due to their INTEGER type.",
+  "limitations": []
+}

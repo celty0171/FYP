@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Treemap Visualization of Country Population by Year</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-hierarchy.v1.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .treemap-rect {
+      stroke: #fff;
+    }
+    .label {
+      font: 10px sans-serif;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>Treemap: Country Population by Year</h2>
+  <div id="treemap" style="width: 960px; height: 600px;"></div>
+
+  <script>
+    const data = [
+      {"country": "AL", "year": 1950, "population": 1214489},
+      {"country": "AL", "year": 1960, "population": 1618829},
+      {"country": "AL", "year": 1970, "population": 2138966},
+      {"country": "AL", "year": 1980, "population": 2734776},
+      {"country": "AL", "year": 1990, "population": 3446882},
+      {"country": "AL", "year": 1997, "population": 3249136},
+      {"country": "AL", "year": 2000, "population": 3304948},
+      {"country": "AL", "year": 2001, "population": 3069275},
+      {"country": "AL", "year": 2011, "population": 2821977},
+      {"country": "GR", "year": 1861, "population": 1096810},
+      {"country": "GR", "year": 1870, "population": 1457894},
+      {"country": "GR", "year": 1879, "population": 1679470},
+      {"country": "GR", "year": 1896, "population": 2433806},
+      {"country": "GR", "year": 1907, "population": 2631592},
+      {"country": "GR", "year": 1920, "population": 5016889},
+      {"country": "GR", "year": 1928, "population": 6204684},
+      {"country": "GR", "year": 1940, "population": 7344860},
+      {"country": "GR", "year": 1951, "population": 7632801},
+      {"country": "GR", "year": 1961, "population": 8388553},
+      {"country": "GR", "year": 1971, "population": 8768372},
+      {"country": "GR", "year": 1981, "population": 9739589},
+      {"country": "GR", "year": 1991, "population": 10217335},
+      {"country": "GR", "year": 2001, "population": 10934097},
+      {"country": "GR", "year": 2011, "population": 10816286},
+      {"country": "GR", "year": 2021, "population": 10432481},
+      {"country": "CY", "year": 1881, "population": 186173},
+      {"country": "CY", "year": 1891, "population": 209286},
+      {"country": "CY", "year": 1901, "population": 237022},
+      {"country": "CY", "year": 1911, "population": 274108},
+      {"country": "CY", "year": 1921, "population": 310715},
+      {"country": "CY", "year": 1931, "population": 347959},
+      {"country": "CY", "year": 1946, "population": 450114},
+      {"country": "CY", "year": 1960, "population": 573566},
+      {"country": "CY", "year": 1973, "population": 631778},
+      {"country": "CY", "year": 1976, "population": 612851},
+      {"country": "CY", "year": 1982, "population": 512098},
+      {"country": "CY", "year": 1992, "population": 615013},
+      {"country": "CY", "year": 2001, "population": 703529},
+      {"country": "CY", "year": 2011, "population": 856857},
+      {"country": "CY", "year": 2021, "population": 918100},
+      {"country": "AD", "year": 2020, "population": 18195},
+      {"country": "MK", "year": 1921, "population": 808724},
+      {"country": "MK", "year": 1931, "population": 949958},
+      {"country": "MK", "year": 1948, "population": 1152986},
+      {"country": "MK", "year": 1953, "population": 1304514},
+      {"country": "MK", "year": 1961, "population": 1406003},
+      {"country": "MK", "year": 1971, "population": 1647308},
+      {"country": "MK", "year": 1981, "population": 1909136},
+      {"country": "MK", "year": 1991, "population": 2033964},
+      {"country": "MK", "year": 1994, "population": 1935034},
+      {"country": "MK", "year": 2002, "population": 2022547},
+      {"country": "MK", "year": 2021, "population": 1836713},
+      {"country": "SRB", "year": 1950, "population": 6732256},
+      {"country": "SRB", "year": 1960, "population": 7657958},
+      {"country": "SRB", "year": 1970, "population": 8236185},
+      {"country": "SRB", "year": 1980, "population": 9057483},
+      {"country": "SRB", "year": 1990, "population": 9735429},
+      {"country": "SRB", "year": 1991, "population": 7620531},
+      {"country": "SRB", "year": 2002, "population": 7498001},
+      {"country": "SRB", "year": 2011, "population": 7120666},
+      {"country": "MNE", "year": 1921, "population": 311341},
+      {"country": "MNE", "year": 1931, "population": 360044},
+      {"country": "MNE", "year": 1948, "population": 377189},
+      {"country": "MNE", "year": 1953, "population": 419873},
+      {"country": "MNE", "year": 1961, "population": 471894},
+      {"country": "MNE", "year": 1971, "population": 529604},
+      {"country": "MNE", "year": 1981, "population": 584310},
+      {"country": "MNE", "year": 1991, "population": 615035},
+      {"country": "MNE", "year": 2003, "population": 620145},
+      {"country": "MNE", "year": 2011, "population": 620029},
+      {"country": "MNE", "year": 2021, "population": 619211},
+      {"country": "KOS", "year": 1981, "population": 1584440},
+      {"country": "KOS", "year": 1991, "population": 1956196},
+      {"country": "KOS", "year": 2011, "population": 1733872},
+      {"country": "AND", "year": 1950, "population": 6197},
+      {"country": "AND", "year": 1960, "population": 13414},
+      {"country": "AND", "year": 1970, "population": 24279},
+      {"country": "AND", "year": 1980, "population": 36063},
+      {"country": "AND", "year": 1989, "population": 46166},
+      {"country": "AND", "year": 2001, "population": 66334},
+      {"country": "AND", "year": 2011, "population": 69772},
+      {"country": "AND", "year": 2016, "population": 73105},
+      {"country": "AND", "year": 2021, "population": 79535},
+      {"country": "F", "year": 1946, "population": 40502513},
+      {"country": "F", "year": 1954, "population": 42777162},
+      {"country": "F", "year": 1962, "population": 46520271},
+      {"country": "F", "year": 1968, "population": 49778540},
+      {"country": "F", "year": 1975, "population": 52591584},
+      {"country": "F", "year": 1982, "population": 54334871},
+      {"country": "F", "year": 1990, "population": 56615155},
+      {"country": "F", "year": 1999, "population": 58518395},
+      {"country": "F", "year": 2007, "population": 61795238},
+      {"country": "F", "year": 2015, "population": 64300821},
+      {"country": "E", "year": 1900, "population": 18618086},
+      {"country": "E", "year": 1910, "population": 19995686},
+      {"country": "E", "year": 1920, "population": 21389842},
+      {"country": "E", "year": 1930, "population": 23677794},
+      {"country": "E", "year": 1940, "population": 25877971},
+      {"country": "E", "year": 1950, "population": 27976755},
+      {"country": "E", "year": 1960, "population": 30528539},
+      {"country": "E", "year": 1970, "population": 34040657},
+      {"country": "E", "year": 1981, "population": 37683363},
+      {"country": "E", "year": 1991, "population": 38871331},
+      {"country": "E", "year": 2001, "population": 40847371},
+      {"country": "E", "year": 2011, "population": 46815916},
+      {"country": "CZ", "year": 1950, "population": 8876260},
+      {"country": "CZ", "year": 1960, "population": 9577974},
+      {"country": "CZ", "year": 1970, "population": 9827923},
+      {"country": "CZ", "year": 1980, "population": 10313309},
+      {"country": "CZ", "year": 1991, "population": 10302215},
+      {"country": "CZ", "year": 2001, "population": 10230060},
+      {"country": "CZ", "year": 2011, "population": 10436560},
+      {"country": "CZ", "year": 2021, "population": 10524167},
+      {"country": "SK", "year": 1960, "population": 4137224},
+      {"country": "SK", "year": 1970, "population": 4531874},
+      {"country": "SK", "year": 1980, "population": 4988654},
+      {"country": "SK", "year": 1990, "population": 5277709},
+      {"country": "SK", "year": 2000, "population": 5388010},
+      {"country": "SK", "year": 2001, "population": 5379455},
+      {"country": "SK", "year": 2011, "population": 5397036}
+    ];
+
+    // Group data by country
+    const groupedData = d3.rollup(
+      data,
+      v => d3.sum(v, d => d.population),
+      d => d.country
+    );
+
+    // Create a hierarchical structure
+    const root = d3.hierarchy({ children: Array.from(groupedData.entries()) });
+    root.sum(d => d.value);
+    root.sort((a, b) => b.value - a.value);
+
+    const width = 960;
+    const height = 600;
+    const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+
+    const svg = d3.select("#treemap")
+      .attr("width", width)
+      .attr("height", height)
+      .style("background", "#fff");
+
+    const treemap = d3.treemap()
+      .size([width, height])
+      .padding(1)
+      .round(true);
+
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    treemap(root);
+
+    const cell = svg.selectAll("g")
+      .data(root.leaves())
+      .enter().append("g")
+      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+    cell.append("rect")
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0)
+      .attr("fill", d => color(d.data[0]))
+      .attr("class", "treemap-rect");
+
+    cell.append("text")
+      .attr("x", 4)
+      .attr("y", 14)
+      .attr("dy", "0.35em")
+      .attr("font-size", "12px")
+      .text(d => d.data[0]);
+
+    // Add labels for country names
+    const labels = svg.selectAll("text.label")
+      .data(root.leaves())
+      .enter().append("text")
+      .attr("class", "label")
+      .attr("x", d => d.x0 + (d.x1 - d.x0) / 2)
+      .attr("y", d => d.y0 + (d.y1 - d.y0) / 2)
+      .attr("dy", "0.35em")
+      .attr("text-anchor", "middle")
+      .attr("font-size", "12px")
+      .text(d => d.data[0]);
+  </script>
+</body>
+</html>

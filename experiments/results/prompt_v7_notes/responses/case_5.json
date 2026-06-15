@@ -1,0 +1,180 @@
+{
+  "case_id": "5",
+  "schema_evidence": {
+    "selected_table": "country_population",
+    "selected_columns": [
+      "country",
+      "year",
+      "population"
+    ],
+    "primary_key_columns": [
+      "country",
+      "year"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "year"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "foreign_key_referenced_tables": {
+      "country": "country"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of exactly two foreign keys."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is not composed of exactly two foreign keys."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table has a local primary key column ('year') and is not a basic entity with inherited key."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": true,
+        "reason": "The primary key is compound and contains a foreign key ('country') and a local key ('year')."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected foreign key ('country') is part of the primary key, not outside of it."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table has a foreign key ('country') that is part of the primary key, so it is not a basic entity."
+      }
+    ],
+    "cardinality_reasoning": "The table 'country_population' has a compound primary key consisting of 'country' (a foreign key to 'country') and 'year' (a local key). This matches the definition of a weak entity, where the primary key combines a foreign key and a local key."
+  },
+  "identified_pattern": "weak_entity",
+  "confidence": 0.95,
+  "recommended_visualisations": [
+    "Line chart",
+    "Stacked bar chart",
+    "Grouped bar chart",
+    "Spider chart"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Line chart",
+      "eligible": true,
+      "eligibility_reason": "The weak entity has a parent key ('country') and a local child key ('year') that is scalar, and a scalar attribute ('population') that can be used as the y-axis.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "year",
+        "y": "population",
+        "key": "country"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Stacked bar chart",
+      "eligible": true,
+      "eligibility_reason": "The weak entity has a parent key ('country') and a local child key ('year') that is scalar, and a scalar attribute ('population') that can be used as the stack height. This chart requires completeness of 'year' values for each 'country'.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "population",
+        "stack": "year"
+      },
+      "required_transformations": [
+        "Ensure completeness of 'year' values for each 'country'"
+      ],
+      "limitations": [
+        "Requires completeness of 'year' values for each 'country'"
+      ]
+    },
+    {
+      "chart_type": "Grouped bar chart",
+      "eligible": true,
+      "eligibility_reason": "The weak entity has a parent key ('country') and a scalar attribute ('population') that can be used as the bar height. This chart does not require completeness of 'year' values for each 'country'.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "population",
+        "group": "year"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "Spider chart",
+      "eligible": true,
+      "eligibility_reason": "The weak entity has a parent key ('country') and a local child key ('year') that is scalar, and a scalar attribute ('population') that can be used as the radial value. This chart works best when 'year' values are complete for each 'country'.",
+      "schema_pattern_variables": {
+        "k1": "country",
+        "k2": "year",
+        "a1": "population"
+      },
+      "encoding": {
+        "radial": "population",
+        "spoke": "year",
+        "ring": "country"
+      },
+      "required_transformations": [
+        "Ensure completeness of 'year' values for each 'country'"
+      ],
+      "limitations": [
+        "Requires completeness of 'year' values for each 'country'"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Line chart",
+    "selection_reason": "The line chart is a natural fit for the weak entity pattern, where the parent key ('country') is used to group the data, the local child key ('year') is used as the x-axis, and the scalar attribute ('population') is used as the y-axis.",
+    "schema_pattern_variables": {
+      "k1": "country",
+      "k2": "year",
+      "a1": "population"
+    },
+    "encoding": {
+      "x": "year",
+      "y": "population",
+      "key": "country"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.line() to create the line chart, with 'country' as the group key, 'year' as the x-axis, and 'population' as the y-axis.",
+      "google_charts": "Use the Google Charts Line Chart, with 'country' as the group key, 'year' as the x-axis, and 'population' as the y-axis.",
+      "vega_lite": "Use vega-lite's line chart, with 'country' as the group key, 'year' as the x-axis, and 'population' as the y-axis."
+    }
+  },
+  "chart_mapping": {
+    "x": "year",
+    "y": "population",
+    "key": "country"
+  },
+  "data_type_reasoning": "The 'year' column is of type INT, which is a scalar dimension with a natural numeric ordering. The 'population' column is of type INT, which is also a scalar dimension with a natural numeric ordering. The 'country' column is of type VARCHAR(4), which is a discrete dimension, as it represents a relatively small number of distinct values (country codes).",
+  "limitations": []
+}

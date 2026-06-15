@@ -1,0 +1,75 @@
+```json
+{
+  "case_id": "4",
+  "identified_pattern": "basic_entity",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "organization",
+    "selected_columns": ["abbreviation", "established"],
+    "primary_key_columns": ["abbreviation"],
+    "foreign_key_columns": ["city", "province", "country"],
+    "selected_foreign_key_columns": [],
+    "foreign_keys_in_primary_key": [],
+    "foreign_keys_not_in_primary_key": ["city", "province", "country"],
+    "local_primary_key_columns": ["abbreviation"],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": false,
+    "rule_decision_trace": [
+      { "rule": "many_many_or_reflexive", "matched": false, "reason": "No many-to-many or reflexive relationship detected in the schema." },
+      { "rule": "basic_entity_inherited_key", "matched": false, "reason": "The primary key is not inherited from another entity." },
+      { "rule": "weak_entity", "matched": false, "reason": "The entity is not a weak entity (no partial key or dependent relationship)." },
+      { "rule": "one_many_relationship", "matched": false, "reason": "The entity is not part of a one-to-many relationship as a child entity." },
+      { "rule": "basic_entity", "matched": true, "reason": "The entity has a single primary key and no inherited or dependent relationships." }
+    ],
+    "cardinality_reasoning": "The 'organization' table has a single primary key ('abbreviation') and no foreign keys are selected. The selected columns do not indicate a relationship with other entities, so the cardinality is consistent with a basic entity."
+  },
+  "recommended_visualisations": ["bar chart", "calendar chart", "word cloud"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'abbreviation' column can act as the key (discrete dimension), and 'established' is a temporal scalar dimension.",
+      "schema_pattern_variables": { "k": "abbreviation", "a1": "established" },
+      "encoding": { "x": "abbreviation", "y": "established" },
+      "required_transformations": [],
+      "limitations": ["|k| (number of distinct abbreviations) should be up to ~100 for optimal readability."]
+    },
+    {
+      "chart_type": "calendar chart",
+      "eligible": true,
+      "eligibility_reason": "The 'established' column is a temporal scalar dimension, suitable for a calendar chart.",
+      "schema_pattern_variables": { "a1": "established" },
+      "encoding": { "date": "established" },
+      "required_transformations": [],
+      "limitations": ["Requires a sufficient number of distinct dates for meaningful visualization."]
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": true,
+      "eligibility_reason": "The 'abbreviation' column is a discrete dimension (short text) and can be used as a lexical key for a word cloud. 'established' is a scalar dimension and can be used for size or color.",
+      "schema_pattern_variables": { "k": "abbreviation", "a1": "established" },
+      "encoding": { "text": "abbreviation", "size": "established" },
+      "required_transformations": [],
+      "limitations": ["Word cloud may not be the best choice for numeric values like 'established'; consider using a bar chart instead."]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "The 'abbreviation' column is a discrete dimension and can be used as the key, while 'established' is a temporal scalar dimension suitable for the y-axis. This is a straightforward and effective visualization for the given data.",
+    "schema_pattern_variables": { "k": "abbreviation", "a1": "established" },
+    "encoding": { "x": "abbreviation", "y": "established" },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for the x-axis and d3.scaleTime for the y-axis.",
+      "google_charts": "Use a bar chart with the 'abbreviation' as the category and 'established' as the value.",
+      "vega_lite": "Use a bar chart with 'abbreviation' as the x-axis and 'established' as the y-axis."
+    }
+  },
+  "chart_mapping": {
+    "abbreviation": "x",
+    "established": "y"
+  },
+  "data_type_reasoning": "The 'abbreviation' column is a discrete dimension (short text) and can be used as a key. The 'established' column is a temporal scalar dimension (DATE type), suitable for use as a measure in a bar chart or calendar chart.",
+  "limitations": ["The 'abbreviation' column may not be the most meaningful label for a bar chart; consider using the 'name' column instead if available."]
+}
+```

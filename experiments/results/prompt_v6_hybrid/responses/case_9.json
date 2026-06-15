@@ -1,0 +1,115 @@
+{
+  "case_id": "9",
+  "identified_pattern": "reflexive_many_many_relationship",
+  "confidence": 0.95,
+  "schema_evidence": {
+    "selected_table": "borders",
+    "selected_columns": [
+      "country1",
+      "country2",
+      "length"
+    ],
+    "primary_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "selected_foreign_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country1",
+      "country2"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [
+      "country1",
+      "country2"
+    ],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_or_reflexive",
+        "matched": true,
+        "reason": "The table 'borders' has a compound primary key consisting of two foreign keys ('country1' and 'country2'), both referencing the 'country' table. This indicates a reflexive many-to-many relationship between the same entity (country)."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The selected table is not an entity with inherited keys; it is a relationship table."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The selected table is not a weak entity; it does not have a local key dependent on a parent entity."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The selected table is not a one-to-many relationship; it has a compound primary key with two foreign keys."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The selected table is not a basic entity; it is a relationship table."
+      }
+    ],
+    "cardinality_reasoning": "The 'borders' table represents a reflexive many-to-many relationship between countries. Each country can have multiple borders with other countries, and each border is defined by two countries. The primary key is a compound key of 'country1' and 'country2', both of which are foreign keys to the 'country' table."
+  },
+  "recommended_visualisations": [
+    "chord diagram"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "chord diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a reflexive many-to-many relationship between countries, and the 'length' column provides a scalar measure for the relationship. This fits the 'reflexive_many_many_relationship' pattern, which is compatible with a chord diagram.",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k1": "country1",
+        "k2": "country2",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "chord diagram",
+    "selection_reason": "The 'borders' table represents a reflexive many-to-many relationship between countries, and the 'length' column provides a scalar measure for the relationship. A chord diagram is the most appropriate visualization for this pattern.",
+    "schema_pattern_variables": {
+      "E": "country",
+      "k1": "country1",
+      "k2": "country2",
+      "a1": "length"
+    },
+    "encoding": {
+      "source": "country1",
+      "target": "country2",
+      "width": "length"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use D3's chord diagram layout to represent the relationships between countries based on the 'length' of the borders.",
+      "google_charts": "Google Charts does not natively support chord diagrams, but you can use a third-party library or custom implementation.",
+      "vega_lite": "Use Vega-Lite's 'chord' mark type to create a chord diagram based on the 'length' of the borders."
+    }
+  },
+  "chart_mapping": {
+    "source": "country1",
+    "target": "country2",
+    "width": "length"
+  },
+  "data_type_reasoning": "The 'country1' and 'country2' columns are discrete dimensions, as they represent country codes (VARCHAR(4)) with a relatively small number of distinct values. The 'length' column is a scalar dimension, as it represents a numeric value (NUMERIC(10,2)) with a natural numeric ordering. These types are appropriate for a chord diagram, where discrete dimensions are used to identify entities and scalar dimensions are used to represent the strength of the relationship.",
+  "limitations": []
+}

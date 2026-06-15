@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "run_id": "qwen3_14b_all9",
+    "model": "Qwen3-14B",
+    "base_url": "http://localhost:8001/v1",
+    "library": "d3",
+    "temperature": 0.0,
+    "enable_thinking": false,
+    "skip_impl": false,
+    "created_utc": "2026-06-14T09:09:38.848323+00:00",
+    "schema_file": "experiments/mondial_database/mondial_schema_summary_clean.json",
+    "cases_file": "experiments/inputs/mondial_blind_cases.json",
+    "pattern_prompt_file": "experiments/prompts/mondial_pattern_prompt.md",
+    "impl_prompt_file": "experiments/prompts/visualisation_implementation_prompt.md",
+    "case_count": 9
+  },
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "choropleth map"
+      ],
+      "pattern_ok": true,
+      "rows_total": 246,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 7330,
+      "seconds": 163.8
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "rows_total": 246,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 9134,
+      "seconds": 217.1
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "choropleth map"
+      ],
+      "pattern_ok": true,
+      "rows_total": 223,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 12271,
+      "seconds": 235.8
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "calendar chart",
+        "scatter chart",
+        "bubble chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "pattern_ok": true,
+      "rows_total": 169,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 10006,
+      "seconds": 200.7
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "identified_pattern": "one_many_relationship",
+      "recommended_visualisations": [
+        "treemap",
+        "hierarchy tree",
+        "circle packing"
+      ],
+      "pattern_ok": true,
+      "rows_total": 2278,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 9717,
+      "seconds": 223.8
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "identified_pattern": "weak_entity",
+      "recommended_visualisations": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "pattern_ok": true,
+      "rows_total": 1472,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 10711,
+      "seconds": 215.3
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "identified_pattern": "basic_entity",
+      "recommended_visualisations": [
+        "bar chart",
+        "scatter chart",
+        "choropleth map"
+      ],
+      "pattern_ok": true,
+      "rows_total": 1304,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 9437,
+      "seconds": 199.8
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "sankey diagram"
+      ],
+      "pattern_ok": true,
+      "rows_total": 251,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 10676,
+      "seconds": 178.3
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "identified_pattern": "many_many_relationship",
+      "recommended_visualisations": [
+        "sankey diagram",
+        "chord diagram"
+      ],
+      "pattern_ok": true,
+      "rows_total": 326,
+      "rows_used": 120,
+      "impl_ok": true,
+      "html_bytes": 10373,
+      "seconds": 206.9
+    }
+  ]
+}

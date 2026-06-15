@@ -1,0 +1,168 @@
+{
+  "case_id": "2",
+  "schema_evidence": {
+    "selected_table": "economy",
+    "selected_columns": [
+      "country",
+      "gdp",
+      "unemployment"
+    ],
+    "primary_key_columns": [
+      "country"
+    ],
+    "foreign_key_columns": [
+      "country"
+    ],
+    "selected_foreign_key_columns": [
+      "country"
+    ],
+    "foreign_keys_in_primary_key": [
+      "country"
+    ],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": false,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "foreign_key_referenced_tables": {
+      "country": [
+        "country"
+      ]
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": false,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": true,
+        "reason": "Primary key is fully inherited as foreign key to 'country' with no local primary key columns"
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "Primary key is not compound"
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "Foreign key is part of primary key"
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "Primary key is fully inherited as foreign key"
+      }
+    ],
+    "cardinality_reasoning": "The 'economy' table has a single-column primary key 'country' that is a foreign key to the 'country' table. This represents an inherited-key basic entity where each 'country' code from the parent table uniquely identifies an economy record."
+  },
+  "identified_pattern": "basic_entity_inherited_key",
+  "confidence": 1.0,
+  "recommended_visualisations": [
+    "bar chart",
+    "scatter diagram",
+    "word cloud"
+  ],
+  "visualisation_candidates": [
+    {
+      "chart_type": "bar chart",
+      "eligible": true,
+      "eligibility_reason": "Discrete 'country' key with scalar 'gdp' and 'unemployment' attributes",
+      "schema_pattern_variables": {
+        "E": "economy",
+        "k": "country",
+        "a1": "gdp",
+        "a2": "unemployment"
+      },
+      "encoding": {
+        "x": "country",
+        "y": "gdp",
+        "color": "unemployment"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "scatter diagram",
+      "eligible": true,
+      "eligibility_reason": "Two scalar attributes 'gdp' and 'unemployment' available",
+      "schema_pattern_variables": {
+        "E": "economy",
+        "a1": "gdp",
+        "a2": "unemployment"
+      },
+      "encoding": {
+        "x": "gdp",
+        "y": "unemployment"
+      },
+      "required_transformations": [],
+      "limitations": []
+    },
+    {
+      "chart_type": "word cloud",
+      "eligible": true,
+      "eligibility_reason": "Discrete 'country' key (interpreted as lexical labels) with scalar 'gdp' for size",
+      "schema_pattern_variables": {
+        "E": "economy",
+        "k": "country",
+        "a1": "gdp"
+      },
+      "encoding": {
+        "text": "country",
+        "size": "gdp"
+      },
+      "required_transformations": [],
+      "limitations": [
+        "'country' codes may not be meaningful as lexical labels without additional context"
+      ]
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "bar chart",
+    "selection_reason": "Best representation of discrete 'country' codes with scalar economic metrics",
+    "schema_pattern_variables": {
+      "E": "economy",
+      "k": "country",
+      "a1": "gdp",
+      "a2": "unemployment"
+    },
+    "encoding": {
+      "x": "country",
+      "y": "gdp",
+      "color": "unemployment"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3.scaleBand for x-axis and d3.scaleLinear for y-axis",
+      "google_charts": "Use Google Charts' BarChart with category and value axes",
+      "vega_lite": "Use vega-lite's 'bar' mark with 'x' as 'country' and 'y' as 'gdp'"
+    }
+  },
+  "chart_mapping": {
+    "bar chart": {
+      "x": "country",
+      "y": "gdp",
+      "color": "unemployment"
+    },
+    "scatter diagram": {
+      "x": "gdp",
+      "y": "unemployment"
+    },
+    "word cloud": {
+      "text": "country",
+      "size": "gdp"
+    }
+  },
+  "data_type_reasoning": "Selected columns: 'country' (VARCHAR) is discrete, 'gdp' (INT) and 'unemployment' (NUMERIC) are scalar. 'country' is treated as lexical labels for word cloud, though it's technically a code. No temporal/geographical attributes present.",
+  "limitations": [
+    "'country' codes may not be meaningful as lexical labels without additional context",
+    "Choropleth maps not applicable without geographical region data"
+  ]
+}

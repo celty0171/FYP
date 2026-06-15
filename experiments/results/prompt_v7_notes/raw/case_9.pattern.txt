@@ -1,0 +1,108 @@
+```json
+{
+  "case_id": "9",
+  "schema_evidence": {
+    "selected_table": "borders",
+    "selected_columns": ["country1", "country2", "length"],
+    "primary_key_columns": ["country1", "country2"],
+    "foreign_key_columns": ["country1", "country2"],
+    "selected_foreign_key_columns": ["country1", "country2"],
+    "foreign_keys_in_primary_key": ["country1", "country2"],
+    "foreign_keys_not_in_primary_key": [],
+    "local_primary_key_columns": [],
+    "primary_key_is_compound": true,
+    "all_primary_key_columns_are_foreign_keys": true,
+    "foreign_key_referenced_tables": {
+      "country1": "country",
+      "country2": "country"
+    },
+    "two_primary_key_foreign_keys_reference_same_parent": true,
+    "rule_decision_trace": [
+      {
+        "rule": "many_many_relationship",
+        "matched": false,
+        "reason": "The primary key is composed of two foreign keys, but both reference the same parent table 'country', so this is not a many-many relationship."
+      },
+      {
+        "rule": "reflexive_many_many_relationship",
+        "matched": true,
+        "reason": "The primary key is composed of two foreign keys, and both reference the same parent table 'country', which matches the reflexive many-many relationship pattern."
+      },
+      {
+        "rule": "basic_entity_inherited_key",
+        "matched": false,
+        "reason": "The table is not a basic entity with inherited key because it has a compound primary key composed entirely of foreign keys, which matches the reflexive many-many relationship pattern."
+      },
+      {
+        "rule": "weak_entity",
+        "matched": false,
+        "reason": "The table is not a weak entity because it has no local primary key columns; all primary key columns are foreign keys."
+      },
+      {
+        "rule": "one_many_relationship",
+        "matched": false,
+        "reason": "The table is not a one-many relationship because the foreign keys are part of the primary key, which matches the reflexive many-many relationship pattern."
+      },
+      {
+        "rule": "basic_entity",
+        "matched": false,
+        "reason": "The table is not a basic entity because it has no local primary key columns and the foreign keys are part of the primary key, which matches the reflexive many-many relationship pattern."
+      }
+    ],
+    "cardinality_reasoning": "The 'borders' table has a compound primary key composed of two foreign keys, 'country1' and 'country2', both referencing the same parent table 'country'. This indicates a reflexive many-many relationship between instances of the 'country' table."
+  },
+  "identified_pattern": "reflexive_many_many_relationship",
+  "confidence": 1.0,
+  "recommended_visualisations": ["Chord diagram"],
+  "visualisation_candidates": [
+    {
+      "chart_type": "Chord diagram",
+      "eligible": true,
+      "eligibility_reason": "The 'borders' table represents a reflexive many-many relationship between instances of the 'country' table, with the 'length' column providing a scalar measure for the connection width.",
+      "schema_pattern_variables": {
+        "E": "country",
+        "k1": "country1",
+        "k2": "country2",
+        "R": "borders",
+        "a1": "length"
+      },
+      "encoding": {
+        "source": "country1",
+        "target": "country2",
+        "width": "length"
+      },
+      "required_transformations": [],
+      "limitations": []
+    }
+  ],
+  "selected_visualisation": {
+    "chart_type": "Chord diagram",
+    "selection_reason": "The 'borders' table represents a reflexive many-many relationship between instances of the 'country' table, with the 'length' column providing a scalar measure for the connection width.",
+    "schema_pattern_variables": {
+      "E": "country",
+      "k1": "country1",
+      "k2": "country2",
+      "R": "borders",
+      "a1": "length"
+    },
+    "encoding": {
+      "source": "country1",
+      "target": "country2",
+      "width": "length"
+    },
+    "required_transformations": [],
+    "library_notes": {
+      "d3": "Use d3-chord to create the chord diagram with 'country1' and 'country2' as source and target, and 'length' as the width of the connection.",
+      "google_charts": "Use the Google Charts API's 'chord' chart type to represent the reflexive many-many relationship between 'country1' and 'country2' with 'length' as the connection width.",
+      "vega_lite": "Use Vega-Lite's 'chord' encoding to represent the reflexive many-many relationship between 'country1' and 'country2' with 'length' as the connection width."
+    }
+  },
+  "chart_mapping": {
+    "source": "country1",
+    "target": "country2",
+    "width": "length"
+  },
+  "data_type_reasoning": "The 'country1' and 'country2' columns are discrete dimensions as they represent country codes (VARCHAR(4)), and the 'length' column is a scalar dimension as it represents a numeric value (NUMERIC(10,2)).",
+  "limitations": []
+}
+```
