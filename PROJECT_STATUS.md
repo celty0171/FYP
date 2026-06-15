@@ -2,11 +2,11 @@
 
 ## Current Stage
 
-Date: 2026-06-09
+Date: 2026-06-15
 
 The project is currently at the stage of testing whether LLMs can accurately identify visualisation schema patterns and then implement visually effective web-based visualisations.
 
-Because API access is not currently available, testing is being carried out manually through the university agent platform using GPT and Claude.
+LLM access is now automated. A self-hosted Qwen3-14B model runs on the Imperial HPC (cx3) under vLLM with an OpenAI-compatible API, reached over an SSH tunnel on `localhost:8001`. An end-to-end pipeline (`experiments/scripts/run_pipeline.py`) drives the model through all three stages without manual web chat; manual web chat (GPT / Claude on the university agent platform) remains a fallback when the HPC model is unavailable.
 
 ## Current Experimental Workflow
 
@@ -50,9 +50,45 @@ A project description file has also been added:
 
 - `project description.md`
 
-## Today's Work
+## Work — 2026-06-15
 
-The current work focused on improving the third stage of the experiment: generating higher-quality visualisations after schema-pattern classification and chart mapping.
+Built and exercised an automated, end-to-end pipeline for pattern identification and chart mapping, and established the best-performing configuration.
+
+Infrastructure:
+
+- Added `experiments/scripts/run_pipeline.py`: a pure-standard-library pipeline that drives the self-hosted Qwen model through Stage 1+2 (pattern + mapping) and optional Stage 3 (HTML), writing a run directory (`metadata.json`, `responses/`, `raw/`) compatible with `evaluate_llm_run.py`.
+- Confirmed cx3 firewalls cross-node ports, so the model must be reached over an SSH tunnel on `login-b` (`localhost:8001`), not by direct internal connection.
+- Added a deterministic hybrid mode: `classify_vizer_pattern.py` assigns the pattern label and the LLM only does evidence + chart mapping.
+
+Prompt iteration (pattern + mapping, Stage 3 skipped with `--skip-impl`):
+
+- `prompt_v5_mcbrien`: zero-shot, McBrien & Poulovassilis conceptual-modelling grounding — pattern 5/9.
+- `prompt_v6_hybrid`: deterministic label + LLM mapping — pattern 9/9, visualisation-overlap 9/9, but schema-evidence only 3/9 (the label is not LLM-derived).
+- `prompt.md` / `prompt_v8.md`: full-LLM prompts folding in the `pattern_notes.md` rules and chart groups, then hardened iteratively.
+
+Prompt hardening (full-LLM path):
+
+- Split the many-many vs reflexive-many-many decision into two explicit trace steps, gated on a derived `two_primary_key_foreign_keys_reference_same_parent` field (fixes `borders`).
+- Gated the weak vs one-many boundary on the structured `foreign_keys_in_primary_key` / `foreign_keys_not_in_primary_key` fields, and reordered the output so `identified_pattern` is emitted after the evidence (fixes the "evidence right, label wrong" inversions).
+- Added a strict selected-columns-only scope so the model cannot introduce foreign keys the user did not select (fixes `organization`).
+
+Key finding — Qwen thinking mode:
+
+- The recurring errors were reasoning-consistency failures (correct structured evidence, contradictory final label), not knowledge gaps.
+- Enabling thinking mode resolves them. **Best configuration: `prompt_v8.md` + `--enable-thinking` + `--pattern-max-tokens 12288`**, giving pattern **9/9**, visualisation-overlap **9/9**, schema-evidence **8/9**, exact-visualisation-set **2/9** (`experiments/results/prompt_v8_thinking`). This matches the hybrid on pattern/visualisation but is fully LLM-driven and far stronger on schema-evidence.
+- Operational note: thinking traces are long; the default 8192 token cap truncates the longest case (`economy`) before any JSON is emitted, so `--pattern-max-tokens 12288` is required. Cost is roughly 90–156s per case (~15 min for all nine) versus ~54s without thinking.
+
+Evaluation fix:
+
+- `evaluate_llm_run.py::normalise_label` now reads `chart_type` from object-shaped `recommended_visualisations` entries (thinking mode emits objects), and the prompts require a flat string list. Without this the visualisation-overlap metric collapsed to a false 3/9.
+
+Relevant output locations:
+
+- `experiments/results/prompt_v5_mcbrien`, `prompt_v6_hybrid`, `prompt_v7_notes`, `prompt_v7_notes_thinking`, `prompt_v8_thinking`
+
+## Work — 2026-06-09
+
+The work focused on improving the third stage of the experiment: generating higher-quality visualisations after schema-pattern classification and chart mapping.
 
 Work completed:
 
@@ -71,9 +107,9 @@ Relevant output location:
 
 ## Current Position
 
-The project is still in the visualisation implementation phase.
+Stage 1+2 (pattern identification and chart mapping) is now automated and performing well: the full-LLM `prompt_v8` + thinking-mode configuration reaches 9/9 pattern accuracy and 9/9 visualisation-overlap on the nine blind cases, without the deterministic hybrid assist.
 
-The main current focus is no longer only whether the LLM can classify the schema pattern correctly. The current focus is whether the LLM can implement the selected visualisation in a way that is:
+The project therefore returns its main focus to the visualisation implementation phase (Stage 3). The current focus is whether the LLM can implement the selected visualisation in a way that is:
 
 - faithful to the schema-pattern mapping
 - visually readable
