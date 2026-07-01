@@ -50,37 +50,53 @@ const wScale = d3.scaleSqrt().domain([0, maxW]).range([0.5, 5]);
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
-// Arcs above the axis: a half-circle whose radius is half the span between endpoints.
+// Faint baseline rule under the nodes to anchor the axis.
+svg.append("line").attr("transform", `translate(${leftPad},0)`)
+  .attr("x1", x(0)).attr("y1", baseY).attr("x2", x(names.length - 1)).attr("y2", baseY)
+  .attr("stroke", "#e0e0e0").attr("stroke-width", 1);
+
+// Arcs above the axis (a half-circle whose radius is half the span). Draw the longest arcs
+// first so short local arcs sit on top; round caps and low opacity keep dense bundles legible.
+const arcData = links.slice().sort((a, b) => Math.abs(x(b.i) - x(b.j)) - Math.abs(x(a.i) - x(a.j)));
 const arc = svg.append("g").attr("transform", `translate(${leftPad},0)`)
-  .attr("fill", "none").attr("stroke", "#4c78a8")
-  .selectAll("path").data(links).join("path")
+  .attr("fill", "none").attr("stroke", "#4c78a8").attr("stroke-linecap", "round")
+  .selectAll("path").data(arcData).join("path")
   .attr("stroke-width", d => wScale(d.w))
-  .attr("stroke-opacity", 0.45)
+  .attr("stroke-opacity", 0.4)
   .attr("d", d => {
     const x1 = x(d.i), x2 = x(d.j), r = Math.abs(x2 - x1) / 2;
     return "M" + x1 + "," + baseY + " A" + r + "," + r + " 0 0,1 " + x2 + "," + baseY;
   })
   .on("mouseover", (event, d) => {
-    arc.attr("stroke-opacity", a => (a === d) ? 0.95 : 0.05);
+    arc.attr("stroke-opacity", a => (a === d) ? 0.95 : 0.04);
     node.attr("opacity", n => (n.k === d.i || n.k === d.j) ? 1 : 0.2);
     tip.style("opacity", 1).html(names[d.i] + " &harr; " + names[d.j] + "<br>" + valueLabel + ": "
       + (Number.isInteger(d.w) ? d.w : d.w.toFixed(2)));
     moveTip(event);
   })
   .on("mousemove", moveTip)
-  .on("mouseout", () => { arc.attr("stroke-opacity", 0.45); node.attr("opacity", 1); tip.style("opacity", 0); });
+  .on("mouseout", () => { arc.attr("stroke-opacity", 0.4); node.attr("opacity", 1); tip.style("opacity", 0); });
 
 const adj = names.map(() => new Set());
 links.forEach(l => { adj[l.i].add(l.j); adj[l.j].add(l.i); });
 
+// Thin the labels when node spacing is tighter than the font so they never overlap; nodes are
+// ordered by degree, so the retained labels favour the hubs.
+const spacing = names.length > 1 ? w / (names.length - 1) : w;
+const lstep = Math.max(1, Math.ceil(9 / Math.max(1, spacing)));
+
 const nodeG = svg.append("g").attr("transform", `translate(${leftPad},0)`);
 const node = nodeG.selectAll("g").data(names.map((nm, k) => ({ nm, k }))).join("g");
 node.append("circle")
-  .attr("cx", d => x(d.k)).attr("cy", baseY).attr("r", d => 2 + Math.sqrt(deg[d.k]))
-  .attr("fill", d => degColor(deg[d.k]));
+  .attr("cx", d => x(d.k)).attr("cy", baseY)
+  .attr("r", d => Math.max(2.5, Math.min(11, 2 + Math.sqrt(deg[d.k]))))
+  .attr("fill", d => degColor(deg[d.k]))
+  .attr("stroke", "#fff").attr("stroke-width", 0.8);
 node.append("text")
   .attr("transform", d => "translate(" + x(d.k) + "," + (baseY + 8) + ") rotate(90)")
-  .attr("dy", "0.32em").attr("font-size", 9).text(d => d.nm);
+  .attr("dy", "0.32em").attr("font-size", 9).attr("fill", "#333")
+  .attr("display", d => (d.k % lstep === 0) ? null : "none")
+  .text(d => d.nm);
 
 node
   .on("mouseover", (event, d) => {
@@ -91,7 +107,7 @@ node
     moveTip(event);
   })
   .on("mousemove", moveTip)
-  .on("mouseout", () => { node.attr("opacity", 1); arc.attr("stroke-opacity", 0.45); tip.style("opacity", 0); });
+  .on("mouseout", () => { node.attr("opacity", 1); arc.attr("stroke-opacity", 0.4); tip.style("opacity", 0); });
 
 function degColor(v) { return d3.interpolateViridis(maxDeg ? v / maxDeg : 0); }
 

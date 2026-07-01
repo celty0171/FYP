@@ -41,6 +41,8 @@ links.forEach(l => { degree.set(l.source, degree.get(l.source) + 1); degree.set(
 const maxDeg = d3.max(nodes, n => degree.get(n.id)) || 1;
 const degColor = d3.scaleSequential(d3.interpolateViridis).domain([0, maxDeg]);
 const nodeFill = n => bipartite ? groupColor[n.group] : degColor(degree.get(n.id));
+// Node radius on a sqrt of degree, clamped so hubs stand out yet singletons stay visible.
+const nodeR = n => Math.max(3, Math.min(14, 3 + 2 * Math.sqrt(degree.get(n.id))));
 
 // Deterministic seed: place nodes on a circle before the simulation so the layout is reproducible.
 nodes.forEach((n, i) => {
@@ -53,7 +55,7 @@ const sim = d3.forceSimulation(nodes)
   .force("link", d3.forceLink(links).id(d => d.id).distance(40).strength(l => 0.2 + 0.6 * wScale(l.w) / 6))
   .force("charge", d3.forceManyBody().strength(-30))
   .force("center", d3.forceCenter(width / 2, height / 2))
-  .force("collide", d3.forceCollide(4))
+  .force("collide", d3.forceCollide(d => nodeR(d) + 1.5))
   .stop();
 // Run the simulation to a fixed number of ticks (no animation randomness across runs).
 for (let i = 0; i < 300; i++) sim.tick();
@@ -69,7 +71,7 @@ const link = svg.append("g").attr("stroke", "#999").attr("stroke-opacity", 0.5)
 
 const node = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1)
   .selectAll("circle").data(nodes).join("circle")
-  .attr("r", d => 3 + 2 * Math.sqrt(degree.get(d.id)))
+  .attr("r", d => nodeR(d))
   .attr("cx", d => d.x).attr("cy", d => d.y)
   .attr("fill", nodeFill)
   .on("mouseover", (event, d) => {
@@ -87,6 +89,16 @@ link.on("mouseover", (event, d) => {
     + (Number.isInteger(d.w) ? d.w : d.w.toFixed(2)));
   moveTip(event);
 }).on("mousemove", moveTip).on("mouseout", () => tip.style("opacity", 0));
+
+// Persistently label only the salient hubs (top by degree); everything else is on hover,
+// so a dense graph does not become an unreadable smear. A white halo keeps text legible.
+const hubs = nodes.slice().sort((a, b) => degree.get(b.id) - degree.get(a.id)).slice(0, Math.min(12, nodes.length));
+svg.append("g").attr("pointer-events", "none")
+  .selectAll("text").data(hubs).join("text")
+  .attr("x", d => d.x).attr("y", d => d.y - (nodeR(d) + 3))
+  .attr("text-anchor", "middle").attr("font-size", 10).attr("fill", "#222")
+  .attr("stroke", "#fff").attr("stroke-width", 3).attr("paint-order", "stroke")
+  .text(d => d.id);
 
 if (bipartite && legend.length === 2) {
   const lg = svg.append("g").attr("transform", "translate(16,16)");

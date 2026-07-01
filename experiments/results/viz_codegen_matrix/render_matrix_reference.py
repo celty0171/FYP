@@ -33,9 +33,18 @@ from typing import Any
 # Plain string with literal JS braces; the dynamic values (rows/cols/matrix/labels/
 # size/bipartite/valueLabel) are concatenated in render(), never formatted in.
 JS_BODY = """
-const margin = { top: 120, right: 20, bottom: 20, left: 130 };
+const FONT = 9, CHAR_W = 6;   // approx label pixel width per character at 9px
+
+// Square cells, sized to the larger dimension so both small and 10k-cell matrices fit.
 const cell = Math.max(6, Math.min(22, Math.floor(900 / Math.max(rowNames.length, colNames.length))));
 const w = cell * colNames.length, h = cell * rowNames.length;
+
+// Reserve margin from the longest label so rotated column / left row labels are not clipped
+// (capped so an outlier name does not blow up the layout; getBBox below is the final safety net).
+const maxColLen = d3.max(colNames, s => s.length) || 1;
+const maxRowLen = d3.max(rowNames, s => s.length) || 1;
+const margin = { top: Math.min(240, maxColLen * CHAR_W + 14), right: 24,
+                 bottom: 72, left: Math.min(280, maxRowLen * CHAR_W + 14) };
 
 const x = d3.scaleBand().domain(d3.range(colNames.length)).range([0, w]);
 const y = d3.scaleBand().domain(d3.range(rowNames.length)).range([0, h]);
@@ -51,7 +60,11 @@ const svg = d3.select("#chart").append("svg")
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
-// Row / column highlight backing rectangles (drawn under the cells).
+// Faint frame around the grid so empty (unfilled) pairs still read as part of the matrix.
+svg.append("rect").attr("x", 0).attr("y", 0).attr("width", w).attr("height", h)
+  .attr("fill", "#fbfbfc").attr("stroke", "#e5e7eb");
+
+// One rect per present pair; empty pairs stay blank so real relationships pop.
 const rects = svg.append("g").selectAll("rect").data(cells).join("rect")
   .attr("x", d => x(d.j)).attr("y", d => y(d.i))
   .attr("width", x.bandwidth()).attr("height", y.bandwidth())
@@ -68,17 +81,39 @@ const rects = svg.append("g").selectAll("rect").data(cells).join("rect")
   .on("mousemove", moveTip)
   .on("mouseout", () => { rects.attr("opacity", 1); tip.style("opacity", 0); });
 
+// Thin the tick labels when bands are narrower than the font so they never overlap.
+const step = Math.max(1, Math.ceil((FONT + 2) / cell));
+
 // Column labels (rotated, along the top).
-svg.append("g").selectAll("text").data(colNames).join("text")
-  .attr("transform", (d, j) => `translate(${x(j) + x.bandwidth() / 2},-6) rotate(-90)`)
+svg.append("g").selectAll("text").data(colNames.map((nm, j) => ({ nm, j }))).join("text")
+  .attr("transform", d => `translate(${x(d.j) + x.bandwidth() / 2},-6) rotate(-90)`)
   .attr("text-anchor", "start").attr("dy", "0.32em")
-  .text(d => d);
+  .attr("display", d => (d.j % step === 0) ? null : "none")
+  .text(d => d.nm);
 
 // Row labels (down the left).
-svg.append("g").selectAll("text").data(rowNames).join("text")
-  .attr("x", -6).attr("y", (d, i) => y(i) + y.bandwidth() / 2)
+svg.append("g").selectAll("text").data(rowNames.map((nm, i) => ({ nm, i }))).join("text")
+  .attr("x", -6).attr("y", d => y(d.i) + y.bandwidth() / 2)
   .attr("text-anchor", "end").attr("dy", "0.32em")
-  .text(d => d);
+  .attr("display", d => (d.i % step === 0) ? null : "none")
+  .text(d => d.nm);
+
+// Colour legend / key below the grid: a segmented gradient bar with a 0..max axis.
+{
+  const legendW = 190, legendH = 10, segs = 64;
+  const lg = svg.append("g").attr("transform", `translate(0,${h + 30})`);
+  lg.append("text").attr("x", 0).attr("y", -6).attr("font-size", 10).attr("fill", "#333")
+    .text("Colour — " + valueLabel);
+  lg.selectAll("rect").data(d3.range(segs)).join("rect")
+    .attr("x", k => (k / segs) * legendW).attr("y", 0)
+    .attr("width", legendW / segs + 1).attr("height", legendH)
+    .attr("fill", k => color((k / (segs - 1)) * maxVal));
+  const lscale = d3.scaleLinear().domain([0, maxVal]).range([0, legendW]);
+  lg.append("g").attr("transform", `translate(0,${legendH})`)
+    .call(d3.axisBottom(lscale).ticks(4).tickSize(3))
+    .call(g => g.selectAll("text").attr("font-size", 8))
+    .call(g => g.select(".domain").attr("stroke", "#bbb"));
+}
 
 // Fit the SVG viewport to all rendered content so nothing is ever clipped, whatever the
 // data (e.g. long rotated column labels can extend past the top margin). getBBox() returns
