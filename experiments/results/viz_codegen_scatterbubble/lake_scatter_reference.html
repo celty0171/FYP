@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lakes: depth vs elevation (scatter)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; margin: 16px; }
+  h1 { font-size: 18px; margin-bottom: 2px; }
+  #sub { color: #555; font-size: 12px; margin: 0 0 8px; }
+  .domain, .tick line { stroke: #ccc; }
+  #tip { position: absolute; opacity: 0; pointer-events: none; background: rgba(0,0,0,0.82);
+         color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<h1>Lakes: depth vs elevation (scatter)</h1>
+<p id="sub">One point per name: x = elevation, y = depth. 195 instances.</p>
+<div id="chart"></div>
+<div id="tip"></div>
+<script>
+const data = [{"label": "Inarij\u00e4rvi", "x": 119.0, "y": 92.0}, {"label": "Ouluj\u00e4rvi", "x": 123.0, "y": 35.0}, {"label": "Saimaa", "x": 76.0, "y": 85.0}, {"label": "P\u00e4ij\u00e4nne", "x": 78.0, "y": 95.0}, {"label": "Mjoesa-See", "x": 123.0, "y": 449.0}, {"label": "Storuman", "x": 419.0, "y": 139.0}, {"label": "Siljan", "x": 161.0, "y": 134.0}, {"label": "M\u00e4laren", "x": 0.7, "y": 66.0}, {"label": "V\u00e4nern", "x": 44.0, "y": 106.0}, {"label": "V\u00e4ttern", "x": 88.0, "y": 119.0}, {"label": "Arres\u00f8", "x": 3.9, "y": 5.6}, {"label": "Lough Neagh", "x": 15.0, "y": 25.0}, {"label": "Loch Ness", "x": 16.0, "y": 226.0}, {"label": "Loch Lomond", "x": 7.9, "y": 190.0}, {"label": "Bodensee", "x": 395.0, "y": 254.0}, {"label": "Chiemsee", "x": 518.0, "y": 73.0}, {"label": "Starnberger See", "x": 584.0, "y": 127.7}, {"label": "Ammersee", "x": 533.0, "y": 81.1}, {"label": "Laacher Maar", "x": 275.0, "y": 53.0}, {"label": "Lac Leman", "x": 372.0, "y": 310.0}, {"label": "Lac de Serre-Pon\u00e7on", "x": 785.0, "y": 120.0}, {"label": "Z\u00fcrichsee", "x": 406.0, "y": 136.0}, {"label": "Thunersee", "x": 558.0, "y": 217.0}, {"label": "Brienzersee", "x": 564.0, "y": 260.0}, {"label": "Lac de Neuch\u00e2tel", "x": 429.0, "y": 153.0}, {"label": "Bielersee", "x": 428.0, "y": 74.0}, {"label": "Vierwaldst\u00e4ttersee", "x": 434.0, "y": 214.0}, {"label": "Lago Maggiore", "x": 193.0, "y": 372.0}, {"label": "Lago di Lugano", "x": 271.0, "y": 288.0}, {"label": "Lago di Como", "x": 197.0, "y": 425.0}, {"label": "Lago di Garda", "x": 65.0, "y": 346.0}, {"label": "Lago Trasimeno", "x": 259.0, "y": 7.0}, {"label": "Lago di Bolsena", "x": 335.0, "y": 151.0}, {"label": "Lago di Bracciano", "x": 164.0, "y": 165.0}, {"label": "Lago Albano", "x": 291.0, "y": 170.0}, {"label": "Lago Omodeo", "x": 118.0, "y": 60.0}, {"label": "Laguna de Gallocanta", "x": 995.0, "y": 1.5}, {"label": "Neusiedlersee", "x": 115.5, "y": 1.8}, {"label": "Balaton", "x": 104.0, "y": 12.5}, {"label": "Orava Reservoir", "x": 601.0, "y": 38.0}, {"label": "Lake Skutari", "x": 7.0, "y": 44.0}, {"label": "Lake Prespa", "x": 849.0, "y": 54.0}, {"label": "Lake Ohrid", "x": 695.0, "y": 289.0}, {"label": "Kiev Reservoir", "x": 99.0, "y": 8.0}, {"label": "Kakhovka Reservoir", "x": 44.0, "y": 26.0}, {"label": "Kremenchuk Reservoir", "x": 44.0, "y": 28.0}, {"label": "Rybinsk Reservoir", "x": 102.0, "y": 28.0}, {"label": "Kuybyshev Reservoir", "x": 53.0, "y": 41.0}, {"label": "Kama Reservoir", "x": 108.5, "y": 30.0}, {"label": "Lower Kama Reservoir", "x": 63.0, "y": 41.0}, {"label": "Ozero Ladoga", "x": 4.0, "y": 225.0}, {"label": "Ozero Onega", "x": 33.0, "y": 127.0}, {"label": "Wygozero", "x": 89.0, "y": 18.0}, {"label": "Ozero Pskovskoje", "x": 30.0, "y": 14.6}, {"label": "Novosibirsk Reservoir", "x": 114.0, "y": 25.0}, {"label": "Ozero Keta", "x": 85.0, "y": 180.0}, {"label": "Ozero Khantayskoye", "x": 65.0, "y": 420.0}, {"label": "Ozero Taimyr", "x": 5.0, "y": 26.0}, {"label": "Ozero Baikal", "x": 455.0, "y": 1637.0}, {"label": "Ozero Chanka", "x": 68.0, "y": 10.6}, {"label": "Dead Sea", "x": -422.0, "y": 378.0}, {"label": "Lake Genezareth", "x": -212.0, "y": 46.0}, {"label": "Lake Van", "x": 1719.0, "y": 457.0}, {"label": "Tuz G\u00f6l\u00fc", "x": 905.0, "y": 1.0}, {"label": "Nemrut G\u00f6l\u00fc", "x": 2200.0, "y": 155.0}, {"label": "Lake Sevan", "x": 1904.0, "y": 79.0}, {"label": "Lake Urmia", "x": 1280.0, "y": 7.0}, {"label": "Daryacheh ye Namak", "x": 790.0, "y": 1.0}, {"label": "Caspian Sea", "x": -28.0, "y": 995.0}, {"label": "Garabogazk\u00f6l", "x": -28.0, "y": 7.0}, {"label": "North Aral Sea", "x": 40.0, "y": 18.0}, {"label": "South Aral Sea", "x": 29.0, "y": 15.0}, {"label": "Ozero Balchash", "x": 342.0, "y": 26.0}, {"label": "Issyk-Kul", "x": 1609.0, "y": 668.0}, {"label": "Koli Sarez", "x": 3250.0, "y": 500.0}, {"label": "Karakul", "x": 4020.0, "y": 230.0}, {"label": "Lop Nor", "x": 780.0, "y": 0.0}, {"label": "Aydingkol", "x": -155.0, "y": 0.0}, {"label": "Uws Nuur", "x": 753.0, "y": 20.0}, {"label": "Ch\u00f6wsg\u00f6l Nuur", "x": 1624.0, "y": 262.0}, {"label": "Hulun Nur", "x": 539.0, "y": 9.0}, {"label": "Qinghai Lake", "x": 3195.0, "y": 27.0}, {"label": "Nam Co", "x": 4718.0, "y": 125.0}, {"label": "Manasarovar", "x": 4586.0, "y": 77.0}, {"label": "Poyang Hu", "x": 16.5, "y": 25.0}, {"label": "Dongting Hu", "x": 33.0, "y": 31.0}, {"label": "Heaven Lake", "x": 2189.0, "y": 384.0}, {"label": "Lake Biwa", "x": 85.0, "y": 104.0}, {"label": "Lake Kussharo", "x": 121.0, "y": 117.0}, {"label": "Lake Tazawa", "x": 290.0, "y": 423.0}, {"label": "Lake Pinatubo", "x": 900.0, "y": 600.0}, {"label": "Lake Taal", "x": 5.0, "y": 172.0}, {"label": "Taal Crater Lake", "x": 5.0, "y": 172.0}, {"label": "Laguna de Bay", "x": 1.0, "y": 20.0}, {"label": "Lake Lanao", "x": 700.0, "y": 112.0}, {"label": "Lake Toba", "x": 905.0, "y": 505.0}, {"label": "Segara Anak", "x": 2008.0, "y": 190.0}, {"label": "Tonle Sap", "x": 0.5, "y": 10.0}, {"label": "Lake Nasser", "x": 183.0, "y": 180.0}, {"label": "Chott Melrhir", "x": -40.0, "y": 3.0}, {"label": "Lake Volta", "x": 85.0, "y": 75.0}, {"label": "Lake Bosumtwi", "x": 107.0, "y": 81.0}, {"label": "Lake Kainji", "x": 140.0, "y": 12.0}, {"label": "Chad Lake", "x": 250.0, "y": 7.0}, {"label": "Barrage de Mbakaou", "x": 838.0, "y": 29.0}, {"label": "Lake Nyos", "x": 250.0, "y": 1091.0}, {"label": "Lac Assal", "x": -155.0, "y": 20.0}, {"label": "Lake Abbe", "x": 243.0, "y": 37.0}, {"label": "Lake Abaya", "x": 619.0, "y": 13.0}, {"label": "Chew Bahir", "x": 520.0, "y": 7.5}, {"label": "Lake Turkana", "x": 375.0, "y": 73.0}, {"label": "Lake Tana", "x": 1830.0, "y": 14.0}, {"label": "Lake Sese Seko/Albertsee", "x": 619.0, "y": 48.0}, {"label": "Rutanzige/Eduardsee", "x": 920.0, "y": 112.0}, {"label": "Lake Kyoga", "x": 914.0, "y": 5.7}, {"label": "Lake Victoria", "x": 1134.0, "y": 85.0}, {"label": "Lake Kivu", "x": 1462.0, "y": 450.0}, {"label": "Lake Tanganjika", "x": 782.0, "y": 1470.0}, {"label": "Lake Mweru", "x": 931.0, "y": 27.0}, {"label": "Lake Bangweulu", "x": 1140.0, "y": 4.0}, {"label": "Lake Rukwa", "x": 800.0, "y": 5.0}, {"label": "Lake Natron", "x": 600.0, "y": 2.0}, {"label": "Lake Malawi", "x": 474.0, "y": 704.0}, {"label": "Lake Chilwa", "x": 474.0, "y": 2.0}, {"label": "Lake Mai Ndombe", "x": 300.0, "y": 10.0}, {"label": "Malebo Pool", "x": 272.0, "y": 10.0}, {"label": "Lake Cahora-Bassa", "x": 326.0, "y": 157.0}, {"label": "Lake Kariba", "x": 479.0, "y": 97.0}, {"label": "Lake Ngami", "x": 925.0, "y": 2.0}, {"label": "Etoscha Salt Pan", "x": 1000.0, "y": 0.0}, {"label": "Makgadikgadi Salt Pan", "x": 900.0, "y": 0.0}, {"label": "Lake Hazen", "x": 158.0, "y": 269.0}, {"label": "Nettilling Lake", "x": 30.0, "y": 132.0}, {"label": "Lake Clark", "x": 77.0, "y": 322.0}, {"label": "Iliamna Lake", "x": 14.0, "y": 301.0}, {"label": "Great Bear Lake", "x": 186.0, "y": 446.0}, {"label": "Great Slave Lake", "x": 156.0, "y": 614.0}, {"label": "Lake Athabasca", "x": 213.0, "y": 124.0}, {"label": "Atlin Lake", "x": 668.0, "y": 283.0}, {"label": "Lake Winnipeg", "x": 218.0, "y": 18.0}, {"label": "Lake Nipigon", "x": 260.0, "y": 165.0}, {"label": "Lake Manicouagan", "x": 360.0, "y": 350.0}, {"label": "Lake Ontario", "x": 75.0, "y": 244.0}, {"label": "Lake Erie", "x": 174.0, "y": 64.0}, {"label": "Lake Huron", "x": 176.0, "y": 229.0}, {"label": "Lake Mindemoya", "x": 200.0, "y": 21.0}, {"label": "Lake Michigan", "x": 176.0, "y": 281.0}, {"label": "Lake Superior", "x": 184.0, "y": 405.0}, {"label": "Lake Champlain", "x": 30.0, "y": 121.0}, {"label": "Lake Winnipesaukee", "x": 153.0, "y": 55.0}, {"label": "Lake Okeechobee", "x": 4.0, "y": 4.0}, {"label": "Kentucky Lake", "x": 375.0, "y": 23.0}, {"label": "Chickamauga Lake", "x": 710.0, "y": 22.0}, {"label": "Lake Pend Oreille", "x": 630.0, "y": 351.0}, {"label": "Lake Chelan", "x": 335.0, "y": 453.0}, {"label": "Mazama Crater Lake", "x": 1883.0, "y": 594.0}, {"label": "Great Salt Lake", "x": 1279.0, "y": 10.0}, {"label": "Utah Lake", "x": 1368.0, "y": 4.2}, {"label": "Lake Tahoe", "x": 1900.0, "y": 501.0}, {"label": "Pyramid Lake", "x": 1155.0, "y": 108.0}, {"label": "Mono Lake", "x": 1946.0, "y": 48.0}, {"label": "Lake Oroville", "x": 275.0, "y": 274.0}, {"label": "Lake Powell", "x": 1127.0, "y": 171.0}, {"label": "Lake Mead", "x": 372.0, "y": 180.0}, {"label": "Fort Peck Lake", "x": 690.0, "y": 67.0}, {"label": "Lake Sakakawea", "x": 554.0, "y": 55.0}, {"label": "Lake Oahe", "x": 502.0, "y": 62.0}, {"label": "Lago de Chapala", "x": 1520.0, "y": 12.0}, {"label": "Lago de Atitl\u00e1n", "x": 1562.0, "y": 340.0}, {"label": "Lago de Izabal", "x": 1.5, "y": 18.0}, {"label": "Lago Enriquillo", "x": -27.0, "y": 52.0}, {"label": "Lake Nicaragua", "x": 31.0, "y": 45.0}, {"label": "Lake Managua", "x": 39.0, "y": 20.0}, {"label": "La Brea Pitch Lake", "x": 60.0, "y": 75.0}, {"label": "Lago de Sobradinho", "x": 392.0, "y": 30.0}, {"label": "Quilotoa", "x": 3500.0, "y": 250.0}, {"label": "Lake Junin", "x": 4082.0, "y": 12.0}, {"label": "Lake Titicaca", "x": 3812.0, "y": 281.0}, {"label": "Poopo", "x": 3686.0, "y": 0.0}, {"label": "Salar de Uyuni", "x": 3650.0, "y": 0.0}, {"label": "Salar de Atacama", "x": 2300.0, "y": 1700.0}, {"label": "Laguna Mar Chiquita", "x": 71.0, "y": 19.0}, {"label": "Nahuel Huapi", "x": 770.0, "y": 460.0}, {"label": "Lago General Carrera", "x": 217.0, "y": 590.0}, {"label": "Laguna del Carb\u00f3n", "x": -105.0, "y": 0.0}, {"label": "Lago Argentino", "x": 187.0, "y": 500.0}, {"label": "Fagnano Lake", "x": 140.0, "y": 449.0}, {"label": "Lake Eyre", "x": -17.0, "y": 4.0}, {"label": "Lake Burley Griffin", "x": 556.0, "y": 18.0}, {"label": "Lake Eucumbene", "x": 1200.0, "y": 107.0}, {"label": "Lake Jindabyne", "x": 915.0, "y": 40.0}, {"label": "Lake Hume", "x": 192.0, "y": 40.0}, {"label": "Lake Taupo", "x": 356.0, "y": 160.0}, {"label": "Lake Wanaka", "x": 280.0, "y": 311.0}, {"label": "Lake Tengano", "x": 40.0, "y": 44.0}];
+const xName = "elevation", yName = "depth";
+const sizeName = null, colorName = null;
+const width = 920, height = 640;
+
+const margin = {top: 24, right: 30, bottom: 52, left: 64};
+const innerW = width - margin.left - margin.right;
+const innerH = height - margin.top - margin.bottom;
+
+const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
+const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+const x = d3.scaleLinear().domain(d3.extent(data, d => d.x)).nice().range([0, innerW]);
+const y = d3.scaleLinear().domain(d3.extent(data, d => d.y)).nice().range([innerH, 0]);
+const rScale = sizeName ? d3.scaleSqrt().domain([0, d3.max(data, d => d.size) || 1]).range([3, 22]) : null;
+const colorVals = colorName ? Array.from(new Set(data.map(d => d.color))) : [];
+const color = colorName ? d3.scaleOrdinal(colorVals, d3.schemeCategory10) : null;
+
+g.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(8));
+g.append("g").call(d3.axisLeft(y).ticks(8));
+g.append("text").attr("x", innerW / 2).attr("y", innerH + 40).attr("text-anchor", "middle").attr("font-size", "11px").text(xName);
+g.append("text").attr("transform", "rotate(-90)").attr("x", -innerH / 2).attr("y", -48).attr("text-anchor", "middle").attr("font-size", "11px").text(yName);
+
+const tip = d3.select("#tip");
+const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+
+// Draw larger bubbles first so small ones are not hidden.
+const drawData = rScale ? data.slice().sort((a, b) => b.size - a.size) : data;
+const dot = g.append("g").selectAll("circle").data(drawData).join("circle")
+  .attr("cx", d => x(d.x))
+  .attr("cy", d => y(d.y))
+  .attr("r", d => rScale ? rScale(d.size) : 4)
+  .attr("fill", d => color ? color(d.color) : "#4a78b5")
+  .attr("fill-opacity", 0.7)
+  .attr("stroke", "#fff");
+
+dot
+  .on("mouseover", (event, d) => {
+    dot.attr("fill-opacity", p => p === d ? 1 : 0.12);
+    let v = "<strong>" + d.label + "</strong><br>" + xName + ": " + d.x + "<br>" + yName + ": " + d.y;
+    if (sizeName) v += "<br>" + sizeName + ": " + d.size;
+    if (colorName) v += "<br>" + colorName + ": " + d.color;
+    tip.style("opacity", 1).html(v);
+    moveTip(event);
+  })
+  .on("mousemove", moveTip)
+  .on("mouseout", () => { dot.attr("fill-opacity", 0.7); tip.style("opacity", 0); });
+</script>
+</body>
+</html>

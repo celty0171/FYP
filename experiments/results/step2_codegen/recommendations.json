@@ -1,0 +1,622 @@
+{
+  "results": [
+    {
+      "selected_table": "country",
+      "selected_columns": [
+        "code",
+        "population"
+      ],
+      "identified_pattern": "basic_entity",
+      "dimension_types": {
+        "code": "discrete",
+        "population": "scalar"
+      },
+      "recommended_charts": [
+        "bar chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "needs a key and >=1 scalar attribute",
+          "mapping": {
+            "table": "country",
+            "key": "code",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": false,
+          "reason": "needs a key and >=2 scalar attributes",
+          "mapping": {}
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": false,
+          "reason": "needs a key and >=3 scalar attributes",
+          "mapping": {}
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": false,
+          "reason": "needs a key and >=1 temporal attribute",
+          "mapping": {}
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be geographical + a scalar attribute",
+          "mapping": {
+            "table": "country",
+            "region": "code",
+            "color": "population"
+          },
+          "note": "assert only if the key is a geographical region code"
+        },
+        {
+          "chart": "word cloud",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be lexical + a scalar attribute",
+          "mapping": {
+            "table": "country",
+            "text": "code",
+            "size": "population"
+          },
+          "note": "assert only if the key is words/labels"
+        }
+      ],
+      "selected": {
+        "chart": "bar chart",
+        "mapping": {
+          "table": "country",
+          "key": "code",
+          "measure": "population"
+        }
+      },
+      "case_id": "1"
+    },
+    {
+      "selected_table": "economy",
+      "selected_columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "identified_pattern": "basic_entity_inherited_key",
+      "dimension_types": {
+        "country": "discrete",
+        "gdp": "scalar",
+        "unemployment": "scalar"
+      },
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "needs a key and >=1 scalar attribute",
+          "mapping": {
+            "table": "economy",
+            "key": "country",
+            "measure": "gdp"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "needs a key and >=2 scalar attributes",
+          "mapping": {
+            "table": "economy",
+            "key": "country",
+            "x": "gdp",
+            "y": "unemployment"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": false,
+          "reason": "needs a key and >=3 scalar attributes",
+          "mapping": {}
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": false,
+          "reason": "needs a key and >=1 temporal attribute",
+          "mapping": {}
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be geographical + a scalar attribute",
+          "mapping": {
+            "table": "economy",
+            "region": "country",
+            "color": "gdp"
+          },
+          "note": "assert only if the key is a geographical region code"
+        },
+        {
+          "chart": "word cloud",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be lexical + a scalar attribute",
+          "mapping": {
+            "table": "economy",
+            "text": "country",
+            "size": "gdp"
+          },
+          "note": "assert only if the key is words/labels"
+        }
+      ],
+      "selected": {
+        "chart": "scatter diagram",
+        "mapping": {
+          "table": "economy",
+          "key": "country",
+          "x": "gdp",
+          "y": "unemployment"
+        }
+      },
+      "case_id": "2"
+    },
+    {
+      "selected_table": "lake",
+      "selected_columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "identified_pattern": "basic_entity",
+      "dimension_types": {
+        "name": "discrete",
+        "elevation": "scalar",
+        "depth": "scalar",
+        "dam_height": "scalar"
+      },
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "needs a key and >=1 scalar attribute",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "needs a key and >=2 scalar attributes",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "elevation",
+            "y": "depth"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": true,
+          "reason": "needs a key and >=3 scalar attributes",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "elevation",
+            "y": "depth",
+            "size": "dam_height"
+          }
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": false,
+          "reason": "needs a key and >=1 temporal attribute",
+          "mapping": {}
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be geographical + a scalar attribute",
+          "mapping": {
+            "table": "lake",
+            "region": "name",
+            "color": "elevation"
+          },
+          "note": "assert only if the key is a geographical region code"
+        },
+        {
+          "chart": "word cloud",
+          "eligible": "conditional",
+          "reason": "conditional: needs key to be lexical + a scalar attribute",
+          "mapping": {
+            "table": "lake",
+            "text": "name",
+            "size": "elevation"
+          },
+          "note": "assert only if the key is words/labels"
+        }
+      ],
+      "selected": {
+        "chart": "bubble chart",
+        "mapping": {
+          "table": "lake",
+          "key": "name",
+          "x": "elevation",
+          "y": "depth",
+          "size": "dam_height"
+        }
+      },
+      "case_id": "3"
+    },
+    {
+      "selected_table": "organization",
+      "selected_columns": [
+        "abbreviation",
+        "established"
+      ],
+      "identified_pattern": "basic_entity",
+      "dimension_types": {
+        "abbreviation": "discrete",
+        "established": "temporal"
+      },
+      "recommended_charts": [
+        "calendar chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": false,
+          "reason": "needs a key and >=1 scalar attribute",
+          "mapping": {}
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": false,
+          "reason": "needs a key and >=2 scalar attributes",
+          "mapping": {}
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": false,
+          "reason": "needs a key and >=3 scalar attributes",
+          "mapping": {}
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "needs a key and >=1 temporal attribute",
+          "mapping": {
+            "table": "organization",
+            "date": "established",
+            "key": "abbreviation"
+          }
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": false,
+          "reason": "conditional: needs key to be geographical + a scalar attribute",
+          "mapping": {},
+          "note": "assert only if the key is a geographical region code"
+        },
+        {
+          "chart": "word cloud",
+          "eligible": false,
+          "reason": "conditional: needs key to be lexical + a scalar attribute",
+          "mapping": {},
+          "note": "assert only if the key is words/labels"
+        }
+      ],
+      "selected": {
+        "chart": "calendar chart",
+        "mapping": {
+          "table": "organization",
+          "date": "established",
+          "key": "abbreviation"
+        }
+      },
+      "case_id": "4"
+    },
+    {
+      "selected_table": "country_population",
+      "selected_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "identified_pattern": "weak_entity",
+      "dimension_types": {
+        "country": "discrete",
+        "year": "scalar",
+        "population": "scalar"
+      },
+      "recommended_charts": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "candidates": [
+        {
+          "chart": "line chart",
+          "eligible": true,
+          "reason": "needs scalar child key k2 (x) and scalar a1 (y)",
+          "mapping": {
+            "table": "country_population",
+            "series": "country",
+            "x": "year",
+            "y": "population"
+          }
+        },
+        {
+          "chart": "stacked bar chart",
+          "eligible": true,
+          "reason": "needs scalar a1 (best with k2 complete across k1)",
+          "mapping": {
+            "table": "country_population",
+            "group": "country",
+            "segment": "year",
+            "value": "population"
+          }
+        },
+        {
+          "chart": "grouped bar chart",
+          "eligible": true,
+          "reason": "needs scalar a1",
+          "mapping": {
+            "table": "country_population",
+            "group": "country",
+            "segment": "year",
+            "value": "population"
+          }
+        },
+        {
+          "chart": "spider chart",
+          "eligible": true,
+          "reason": "needs scalar a1 (best with k2 complete across k1)",
+          "mapping": {
+            "table": "country_population",
+            "ring": "country",
+            "spoke": "year",
+            "value": "population"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "line chart",
+        "mapping": {
+          "table": "country_population",
+          "series": "country",
+          "x": "year",
+          "y": "population"
+        }
+      },
+      "case_id": "5"
+    },
+    {
+      "selected_table": "ethnic_group",
+      "selected_columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "identified_pattern": "weak_entity",
+      "dimension_types": {
+        "country": "discrete",
+        "name": "discrete",
+        "percentage": "scalar"
+      },
+      "recommended_charts": [
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "candidates": [
+        {
+          "chart": "line chart",
+          "eligible": false,
+          "reason": "needs scalar child key k2 (x) and scalar a1 (y)",
+          "mapping": {
+            "table": "ethnic_group",
+            "series": "country",
+            "x": "name",
+            "y": "percentage"
+          }
+        },
+        {
+          "chart": "stacked bar chart",
+          "eligible": true,
+          "reason": "needs scalar a1 (best with k2 complete across k1)",
+          "mapping": {
+            "table": "ethnic_group",
+            "group": "country",
+            "segment": "name",
+            "value": "percentage"
+          }
+        },
+        {
+          "chart": "grouped bar chart",
+          "eligible": true,
+          "reason": "needs scalar a1",
+          "mapping": {
+            "table": "ethnic_group",
+            "group": "country",
+            "segment": "name",
+            "value": "percentage"
+          }
+        },
+        {
+          "chart": "spider chart",
+          "eligible": true,
+          "reason": "needs scalar a1 (best with k2 complete across k1)",
+          "mapping": {
+            "table": "ethnic_group",
+            "ring": "country",
+            "spoke": "name",
+            "value": "percentage"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "stacked bar chart",
+        "mapping": {
+          "table": "ethnic_group",
+          "group": "country",
+          "segment": "name",
+          "value": "percentage"
+        }
+      },
+      "case_id": "6"
+    },
+    {
+      "selected_table": "airport",
+      "selected_columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "identified_pattern": "one_many_relationship",
+      "dimension_types": {
+        "iata_code": "discrete",
+        "island": "discrete",
+        "elevation": "scalar"
+      },
+      "recommended_charts": [
+        "tree map",
+        "circle packing",
+        "hierarchy tree"
+      ],
+      "candidates": [
+        {
+          "chart": "tree map",
+          "eligible": true,
+          "reason": "needs parent FK, child key, and a scalar attribute",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "circle packing",
+          "eligible": true,
+          "reason": "needs parent FK, child key, and a scalar attribute",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "hierarchy tree",
+          "eligible": true,
+          "reason": "needs parent FK and child key (no scalar required)",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "tree map",
+        "mapping": {
+          "table": "airport",
+          "parent": "island",
+          "child": "iata_code",
+          "measure": "elevation"
+        }
+      },
+      "case_id": "7"
+    },
+    {
+      "selected_table": "encompasses",
+      "selected_columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "identified_pattern": "many_many_relationship",
+      "dimension_types": {
+        "country": "discrete",
+        "continent": "discrete",
+        "percentage": "scalar"
+      },
+      "recommended_charts": [
+        "Sankey diagram"
+      ],
+      "candidates": [
+        {
+          "chart": "Sankey diagram",
+          "eligible": true,
+          "reason": "needs the two primary-key foreign keys and a scalar relationship attribute",
+          "mapping": {
+            "table": "encompasses",
+            "source": "country",
+            "target": "continent",
+            "width": "percentage"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "Sankey diagram",
+        "mapping": {
+          "table": "encompasses",
+          "source": "country",
+          "target": "continent",
+          "width": "percentage"
+        }
+      },
+      "case_id": "8"
+    },
+    {
+      "selected_table": "borders",
+      "selected_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "identified_pattern": "reflexive_many_many_relationship",
+      "dimension_types": {
+        "country1": "discrete",
+        "country2": "discrete",
+        "length": "scalar"
+      },
+      "recommended_charts": [
+        "chord diagram"
+      ],
+      "candidates": [
+        {
+          "chart": "chord diagram",
+          "eligible": true,
+          "reason": "needs the two primary-key foreign keys and a scalar relationship attribute",
+          "mapping": {
+            "table": "borders",
+            "source": "country1",
+            "target": "country2",
+            "width": "length"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "chord diagram",
+        "mapping": {
+          "table": "borders",
+          "source": "country1",
+          "target": "country2",
+          "width": "length"
+        }
+      },
+      "case_id": "9"
+    }
+  ]
+}

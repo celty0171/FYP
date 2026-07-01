@@ -1,0 +1,354 @@
+import json
+import sys
+from collections import defaultdict
+
+def classify_column_type(sql_type):
+    sql_type_upper = sql_type.upper().split('(')[0].strip()
+    
+    # Scalar types
+    if sql_type_upper in [
+        'INT', 'INTEGER', 'BIGINT', 'SMALLINT',
+        'NUMERIC', 'DECIMAL', 'FLOAT', 'DOUBLE', 'REAL', 'MONEY'
+    ]:
+        return 'scalar'
+    
+    # Temporal types
+    if sql_type_upper in ['DATE', 'TIME', 'TIMESTAMP', 'YEAR']:
+        return 'temporal'
+    
+    # Discrete types
+    if sql_type_upper in ['VARCHAR', 'CHAR', 'TEXT']:
+        return 'discrete'
+    
+    # Unknown type
+    return None
+
+def get_column_role(table_schema, col_name):
+    pk_cols = set(table_schema['primary_key'])
+    fk_cols = set()
+    for fk in table_schema.get('foreign_keys', []):
+        fk_cols.update(fk['columns'])
+    
+    if col_name in pk_cols:
+        return 'key'
+    elif col_name in fk_cols:
+        return 'foreign_key'
+    else:
+        return 'attribute'
+
+def extract_chart_requirements(pattern):
+    if pattern in ("basic_entity", "basic_entity_inherited_key"):
+        return {
+            "bar chart": {
+                "required": ["key", "scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "key": "", "measure": ""}
+            },
+            "scatter diagram": {
+                "required": ["key", "scalar", "scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "key": "", "x": "", "y": ""}
+            },
+            "bubble chart": {
+                "required": ["key", "scalar", "scalar", "scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "key": "", "x": "", "y": "", "size": ""}
+            },
+            "calendar chart": {
+                "required": ["key", "temporal"],
+                "optional": ["scalar"],
+                "conditional": False,
+                "mapping_template": {"table": "", "date": "", "key": ""}
+            },
+            "choropleth map": {
+                "required": ["key", "scalar"],
+                "optional": [],
+                "conditional": True,
+                "condition": "geographical",
+                "mapping_template": {"table": "", "region": "", "color": ""}
+            },
+            "word cloud": {
+                "required": ["key", "scalar"],
+                "optional": [],
+                "conditional": True,
+                "condition": "lexical",
+                "mapping_template": {"table": "", "text": "", "size": ""}
+            }
+        }
+
+    elif pattern == "one_many_relationship":
+        return {
+            "tree map": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "parent": "", "child": "", "measure": ""}
+            },
+            "circle packing": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "parent": "", "child": "", "measure": ""}
+            },
+            "hierarchy tree": {
+                "required": [],
+                "optional": ["discrete"],
+                "conditional": False,
+                "mapping_template": {"table": "", "parent": "", "child": ""}
+            }
+        }
+
+    elif pattern == "many_many_relationship":
+        return {
+            "sankey diagram": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "source": "", "target": "", "width": ""}
+            }
+        }
+
+    elif pattern == "reflexive_many_many_relationship":
+        return {
+            "chord diagram": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "source": "", "target": "", "width": ""}
+            }
+        }
+
+    elif pattern == "weak_entity":
+        return {
+            "line chart": {
+                "required": ["scalar", "scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "series": "", "x": "", "y": ""}
+            },
+            "stacked bar chart": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "group": "", "segment": "", "value": ""}
+            },
+            "grouped bar chart": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "group": "", "segment": "", "value": ""}
+            },
+            "spider chart": {
+                "required": ["scalar"],
+                "optional": [],
+                "conditional": False,
+                "mapping_template": {"table": "", "ring": "", "spoke": "", "value": ""}
+            }
+        }
+
+    return {}
+
+def determine_eligibility(selected_columns_info, chart_reqs):
+    results = []
+    for chart_name, req in chart_reqs.items():
+        required_types = req["required"]
+        optional_types = req.get("optional", [])
+        conditional = req.get("conditional", False)
+        condition = req.get("condition")
+        
+        # Check if all required types are present
+        required_present = True
+        required_count = len(required_types)
+        current_count = 0
+        
+        for col_info in selected_columns_info:
+            col_type = col_info["type"]
+            col_role = col_info["role"]
+            
+            if col_role == "key":
+                continue
+            
+            if col_type in required_types:
+                current_count += 1
+            elif col_type in optional_types:
+                continue
+            else:
+                required_present = False
+                break
+        
+        if not required_present:
+            reason = f"Missing required types ({' '.join(required_types)}) in selected columns."
+            results.append({
+                "chart": chart_name,
+                "eligible": False,
+                "reason": reason,
+                "mapping": {}
+            })
+            continue
+        
+        if conditional:
+            if condition == "geographical":
+                if any(col_info["role"] == "key" and col_info.get("geographical", False) for col_info in selected_columns_info):
+                    eligible = True
+                else:
+                    eligible = "conditional"
+                    reason = "Key is not marked as geographical."
+            elif condition == "lexical":
+                if any(col_info["role"] == "key" and col_info.get("lexical", False) for col_info in selected_columns_info):
+                    eligible = True
+                else:
+                    eligible = "conditional"
+                    reason = "Key is not marked as lexical."
+            else:
+                eligible = False
+                reason = "Conditional requirement not met."
+        else:
+            eligible = True
+            reason = ""
+        
+        if eligible:
+            # Build mapping based on the first matching columns
+            mapping = req["mapping_template"].copy()
+            mapping["table"] = selected_columns_info[0]["table"]
+            
+            idx = 0
+            for col_info in selected_columns_info:
+                col_type = col_info["type"]
+                col_role = col_info["role"]
+                
+                if col_role == "key":
+                    mapping["key"] = col_info["name"]
+                elif col_type in required_types:
+                    if idx == 0:
+                        mapping["measure"] = col_info["name"]
+                    elif idx == 1:
+                        mapping["x"] = col_info["name"]
+                    elif idx == 2:
+                        mapping["y"] = col_info["name"]
+                    elif idx == 3:
+                        mapping["size"] = col_info["name"]
+                    elif idx == 4:
+                        mapping["width"] = col_info["name"]
+                    idx += 1
+            
+            results.append({
+                "chart": chart_name,
+                "eligible": True,
+                "reason": reason,
+                "mapping": mapping
+            })
+        else:
+            results.append({
+                "chart": chart_name,
+                "eligible": eligible,
+                "reason": reason,
+                "mapping": {}
+            })
+
+    return results
+
+def recommend(schema, table_name, selected_columns, pattern):
+    table_schema = schema["tables"][table_name.lower()]
+    selected_columns_lower = [col.lower() for col in selected_columns]
+    
+    selected_columns_info = []
+    for col in selected_columns_lower:
+        col_data = next((c for c in table_schema["columns"] if c["name"].lower() == col), None)
+        if not col_data:
+            continue
+        
+        col_type = classify_column_type(col_data["type"])
+        col_role = get_column_role(table_schema, col)
+        
+        selected_columns_info.append({
+            "name": col,
+            "type": col_type,
+            "role": col_role,
+            "table": table_name
+        })
+    
+    chart_requirements = extract_chart_requirements(pattern)
+    if not chart_requirements:
+        return {
+            "recommended_charts": [],
+            "candidates": [],
+            "selected": {}
+        }
+    
+    candidates = determine_eligibility(selected_columns_info, chart_requirements)
+    
+    # Filter out ineligible charts
+    eligible_candidates = [c for c in candidates if c["eligible"] in (True, "conditional")]
+    
+    # Determine the best chart (most used columns)
+    best_chart = None
+    max_used = -1
+    
+    for candidate in eligible_candidates:
+        if candidate["eligible"] != True:
+            continue
+        
+        used_columns = sum(1 for k in candidate["mapping"] if k != "table")
+        if used_columns > max_used:
+            max_used = used_columns
+            best_chart = candidate
+    
+    recommended_charts = [c["chart"] for c in eligible_candidates if c["eligible"] == True]
+    
+    return {
+        "recommended_charts": recommended_charts,
+        "candidates": candidates,
+        "selected": best_chart or {}
+    }
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Chart recommendation based on schema and column selections.")
+    parser.add_argument("--schema", required=True, help="Path to schema JSON file.")
+    parser.add_argument("--cases", required=True, help="Path to cases JSON file.")
+    parser.add_argument("--out", required=True, help="Path to output JSON file.")
+    args = parser.parse_args()
+
+    with open(args.schema, "r") as f:
+        schema = json.load(f)
+    
+    with open(args.cases, "r") as f:
+        cases_input = json.load(f)
+        if "cases" in cases_input:
+            cases = cases_input["cases"]
+        else:
+            cases = cases_input
+
+    results = []
+
+    for case in cases:
+        case_id = case["case_id"]
+        selected_table = case["selected_table"]
+        selected_columns = case["selected_columns"]
+        identified_pattern = case["identified_pattern"]
+
+        result = recommend(
+            schema=schema,
+            table_name=selected_table,
+            selected_columns=selected_columns,
+            pattern=identified_pattern
+        )
+
+        results.append({
+            "case_id": case_id,
+            "selected_table": selected_table,
+            "selected_columns": selected_columns,
+            "identified_pattern": identified_pattern,
+            "recommended_charts": result["recommended_charts"],
+            "candidates": result["candidates"],
+            "selected": result["selected"]
+        })
+
+    with open(args.out, "w") as f:
+        json.dump({"results": results}, f, indent=2)
+
+if __name__ == "__main__":
+    main()

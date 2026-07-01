@@ -1,0 +1,260 @@
+{
+  "results": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "selected_columns": [
+        "code",
+        "population"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "bar chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "Key 'code' and scalar attribute 'population' available.",
+          "mapping": {
+            "table": "country",
+            "key": "code",
+            "measure": "population"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "bar chart",
+        "eligible": true,
+        "reason": "Key 'code' and scalar attribute 'population' available.",
+        "mapping": {
+          "table": "country",
+          "key": "code",
+          "measure": "population"
+        }
+      }
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "selected_columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "identified_pattern": "basic_entity_inherited_key",
+      "recommended_charts": [],
+      "candidates": [],
+      "selected": {}
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "selected_columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "Key 'name' and scalar attribute 'elevation' available.",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "Key 'name', scalar attributes 'elevation' and 'depth' available.",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "elevation",
+            "y": "depth"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": true,
+          "reason": "Key 'name', scalar attributes 'elevation', 'depth', and 'dam_height' available.",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "elevation",
+            "y": "depth",
+            "size": "dam_height"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "bubble chart",
+        "eligible": true,
+        "reason": "Key 'name', scalar attributes 'elevation', 'depth', and 'dam_height' available.",
+        "mapping": {
+          "table": "lake",
+          "key": "name",
+          "x": "elevation",
+          "y": "depth",
+          "size": "dam_height"
+        }
+      }
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "selected_columns": [
+        "abbreviation",
+        "established"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "calendar chart"
+      ],
+      "candidates": [
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "Key 'abbreviation' and temporal attribute 'established' available.",
+          "mapping": {
+            "table": "organization",
+            "date": "established",
+            "key": "abbreviation"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "calendar chart",
+        "eligible": true,
+        "reason": "Key 'abbreviation' and temporal attribute 'established' available.",
+        "mapping": {
+          "table": "organization",
+          "date": "established",
+          "key": "abbreviation"
+        }
+      }
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "selected_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "identified_pattern": "weak_entity",
+      "recommended_charts": [],
+      "candidates": [],
+      "selected": {}
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "selected_columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "identified_pattern": "weak_entity",
+      "recommended_charts": [],
+      "candidates": [],
+      "selected": {}
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "selected_columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "identified_pattern": "one_many_relationship",
+      "recommended_charts": [
+        "tree map",
+        "circle packing",
+        "hierarchy tree"
+      ],
+      "candidates": [
+        {
+          "chart": "tree map",
+          "eligible": true,
+          "reason": "Parent 'island', child 'iata_code', and scalar attribute 'elevation' available.",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "circle packing",
+          "eligible": true,
+          "reason": "Parent 'island', child 'iata_code', and scalar attribute 'elevation' available.",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "hierarchy tree",
+          "eligible": true,
+          "reason": "Parent 'island' and child 'iata_code' available.",
+          "mapping": {
+            "table": "airport",
+            "parent": "island",
+            "child": "iata_code"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "tree map",
+        "eligible": true,
+        "reason": "Parent 'island', child 'iata_code', and scalar attribute 'elevation' available.",
+        "mapping": {
+          "table": "airport",
+          "parent": "island",
+          "child": "iata_code",
+          "measure": "elevation"
+        }
+      }
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "selected_columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "identified_pattern": "many_many_relationship",
+      "recommended_charts": [],
+      "candidates": [],
+      "selected": {}
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "selected_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "identified_pattern": "reflexive_many_many_relationship",
+      "recommended_charts": [],
+      "candidates": [],
+      "selected": {}
+    }
+  ]
+}

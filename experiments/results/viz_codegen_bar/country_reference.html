@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Country population (bar chart)</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; margin: 16px; }
+  h1 { font-size: 18px; margin-bottom: 2px; }
+  #sub { color: #555; font-size: 12px; margin: 0 0 8px; }
+  .domain, .tick line { stroke: #ccc; }
+  #tip { position: absolute; opacity: 0; pointer-events: none; background: rgba(0,0,0,0.82);
+         color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<h1>Country population (bar chart)</h1>
+<p id="sub">One bar per name; bar length = population, sorted descending. 246 instances.</p>
+<div id="chart"></div>
+<div id="tip"></div>
+<script>
+const data = [{"label": "China", "value": 1411778724.0}, {"label": "India", "value": 1210854977.0}, {"label": "United States", "value": 331449281.0}, {"label": "Indonesia", "value": 270203917.0}, {"label": "Pakistan", "value": 207776954.0}, {"label": "Brazil", "value": 202768562.0}, {"label": "Nigeria", "value": 193392500.0}, {"label": "Bangladesh", "value": 149772364.0}, {"label": "Russia", "value": 144699673.0}, {"label": "Japan", "value": 126146099.0}, {"label": "Mexico", "value": 126014024.0}, {"label": "Philippines", "value": 109035343.0}, {"label": "Ethiopia", "value": 105164000.0}, {"label": "Vietnam", "value": 96208984.0}, {"label": "Egypt", "value": 94798827.0}, {"label": "Congo, Dem.Rep.", "value": 86026000.0}, {"label": "Turkey", "value": 84680273.0}, {"label": "Germany", "value": 82521653.0}, {"label": "Iran", "value": 79926270.0}, {"label": "Thailand", "value": 67993000.0}, {"label": "United Kingdom", "value": 66980000.0}, {"label": "France", "value": 64300821.0}, {"label": "Italy", "value": 59433744.0}, {"label": "South Korea", "value": 51780579.0}, {"label": "South Africa", "value": 51770560.0}, {"label": "Myanmar", "value": 51419420.0}, {"label": "Colombia", "value": 48258494.0}, {"label": "Kenya", "value": 47564296.0}, {"label": "Spain", "value": 46815916.0}, {"label": "Tanzania", "value": 44928923.0}, {"label": "Ukraine", "value": 43999924.0}, {"label": "Argentina", "value": 42669500.0}, {"label": "Sudan", "value": 40782700.0}, {"label": "Iraq", "value": 38124182.0}, {"label": "Poland", "value": 38036118.0}, {"label": "Algeria", "value": 37062820.0}, {"label": "Canada", "value": 35151728.0}, {"label": "Uganda", "value": 34634650.0}, {"label": "Saudi Arabia", "value": 33413660.0}, {"label": "Morocco", "value": 33337529.0}, {"label": "Malaysia", "value": 32447385.0}, {"label": "Uzbekistan", "value": 32120500.0}, {"label": "Afghanistan", "value": 31390200.0}, {"label": "Peru", "value": 31237385.0}, {"label": "Ghana", "value": 30832019.0}, {"label": "Cote d&#x27;Ivoire", "value": 29389150.0}, {"label": "Nepal", "value": 29192480.0}, {"label": "Venezuela", "value": 28946101.0}, {"label": "Mozambique", "value": 27909798.0}, {"label": "Angola", "value": 25789024.0}, {"label": "Madagascar", "value": 25674196.0}, {"label": "Australia", "value": 25422788.0}, {"label": "Yemen", "value": 24527000.0}, {"label": "North Korea", "value": 24500520.0}, {"label": "Taiwan", "value": 23571227.0}, {"label": "Cameroon", "value": 22179700.0}, {"label": "Burkina Faso", "value": 20505155.0}, {"label": "Sri Lanka", "value": 20359439.0}, {"label": "Mali", "value": 20250834.0}, {"label": "Romania", "value": 20121641.0}, {"label": "Netherlands", "value": 17590672.0}, {"label": "Chile", "value": 17574003.0}, {"label": "Malawi", "value": 17563749.0}, {"label": "Kazakhstan", "value": 17165239.0}, {"label": "Niger", "value": 17138707.0}, {"label": "Syria", "value": 17070135.0}, {"label": "Chad", "value": 15775400.0}, {"label": "Cambodia", "value": 15288489.0}, {"label": "Zimbabwe", "value": 15178979.0}, {"label": "Guatemala", "value": 14901286.0}, {"label": "Ecuador", "value": 14483499.0}, {"label": "Senegal", "value": 13508715.0}, {"label": "Zambia", "value": 13092666.0}, {"label": "South Sudan", "value": 11868200.0}, {"label": "Belgium", "value": 11492641.0}, {"label": "Cuba", "value": 11167325.0}, {"label": "Somalia", "value": 11000000.0}, {"label": "Tunisia", "value": 10982754.0}, {"label": "Haiti", "value": 10788000.0}, {"label": "Guinea", "value": 10628972.0}, {"label": "Czech Republic", "value": 10524167.0}, {"label": "Rwanda", "value": 10515973.0}, {"label": "Greece", "value": 10432481.0}, {"label": "Dominican Republic", "value": 10358300.0}, {"label": "Portugal", "value": 10347892.0}, {"label": "Bolivia", "value": 10027262.0}, {"label": "Benin", "value": 10008749.0}, {"label": "Hungary", "value": 9937628.0}, {"label": "Sweden", "value": 9555893.0}, {"label": "Belarus", "value": 9503807.0}, {"label": "Azerbaijan", "value": 9356500.0}, {"label": "Tajikistan", "value": 9313800.0}, {"label": "Israel", "value": 9140500.0}, {"label": "Jordan", "value": 9131712.0}, {"label": "United Arab Emirates", "value": 9121167.0}, {"label": "Switzerland", "value": 8670300.0}, {"label": "Burundi", "value": 8444784.0}, {"label": "Austria", "value": 8401940.0}, {"label": "Honduras", "value": 8303771.0}, {"label": "Togo", "value": 7706000.0}, {"label": "Sierra Leone", "value": 7541641.0}, {"label": "Hong Kong", "value": 7413070.0}, {"label": "Papua New Guinea", "value": 7275324.0}, {"label": "Serbia", "value": 7120666.0}, {"label": "Libya", "value": 6931061.0}, {"label": "Macau", "value": 6821004.0}, {"label": "Paraguay", "value": 6672631.0}, {"label": "Bulgaria", "value": 6520314.0}, {"label": "Laos", "value": 6492228.0}, {"label": "Nicaragua", "value": 6327927.0}, {"label": "El Salvador", "value": 6290420.0}, {"label": "Kyrgyzstan", "value": 6256700.0}, {"label": "Central African Republic", "value": 6091097.0}, {"label": "Turkmenistan", "value": 6031187.0}, {"label": "Eritrea", "value": 5741159.0}, {"label": "Singapore", "value": 5685807.0}, {"label": "Denmark", "value": 5678348.0}, {"label": "Finland", "value": 5513130.0}, {"label": "Slovakia", "value": 5449270.0}, {"label": "Lebanon", "value": 5416225.0}, {"label": "Ireland", "value": 5123536.0}, {"label": "Norway", "value": 5051275.0}, {"label": "New Zealand", "value": 4699755.0}, {"label": "Oman", "value": 4471148.0}, {"label": "Kuwait", "value": 4464521.0}, {"label": "Costa Rica", "value": 4301712.0}, {"label": "Panama", "value": 4278500.0}, {"label": "Georgia", "value": 4010000.0}, {"label": "Congo", "value": 4001831.0}, {"label": "Liberia", "value": 3957990.0}, {"label": "Croatia", "value": 3888529.0}, {"label": "Bosnia and Herzegovina", "value": 3791622.0}, {"label": "Mauritania", "value": 3537368.0}, {"label": "Moldova", "value": 3473900.0}, {"label": "Uruguay", "value": 3286314.0}, {"label": "Puerto Rico", "value": 3285874.0}, {"label": "Mongolia", "value": 3197020.0}, {"label": "Armenia", "value": 3026879.0}, {"label": "West Bank", "value": 2881687.0}, {"label": "Qatar", "value": 2846118.0}, {"label": "Albania", "value": 2821977.0}, {"label": "Lithuania", "value": 2810761.0}, {"label": "Jamaica", "value": 2697983.0}, {"label": "Botswana", "value": 2346179.0}, {"label": "Latvia", "value": 2201196.0}, {"label": "Namibia", "value": 2113077.0}, {"label": "Slovenia", "value": 2108977.0}, {"label": "Lesotho", "value": 2007201.0}, {"label": "Gaza Strip", "value": 1899291.0}, {"label": "Gambia", "value": 1882450.0}, {"label": "North Macedonia", "value": 1836713.0}, {"label": "Gabon", "value": 1811079.0}, {"label": "Kosovo", "value": 1733872.0}, {"label": "Guinea-Bissau", "value": 1520830.0}, {"label": "Bahrain", "value": 1501635.0}, {"label": "Estonia", "value": 1331824.0}, {"label": "Trinidad and Tobago", "value": 1328019.0}, {"label": "Mauritius", "value": 1237091.0}, {"label": "Equatorial Guinea", "value": 1225377.0}, {"label": "Timor-Leste", "value": 1183643.0}, {"label": "Eswatini", "value": 1093238.0}, {"label": "Djibouti", "value": 1049000.0}, {"label": "Cyprus", "value": 918100.0}, {"label": "Fiji", "value": 884887.0}, {"label": "Reunion", "value": 828581.0}, {"label": "Comoros", "value": 758316.0}, {"label": "Guyana", "value": 747884.0}, {"label": "Bhutan", "value": 727145.0}, {"label": "Solomon Islands", "value": 721455.0}, {"label": "Luxembourg", "value": 645397.0}, {"label": "Montenegro", "value": 619211.0}, {"label": "Western Sahara", "value": 554795.0}, {"label": "Suriname", "value": 541638.0}, {"label": "Malta", "value": 519562.0}, {"label": "Cape Verde", "value": 483628.0}, {"label": "Belize", "value": 430191.0}, {"label": "Brunei", "value": 429999.0}, {"label": "Maldives", "value": 402071.0}, {"label": "Guadeloupe", "value": 394110.0}, {"label": "Martinique", "value": 385551.0}, {"label": "Iceland", "value": 364134.0}, {"label": "Bahamas", "value": 353658.0}, {"label": "Vanuatu", "value": 300019.0}, {"label": "Barbados", "value": 277821.0}, {"label": "French Polynesia", "value": 275918.0}, {"label": "New Caledonia", "value": 271407.0}, {"label": "French Guiana", "value": 268700.0}, {"label": "Mayotte", "value": 256518.0}, {"label": "Samoa", "value": 200010.0}, {"label": "Sao Tome and Principe", "value": 187356.0}, {"label": "Saint Lucia", "value": 165595.0}, {"label": "Guam", "value": 153836.0}, {"label": "Curacao", "value": 150563.0}, {"label": "Kiribati", "value": 119940.0}, {"label": "Saint Vincent and the Grenadines", "value": 109991.0}, {"label": "Aruba", "value": 108166.0}, {"label": "Grenada", "value": 103328.0}, {"label": "Jersey", "value": 103267.0}, {"label": "Micronesia", "value": 102843.0}, {"label": "Seychelles", "value": 100447.0}, {"label": "Tonga", "value": 100209.0}, {"label": "Virgin Islands", "value": 87146.0}, {"label": "Isle of Man", "value": 84069.0}, {"label": "Ceuta", "value": 82376.0}, {"label": "Antigua and Barbuda", "value": 81799.0}, {"label": "Andorra", "value": 79535.0}, {"label": "Melilla", "value": 78476.0}, {"label": "Dominica", "value": 70739.0}, {"label": "Cayman Islands", "value": 69656.0}, {"label": "Guernsey", "value": 66150.0}, {"label": "Bermuda", "value": 61178.0}, {"label": "Greenland", "value": 56081.0}, {"label": "Turks and Caicos Islands", "value": 53700.0}, {"label": "American Samoa", "value": 49710.0}, {"label": "Faroe Islands", "value": 48346.0}, {"label": "Northern Mariana Islands", "value": 47329.0}, {"label": "Saint Kitts and Nevis", "value": 47195.0}, {"label": "Marshall Islands", "value": 42594.0}, {"label": "Liechtenstein", "value": 39055.0}, {"label": "Sint Maarten", "value": 38247.0}, {"label": "Monaco", "value": 37308.0}, {"label": "Saint Martin", "value": 36286.0}, {"label": "San Marino", "value": 33627.0}, {"label": "Gibraltar", "value": 32577.0}, {"label": "British Virgin Islands", "value": 28054.0}, {"label": "Bonaire", "value": 20104.0}, {"label": "Akrotiri and Dhekelia", "value": 18195.0}, {"label": "Palau", "value": 17501.0}, {"label": "Cook Islands", "value": 17459.0}, {"label": "Anguilla", "value": 13452.0}, {"label": "Wallis and Futuna", "value": 11558.0}, {"label": "Nauru", "value": 11550.0}, {"label": "Tuvalu", "value": 10507.0}, {"label": "Saint Barthelemy", "value": 9131.0}, {"label": "Saint Pierre and Miquelon", "value": 6008.0}, {"label": "Montserrat", "value": 4922.0}, {"label": "Saint Helena", "value": 4577.0}, {"label": "Falkland Islands", "value": 3398.0}, {"label": "Svalbard", "value": 2667.0}, {"label": "Norfolk Island", "value": 2188.0}, {"label": "Christmas Island", "value": 1692.0}, {"label": "Niue", "value": 1611.0}, {"label": "Tokelau", "value": 1499.0}, {"label": "Vatican City", "value": 826.0}, {"label": "Cocos Islands", "value": 593.0}, {"label": "Pitcairn", "value": 50.0}];
+const keyName = "name", measureName = "population";
+const width = 960, height = 3504;
+
+const margin = {top: 24, right: 90, bottom: 10, left: 170};
+const innerW = width - margin.left - margin.right;
+const innerH = height - margin.top - margin.bottom;
+
+const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
+const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+const y = d3.scaleBand().domain(data.map(d => d.label)).range([0, innerH]).padding(0.15);
+const x = d3.scaleLinear().domain([0, d3.max(data, d => d.value) || 1]).range([0, innerW]).nice();
+
+g.append("g").call(d3.axisTop(x).ticks(6));
+g.append("g").call(d3.axisLeft(y)).selectAll("text").style("font-size", "8px");
+
+const tip = d3.select("#tip");
+const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+
+const bar = g.append("g").selectAll("rect").data(data).join("rect")
+  .attr("x", 0)
+  .attr("y", d => y(d.label))
+  .attr("height", y.bandwidth())
+  .attr("width", d => x(d.value))
+  .attr("fill", "#4a78b5")
+  .attr("fill-opacity", 0.9);
+
+// Value labels at the bar ends when the bar is tall enough to fit text.
+g.append("g").selectAll("text.val").data(data).join("text")
+  .attr("class", "val")
+  .attr("x", d => x(d.value) + 4)
+  .attr("y", d => y(d.label) + y.bandwidth() / 2)
+  .attr("dy", "0.35em")
+  .style("font-size", "8px")
+  .text(d => y.bandwidth() >= 8 ? d.value.toLocaleString() : "");
+
+bar
+  .on("mouseover", (event, d) => {
+    bar.attr("fill-opacity", b => b === d ? 1 : 0.2);
+    tip.style("opacity", 1).html("<strong>" + d.label + "</strong><br>" + measureName + ": " + d.value.toLocaleString());
+    moveTip(event);
+  })
+  .on("mousemove", moveTip)
+  .on("mouseout", () => { bar.attr("fill-opacity", 0.9); tip.style("opacity", 0); });
+</script>
+</body>
+</html>

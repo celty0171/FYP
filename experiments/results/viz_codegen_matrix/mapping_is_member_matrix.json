@@ -1,0 +1,1 @@
+{"table": "is_member", "source": "country", "target": "organization", "value": "count", "category": "type", "pattern": "many_many_relationship", "title": "Country x Organization membership matrix (edge count)"}

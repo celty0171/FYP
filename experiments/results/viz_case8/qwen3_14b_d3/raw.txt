@@ -1,0 +1,715 @@
+<think>
+Okay, I need to create a runnable HTML file using D3.js to visualize the given data as a Sankey diagram. Let me start by understanding the task.
+
+The data represents many-to-many relationships between countries and continents, with a percentage indicating the flow. The Sankey diagram should show countries as sources, continents as targets, and the percentage as the flow width.
+
+First, I'll need to include the necessary D3 libraries. Since the user mentioned d3-sankey, I should include that. Wait, D3's Sankey is part of the main library, but maybe I need to include a specific version or a separate file. Let me check. Oh right, D3 Sankey is part of the D3 library, so including d3.js should suffice. But sometimes people use d3-sankey as a separate module. However, the user's library note says to use d3-sankey for flow visualization. Maybe I should include the d3-sankey module. But I'm not sure if that's necessary. Let me proceed with the standard D3 setup.
+
+Next, I need to structure the HTML. I'll have a script tag that loads D3 from a CDN. Then, I'll write the JavaScript code to generate the Sankey diagram.
+
+The data is provided as an array of objects with country, continent, and percentage. Each entry represents a flow from a country to a continent with a certain percentage. However, in Sankey diagrams, each link is defined by source, target, and value. So I need to process the data into that format.
+
+Wait, but the data might have multiple entries for the same country and continent. For example, country 'R' has entries for Europe (23.15%) and Asia (76.85%). So each of these would be separate links. But in the data provided, each row is a separate link. So I can directly use the data as is, grouping by country and continent, but the percentages are already per entry.
+
+Wait, but in the data, each row is a separate link. So the data is already in the correct format for Sankey links. Each row is a link from country to continent with the percentage as the value. So I can map each data entry to a link object with source, target, and value.
+
+But Sankey diagrams typically require nodes as well. So I need to create a list of all unique nodes (countries and continents). Then, create links between them based on the data.
+
+So the steps are:
+
+1. Parse the data into links.
+2. Create a list of all unique nodes (countries and continents).
+3. Assign each node an index for the Sankey layout.
+4. Create the Sankey diagram with the links and nodes.
+
+Now, let's think about the code structure.
+
+First, include D3 in the HTML. Then, select the container, set up the SVG, and create the Sankey generator.
+
+Wait, D3's Sankey is part of the D3 library. So I can use d3.sankey().
+
+But I need to make sure that the data is structured correctly. The Sankey generator requires a links array and a nodes array. Each link has source, target, and value. Each node has name and possibly other properties.
+
+So, processing the data:
+
+- For each entry in the data array, create a link object with source (country), target (continent), and value (percentage).
+- Collect all unique countries and continents into the nodes array.
+
+But in the data, some countries might be repeated with different continents. So the nodes array should include all unique country names and continent names.
+
+Wait, but in the Sankey diagram, nodes are typically grouped by their type. However, in this case, the nodes are both countries and continents. So the nodes array should include all unique country names and continent names. But in the data, the same country might be linked to multiple continents, and the same continent might be linked from multiple countries.
+
+So, the nodes array will be the union of all country names and continent names.
+
+But in the data, the country and continent are separate fields. So I need to collect all unique values from both 'country' and 'continent' fields.
+
+Once the nodes are created, each node will have a name. Then, the links will reference the nodes by their index.
+
+So, the code steps:
+
+- Parse the data into links.
+- Create a set of all unique node names (from country and continent).
+- Assign each node an index.
+- Create the Sankey layout with the nodes and links.
+
+Now, let's think about the code.
+
+First, the HTML structure:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+    <style>
+        /* Some styles for the Sankey diagram */
+    </style>
+</head>
+<body>
+    <svg width="960" height="600"></svg>
+    <script>
+        // JavaScript code here
+    </script>
+</body>
+</html>
+
+Wait, the d3-sankey module is a separate file. So I need to include that. The user's library note says to use d3-sankey, so I should include that script.
+
+Now, in the JavaScript code:
+
+- Load the data (already provided inline).
+- Process the data into links and nodes.
+
+But the data is already provided as a JSON array. So I can directly use it.
+
+Let me write the code step by step.
+
+First, create the links array:
+
+const data = [ ... ]; // the provided data
+
+const links = data.map(d => ({
+    source: d.country,
+    target: d.continent,
+    value: d.percentage
+}));
+
+Then, create the nodes array. To get all unique names from both country and continent:
+
+const nodes = [...new Set(data.map(d => d.country).concat(data.map(d => d.continent)))];
+
+But this will create an array of unique names. Then, we need to assign each node an index. So we can create a map from name to index:
+
+const nodeMap = new Map(nodes.map((d, i) => [d, i]));
+
+Then, for each link, replace the source and target with their indices:
+
+links.forEach(link => {
+    link.source = nodeMap.get(link.source);
+    link.target = nodeMap.get(link.target);
+});
+
+But wait, the Sankey generator in D3 requires the nodes array to be an array of objects with name and possibly other properties. So perhaps I should create the nodes array as:
+
+const nodes = [...new Set(data.map(d => d.country).concat(data.map(d => d.continent)))].map(name => ({ name }));
+
+Then, the nodeMap is built from the nodes array.
+
+Once that's done, create the Sankey layout.
+
+Then, create the SVG and append the Sankey diagram.
+
+But I need to set up the Sankey generator with the appropriate dimensions, node and link properties.
+
+Let me look up the D3 Sankey example. The Sankey generator is created with d3.sankey(), and then the layout is computed with .nodes() and .links().
+
+So the code would be something like:
+
+const sankey = d3.sankey()
+    .nodeWidth(30)
+    .nodePadding(10)
+    .size([width, height]);
+
+Then, sankey.nodes(nodes).links(links).layout(0);
+
+Wait, but the nodes and links need to be passed to the sankey generator.
+
+Putting it all together:
+
+const width = 960;
+const height = 600;
+
+const svg = d3.select("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+const sankey = d3.sankey()
+    .nodeWidth(30)
+    .nodePadding(10)
+    .size([width, height]);
+
+const link = svg.append("g").selectAll(".link")
+    .data(links)
+    .enter().append("path")
+    .attr("class", "link")
+    .attr("d", sankey.link())
+    .style("stroke-width", d => Math.max(1, d.width));
+
+Wait, but the Sankey layout needs to be computed first. So the steps are:
+
+1. Create the nodes and links arrays.
+2. Compute the layout with sankey.nodes(nodes).links(links).layout(0);
+3. Then, append the links and nodes.
+
+But I think the correct approach is to first set up the Sankey generator, then compute the layout, then append the elements.
+
+Let me check the D3 Sankey example. The example code is:
+
+const sankey = d3.sankey()
+    .nodeWidth(30)
+    .nodePadding(10)
+    .size([width, height]);
+
+sankey.nodes(nodes)
+    .links(links)
+    .layout(32);
+
+Then, the links and nodes are drawn based on the computed positions.
+
+So in the code:
+
+After creating the nodes and links arrays, we need to call sankey.nodes(nodes).links(links).layout(0); to compute the positions.
+
+Then, the links and nodes can be drawn.
+
+But in the code, the links and nodes are part of the Sankey layout, so the path for the links is generated by the sankey.link() function.
+
+Putting it all together:
+
+const data = [ ... ]; // the provided data
+
+// Process data into links and nodes
+const links = data.map(d => ({
+    source: d.country,
+    target: d.continent,
+    value: d.percentage
+}));
+
+const nodes = [...new Set(data.map(d => d.country).concat(data.map(d => d.continent)))].map(name => ({ name }));
+
+const nodeMap = new Map(nodes.map((d, i) => [d.name, i]));
+
+links.forEach(link => {
+    link.source = nodeMap.get(link.source);
+    link.target = nodeMap.get(link.target);
+});
+
+const width = 960;
+const height = 600;
+
+const svg = d3.select("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+const sankey = d3.sankey()
+    .nodeWidth(30)
+    .nodePadding(10)
+    .size([width, height]);
+
+sankey.nodes(nodes)
+    .links(links)
+    .layout(0); // layout with 0 iterations?
+
+Wait, the layout parameter is the number of iterations for the layout algorithm. Maybe 0 is not correct. The example uses 32. But for this case, maybe 0 is okay, but I need to check.
+
+But the layout is computed when you call .layout(iterations). So the code should be:
+
+sankey.nodes(nodes)
+    .links(links)
+    .layout(32); // or some number
+
+But I'm not sure. Let me proceed.
+
+Then, append the links and nodes.
+
+For the links:
+
+const link = svg.append("g").selectAll(".link")
+    .data(links)
+    .enter().append("path")
+    .attr("class", "link")
+    .attr("d", sankey.link())
+    .style("stroke-width", d => d.width)
+    .style("fill", "none")
+    .style("stroke", "#000");
+
+For the nodes:
+
+const node = svg.append("g").selectAll(".node")
+    .data(nodes)
+    .enter().append("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+Then, append the node's label:
+
+node.append("rect")
+    .attr("width", d => sankey.nodeWidth())
+    .attr("height", d => d.y1 - d.y0)
+    .style("fill", "#999");
+
+node.append("text")
+    .attr("x", d => sankey.nodeWidth() / 2)
+    .attr("y", d => d.y1 - d.y0 / 2)
+    .attr("dy", ".35em")
+    .attr("text-anchor", "middle")
+    .text(d => d.name);
+
+But I need to make sure that the nodes are positioned correctly. Also, the Sankey layout computes the x0, y0, x1, y1 for each node.
+
+Wait, the Sankey generator's layout() method computes the positions. So after calling .layout(32), the nodes will have x0, y0, x1, y1 properties.
+
+But in the code above, when we append the nodes, we use d.x0 and d.y0 for the transform. That should be correct.
+
+Now, considering the data, there are many countries and continents. The Sankey diagram might get crowded, but that's the data's fault.
+
+Now, I need to include the CSS styles for the Sankey diagram. For example, setting the stroke color, link colors, etc.
+
+Also, the user wants readable labels, dimensions, margins, and a title. So adding a title and adjusting margins.
+
+Wait, the SVG is set to 960x600. Maybe adding a margin for labels.
+
+But the code above doesn't include margins. Maybe I should adjust the width and height to account for margins, or use a group element with margins.
+
+Alternatively, adjust the Sankey's size to account for margins. For example:
+
+const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+const width = 960 - margin.left - margin.right;
+const height = 600 - margin.top - margin.bottom;
+
+But the code would need to adjust the SVG's width and height accordingly.
+
+Alternatively, use a group element with transform.
+
+But for simplicity, maybe just use the full SVG size and adjust the Sankey's size.
+
+But the user wants readable labels, so maybe adding some padding.
+
+Alternatively, proceed with the code as is, and see.
+
+Now, putting all together into the HTML.
+
+But I need to make sure that the data is included inline. The data is provided as a JSON array, so I can assign it to a variable in the script.
+
+Now, testing for possible errors. For example, the data has entries where a country is linked to multiple continents, like 'R' to Europe and Asia. The code should handle that.
+
+Another thing: the percentage values are numbers, which should be used as the value for the links.
+
+Now, the code for the HTML:
+
+I'll write the full HTML with the data included, the D3 and d3-sankey scripts, and the JavaScript code.
+
+But I need to make sure that the code is correct. For example, the nodeMap is built correctly, and the links are assigned the correct source and target indices.
+
+Another thing: the Sankey layout requires that the nodes are passed as an array of objects with name, and the links are objects with source, target, and value.
+
+In the code, the nodes are created as objects with name, and the links are objects with source (index), target (index), and value.
+
+Yes.
+
+Now, the code:
+
+The final HTML should have the data as a JavaScript array, process it into links and nodes, create the Sankey diagram.
+
+Now, writing the code step by step.
+
+Potential issues:
+
+- The d3-sankey module may not be available. The user's library note says to use d3-sankey, so including the script from the CDN.
+
+But the correct URL for d3-sankey is https://d3js.org/d3-sankey.v1.min.js.
+
+So the script tags would be:
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+
+Now, the code:
+
+The data is a JSON array. So in the script, assign it to a variable.
+
+Now, the full code:
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mondial Sankey Diagram</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+    <style>
+        .link {
+            fill: none;
+            stroke: #000;
+            stroke-opacity: 0.5;
+        }
+        .node {
+            stroke: #fff;
+            stroke-width: 1px;
+        }
+        .node rect {
+            fill: #999;
+        }
+        .node text {
+            font: 10px sans-serif;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        .label {
+            font: 12px sans-serif;
+            text-anchor: middle;
+        }
+    </style>
+</head>
+<body>
+    <h2>Mondial Country-Continent Relationships</h2>
+    <svg width="960" height="600"></svg>
+    <script>
+        const data = [
+            // ... the provided data here
+        ];
+
+        // Process data into links and nodes
+        const links = data.map(d => ({
+            source: d.country,
+            target: d.continent,
+            value: d.percentage
+        }));
+
+        const nodes = [...new Set(data.map(d => d.country).concat(data.map(d => d.continent)))].map(name => ({ name }));
+
+        const nodeMap = new Map(nodes.map((d, i) => [d.name, i]));
+
+        links.forEach(link => {
+            link.source = nodeMap.get(link.source);
+            link.target = nodeMap.get(link.target);
+        });
+
+        const width = 960;
+        const height = 600;
+
+        const svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const sankey = d3.sankey()
+            .nodeWidth(30)
+            .nodePadding(10)
+            .size([width, height]);
+
+        sankey.nodes(nodes)
+            .links(links)
+            .layout(32); // 32 iterations for layout
+
+        const link = svg.append("g")
+            .attr("class", "links")
+            .selectAll(".link")
+            .data(links)
+            .enter().append("path")
+            .attr("class", "link")
+            .attr("d", sankey.link())
+            .style("stroke-width", d => d.width)
+            .style("fill", "none")
+            .style("stroke", "#000");
+
+        const node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll(".node")
+            .data(nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+        node.append("rect")
+            .attr("width", d => sankey.nodeWidth())
+            .attr("height", d => d.y1 - d.y0)
+            .style("fill", "#999");
+
+        node.append("text")
+            .attr("x", d => sankey.nodeWidth() / 2)
+            .attr("y", d => d.y1 - d.y0 / 2)
+            .attr("dy", ".35em")
+            .attr("text-anchor", "middle")
+            .text(d => d.name);
+    </script>
+</body>
+</html>
+
+Wait, but in the code above, the links are created with d => d.width, but the Sankey layout computes the width based on the value. However, in the D3 Sankey, the width of the link is determined by the value, and the layout scales it. So perhaps the code should not set the stroke-width manually, but let the Sankey generator handle it. However, in the D3 Sankey example, the stroke-width is set to d.width, which is computed by the layout.
+
+Wait, the Sankey layout computes the width of each link based on the value. So the code should have:
+
+link.style("stroke-width", d => d.width);
+
+But in the code above, that's what's done.
+
+But in the D3 Sankey example, the code uses:
+
+.style("stroke-width", d => Math.max(1, d.width))
+
+But in our case, the value is already the percentage, which may be scaled. However, the Sankey layout scales the values to fit the diagram. So the code should be okay.
+
+Another thing: the nodes are created with their positions based on d.x0 and d.y0, which are computed by the layout.
+
+Now, testing this code with the provided data. However, the data has many entries, which may cause the Sankey diagram to be very crowded. But that's the data's nature.
+
+Potential issues:
+
+- The nodeMap may not be correctly built. For example, if a country or continent is not in the nodes array, but that's handled by the Set.
+
+Another thing: the nodes array is created by combining all country and continent names, then mapping to objects with name. That should be correct.
+
+Another thing: the links are processed to have source and target as indices, which is correct for the Sankey layout.
+
+Now, the code should work. However, I need to make sure that the data is included correctly. The data is a long array, so I need to paste it into the script.
+
+But the user provided the data as a JSON array, so I need to include that in the HTML.
+
+Now, the final HTML code includes the data as a JavaScript array.
+
+But the data is quite long. Let me check if the code includes it correctly.
+
+Yes, the code has:
+
+const data = [ ... ];
+
+Now, the user's data is provided as a JSON array, so I need to make sure that the code includes that array correctly.
+
+Now, the final code should be as written, with the data included inline.
+
+Another thing: the title is added as an <h2> element.
+
+Also, the style includes some CSS for the Sankey diagram.
+
+Now, the code should be correct. However, I need to make sure that the d3-sankey module is correctly included. If the user's browser doesn't load it, the code may not work. But the script tag is correct.
+
+Another possible issue: the Sankey layout may not be computed correctly if the nodes and links are not properly set up.
+
+But given the steps, it should be okay.
+
+So the final answer is the HTML code as written above, with the data included.
+</think>
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mondial Sankey Diagram</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+    <style>
+        .link {
+            fill: none;
+            stroke: #000;
+            stroke-opacity: 0.5;
+        }
+        .node {
+            stroke: #fff;
+            stroke-width: 1px;
+        }
+        .node rect {
+            fill: #999;
+        }
+        .node text {
+            font: 10px sans-serif;
+            pointer-events: none;
+            text-anchor: middle;
+        }
+        .label {
+            font: 12px sans-serif;
+            text-anchor: middle;
+        }
+    </style>
+</head>
+<body>
+    <h2>Mondial Country-Continent Relationships</h2>
+    <svg width="960" height="600"></svg>
+    <script>
+        const data = [
+            {"country": "AL", "continent": "Europe", "percentage": 100},
+            {"country": "GR", "continent": "Europe", "percentage": 100},
+            {"country": "CY", "continent": "Europe", "percentage": 100},
+            {"country": "AD", "continent": "Europe", "percentage": 100},
+            {"country": "MK", "continent": "Europe", "percentage": 100},
+            {"country": "SRB", "continent": "Europe", "percentage": 100},
+            {"country": "MNE", "continent": "Europe", "percentage": 100},
+            {"country": "KOS", "continent": "Europe", "percentage": 100},
+            {"country": "AND", "continent": "Europe", "percentage": 100},
+            {"country": "F", "continent": "Europe", "percentage": 100},
+            {"country": "E", "continent": "Europe", "percentage": 100},
+            {"country": "CZ", "continent": "Europe", "percentage": 100},
+            {"country": "SK", "continent": "Europe", "percentage": 100},
+            {"country": "D", "continent": "Europe", "percentage": 100},
+            {"country": "H", "continent": "Europe", "percentage": 100},
+            {"country": "I", "continent": "Europe", "percentage": 100},
+            {"country": "CH", "continent": "Europe", "percentage": 100},
+            {"country": "FL", "continent": "Europe", "percentage": 100},
+            {"country": "A", "continent": "Europe", "percentage": 100},
+            {"country": "EST", "continent": "Europe", "percentage": 100},
+            {"country": "LV", "continent": "Europe", "percentage": 100},
+            {"country": "LT", "continent": "Europe", "percentage": 100},
+            {"country": "BY", "continent": "Europe", "percentage": 100},
+            {"country": "PL", "continent": "Europe", "percentage": 100},
+            {"country": "UA", "continent": "Europe", "percentage": 100},
+            {"country": "R", "continent": "Europe", "percentage": 23.15},
+            {"country": "R", "continent": "Asia", "percentage": 76.85},
+            {"country": "B", "continent": "Europe", "percentage": 100},
+            {"country": "L", "continent": "Europe", "percentage": 100},
+            {"country": "NL", "continent": "Europe", "percentage": 100},
+            {"country": "SLO", "continent": "Europe", "percentage": 100},
+            {"country": "HR", "continent": "Europe", "percentage": 100},
+            {"country": "BIH", "continent": "Europe", "percentage": 100},
+            {"country": "BG", "continent": "Europe", "percentage": 100},
+            {"country": "RO", "continent": "Europe", "percentage": 100},
+            {"country": "DK", "continent": "Europe", "percentage": 100},
+            {"country": "IS", "continent": "Europe", "percentage": 100},
+            {"country": "FO", "continent": "Europe", "percentage": 100},
+            {"country": "IRL", "continent": "Europe", "percentage": 100},
+            {"country": "SF", "continent": "Europe", "percentage": 100},
+            {"country": "N", "continent": "Europe", "percentage": 100},
+            {"country": "S", "continent": "Europe", "percentage": 100},
+            {"country": "MC", "continent": "Europe", "percentage": 100},
+            {"country": "V", "continent": "Europe", "percentage": 100},
+            {"country": "CEU", "continent": "Africa", "percentage": 100},
+            {"country": "MEL", "continent": "Africa", "percentage": 100},
+            {"country": "RSM", "continent": "Europe", "percentage": 100},
+            {"country": "M", "continent": "Europe", "percentage": 100},
+            {"country": "GBM", "continent": "Europe", "percentage": 100},
+            {"country": "MD", "continent": "Europe", "percentage": 100},
+            {"country": "P", "continent": "Europe", "percentage": 100},
+            {"country": "SVA", "continent": "Europe", "percentage": 100},
+            {"country": "GB", "continent": "Europe", "percentage": 100},
+            {"country": "GBZ", "continent": "Europe", "percentage": 100},
+            {"country": "GBG", "continent": "Europe", "percentage": 100},
+            {"country": "GBJ", "continent": "Europe", "percentage": 100},
+            {"country": "ARM", "continent": "Asia", "percentage": 100},
+            {"country": "GE", "continent": "Asia", "percentage": 100},
+            {"country": "AZ", "continent": "Asia", "percentage": 100},
+            {"country": "TR", "continent": "Europe", "percentage": 3},
+            {"country": "TR", "continent": "Asia", "percentage": 97},
+            {"country": "RL", "continent": "Asia", "percentage": 100},
+            {"country": "WB", "continent": "Asia", "percentage": 100},
+            {"country": "GAZA", "continent": "Asia", "percentage": 100},
+            {"country": "IL", "continent": "Asia", "percentage": 100},
+            {"country": "SYR", "continent": "Asia", "percentage": 100},
+            {"country": "JOR", "continent": "Asia", "percentage": 100},
+            {"country": "SA", "continent": "Asia", "percentage": 100},
+            {"country": "BRN", "continent": "Asia", "percentage": 100},
+            {"country": "Q", "continent": "Asia", "percentage": 100},
+            {"country": "UAE", "continent": "Asia", "percentage": 100},
+            {"country": "OM", "continent": "Asia", "percentage": 100},
+            {"country": "YE", "continent": "Asia", "percentage": 100},
+            {"country": "KWT", "continent": "Asia", "percentage": 100},
+            {"country": "IRQ", "continent": "Asia", "percentage": 100},
+            {"country": "IR", "continent": "Asia", "percentage": 100},
+            {"country": "AFG", "continent": "Asia", "percentage": 100},
+            {"country": "TM", "continent": "Asia", "percentage": 100},
+            {"country": "UZ", "continent": "Asia", "percentage": 100},
+            {"country": "TJ", "continent": "Asia", "percentage": 100},
+            {"country": "KG", "continent": "Asia", "percentage": 100},
+            {"country": "KZ", "continent": "Europe", "percentage": 5.4},
+            {"country": "KZ", "continent": "Asia", "percentage": 94.6},
+            {"country": "MNG", "continent": "Asia", "percentage": 100},
+            {"country": "MV", "continent": "Asia", "percentage": 100},
+            {"country": "PK", "continent": "Asia", "percentage": 100},
+            {"country": "IND", "continent": "Asia", "percentage": 100},
+            {"country": "NEP", "continent": "Asia", "percentage": 100},
+            {"country": "BHT", "continent": "Asia", "percentage": 100},
+            {"country": "BD", "continent": "Asia", "percentage": 100},
+            {"country": "MYA", "continent": "Asia", "percentage": 100},
+            {"country": "CL", "continent": "Asia", "percentage": 100},
+            {"country": "CN", "continent": "Asia", "percentage": 100},
+            {"country": "RC", "continent": "Asia", "percentage": 100},
+            {"country": "HK", "continent": "Asia", "percentage": 100},
+            {"country": "MAC", "continent": "Asia", "percentage": 100},
+            {"country": "KP", "continent": "Asia", "percentage": 100},
+            {"country": "ROK", "continent": "Asia", "percentage": 100},
+            {"country": "J", "continent": "Asia", "percentage": 100},
+            {"country": "RP", "continent": "Asia", "percentage": 100},
+            {"country": "VN", "continent": "Asia", "percentage": 100},
+            {"country": "K", "continent": "Asia", "percentage": 100},
+            {"country": "LAO", "continent": "Asia", "percentage": 100},
+            {"country": "THA", "continent": "Asia", "percentage": 100},
+            {"country": "MAL", "continent": "Asia", "percentage": 100},
+            {"country": "BRU", "continent": "Asia", "percentage": 100},
+            {"country": "SGP", "continent": "Asia", "percentage": 100},
+            {"country": "RI", "continent": "Asia", "percentage": 78},
+            {"country": "RI", "continent": "Australia/Oceania", "percentage": 22},
+            {"country": "TL", "continent": "Asia", "percentage": 100},
+            {"country": "PNG", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "SOL", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "VU", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "NCL", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "AUS", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "CX", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "CC", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "NF", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "NZ", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "PAL", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "MP", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "GU", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "FSM", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "MH", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "NAU", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "KIR", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "TUV", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "TOK", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "WS", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "AS", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "WF", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "FJI", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "TO", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "NU", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "CK", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "PF", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "PN", "continent": "Australia/Oceania", "percentage": 100},
+            {"country": "ET", "continent": "Asia", "percentage": 7.3},
+            {"country": "ET", "continent": "Africa", "percentage": 92.7},
+            {"country": "LAR", "continent": "Africa", "percentage": 100},
+            {"country": "TN", "continent": "Africa", "percentage": 100},
+            {"country": "DZ", "continent": "Africa", "percentage": 100},
+            {"country": "MA", "continent": "Africa", "percentage": 100},
+            {"country": "WSA", "continent": "Africa", "percentage": 100},
+            {"country": "RMM", "continent": "Africa", "percentage": 100},
+            {"country": "RIM", "continent": "Africa", "percentage": 100},
+            {"country": "SN", "continent": "Africa", "percentage": 100},
+            {"country": "WAG", "continent": "Africa", "percentage": 100},
+            {"country": "GUB", "continent": "Africa", "percentage": 100},
+            {"country": "RG", "continent": "Africa", "percentage": 100},
+            {"country": "SLE", "continent": "Africa", "percentage": 100},
+            {"country": "LB", "continent": "Africa", "percentage": 100},
+            {"country": "BF", "continent": "Africa", "percentage": 100},
+            {"country": "CI", "continent": "Africa", "percentage": 100},
+            {"country": "GH", "continent": "Africa", "percentage": 100},
+            {"country": "RT", "continent": "Africa", "percentage": 100},
+            {"country": "BEN", "continent": "Africa", "percentage": 100},
+            {"country": "NGR", "continent": "Africa", "percentage": 100},
+            {"country": "RN", "continent": "Africa", "percentage": 100},
+            {"country": "TCH", "continent": "Africa", "percentage": 100},
+            {"country": "SUD", "continent": "Africa", "percentage": 100},
+            {"country": "SSD", "continent": "Africa", "percentage": 100},
+            {"country": "RCA", "continent": "Africa", "percentage": 100},
+            {"country": "CAM", "continent": "Africa", "percentage": 100},
+            {"country": "GQ", "continent": "Africa", "percentage": 100},
+            {"country": "G", "continent": "Africa", "percentage": 100},
+            {"country": "RCB", "continent": "Africa", "percentage": 100},
+            {"country": "CGO", "continent": "Africa", "percentage": 100},
+            {"country": "ANG", "continent": "Africa", "percentage": 100},
+            {"country": "NAM", "continent": "Africa", "percentage": 100},
+            {"country": "RB", "continent": "Africa", "percentage": 100},
+            {"country": "RSA", "continent": "Africa", "percentage": 100},
+            {"country": "LS", "continent": "Africa", "percentage": 100},
+            {"country": "SD", "continent": "Africa", "percentage": 100},
+            {"country": "MOC", "continent": "Africa", "percentage

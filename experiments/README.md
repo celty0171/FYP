@@ -15,6 +15,21 @@ The theoretical baseline comes from McBrien and Poulovassilis's visualisation sc
 
 The important boundary is that an inherited-key basic entity has no local primary-key column, while a weak entity has a compound primary key made from both inherited parent-key columns and local child-key columns.
 
+### Design proposals — relationship visualisations (many-many / reflexive)
+
+Two written proposals explore adding new charts for the `many_many_relationship` and
+`reflexive_many_many_relationship` patterns (matrix heatmap, force-directed graph, arc diagram,
+hierarchical edge bundling, parallel sets), motivated by an audit showing `is_member` and
+`merges_with` cannot be drawn today (Sankey/chord both require a scalar width). They differ in *where*
+the logic lives:
+
+- [`relationship_viz_proposal_v1_extend_taxonomy.md`](relationship_viz_proposal_v1_extend_taxonomy.md)
+  — adds new schema patterns (`weighted_/unweighted_`, `attributed_relationship`,
+  `grouped_relationship`), each licensing a chart group (Step 1 changes).
+- [`relationship_viz_proposal_v2_charts_and_selector.md`](relationship_viz_proposal_v2_charts_and_selector.md)
+  — keeps the six patterns; adds the charts plus a deterministic Step-2 selector keyed on
+  density / N / symmetry / attribute types (Step 1 unchanged).
+
 ## Main Research Question
 
 Can an LLM inspect a selected Mondial table/column set, identify which VizER ER schema pattern is present, and generate a suitable visualisation mapping?

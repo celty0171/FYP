@@ -1,0 +1,102 @@
+{
+  "results": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "selected_columns": [
+        "code",
+        "population"
+      ],
+      "predicted_pattern": "basic_entity",
+      "reason": "The selected columns contain a primary key and no foreign keys not part of the primary key."
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "selected_columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "predicted_pattern": "basic_entity_inherited_key",
+      "reason": "All primary key columns are foreign keys referencing the same parent table."
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "selected_columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "predicted_pattern": "basic_entity",
+      "reason": "The selected columns contain a primary key and no foreign keys not part of the primary key."
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "selected_columns": [
+        "abbreviation",
+        "established"
+      ],
+      "predicted_pattern": "basic_entity",
+      "reason": "The selected columns contain a primary key and no foreign keys not part of the primary key."
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "selected_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "predicted_pattern": "weak_entity",
+      "reason": "The primary key contains both foreign key and local columns."
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "selected_columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "predicted_pattern": "weak_entity",
+      "reason": "The primary key contains both foreign key and local columns."
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "selected_columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "predicted_pattern": "one_many_relationship",
+      "reason": "A foreign key exists that is not part of the primary key and references a single parent table."
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "selected_columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "predicted_pattern": "many_many_relationship",
+      "reason": "The primary key is composed of foreign keys referencing different parent tables."
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "selected_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "predicted_pattern": "reflexive_many_many_relationship",
+      "reason": "The primary key is composed of foreign keys referencing the same parent table."
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+```python
+import json
+import sys
+import os
+from collections import defaultdict
+
+def classify_selection(schema, table_name, selected_columns):
+    table = schema["tables"][table_name.lower()]
+    columns = {col["name"].lower() for col in table["columns"]}
+    selected_columns = [col.lower() for col in selected_columns]
+    selected_columns_set = set(selected_columns)
+
+    # Filter primary key to selected columns
+    primary_key = [col for col in table["primary_key"] if col.lower() in selected_columns_set]
+    primary_key_set = set(primary_key)
+
+    # Filter foreign keys to selected columns
+    foreign_keys = []
+    for fk in table["foreign_keys"]:
+        fk_cols = [col.lower() for col in fk["columns"]]
+        selected_fk_cols = [col for col in fk_cols if col in selected_columns_set]
+        if selected_fk_cols:
+            foreign_keys.append({
+                "columns": selected_fk_cols,
+                "references_table": fk["references_table"].lower(),
+                "references_columns": [col.lower() for col in fk["references_columns"]]
+            })
+
+    # Step 1: Check for many-many or reflexive many-many
+    if len(primary_key) >= 2:
+        fk_columns_in_pk = [col for col in primary_key if col in [fk_col for fk in foreign_keys for fk_col in fk["columns"]]]
+        if len(fk_columns_in_pk) == len(primary_key):
+            # All primary key columns are foreign keys
+            fk_tables = set()
+            for fk in foreign_keys:
+                fk_tables.add(fk["references_table"])
+            if len(fk_tables) == 1:
+                return {
+                    "predicted_pattern": "reflexive_many_many_relationship",
+                    "reason": "The primary key is composed of foreign keys referencing the same parent table."
+                }
+            elif len(fk_tables) == 2:
+                return {
+                    "predicted_pattern": "many_many_relationship",
+                    "reason": "The primary key is composed of foreign keys referencing two different parent tables."
+                }
+            else:
+                return {
+                    "predicted_pattern": "ambiguous_or_unsupported",
+                    "reason": "The primary key is composed of foreign keys referencing more than two parent tables."
+                }
+
+    # Step 2: Check for inherited key basic entity
+    if not primary_key:
+        return {
+            "predicted_pattern": "basic_entity_inherited_key",
+            "reason": "The table has no local primary key and all foreign keys are inherited."
+        }
+
+    # Step 3: Check for weak entity
+    if len(primary_key) >= 2:
+        fk_columns_in_pk = [col for col in primary_key if col in [fk_col for fk in foreign_keys for fk_col in fk["columns"]]]
+        if fk_columns_in_pk and len(fk_columns_in_pk) < len(primary_key):
+            # Some primary key columns are foreign keys, others are local
+            return {
+                "predicted_pattern": "weak_entity",
+                "reason": "The primary key is compound and contains both foreign key and local columns."
+            }
+
+    # Step 4: Check for one-many relationship
+    non_pk_foreign_keys = []
+    for fk in foreign_keys:
+        fk_cols = set(fk["columns"])
+        if fk_cols.isdisjoint(primary_key_set):
+            non_pk_foreign_keys.append(fk)
+
+    if non_pk_foreign_keys:
+        referenced_tables = set(fk["references_table"] for fk in non_pk_foreign_keys)
+        if len(referenced_tables) == 1:
+            return {
+                "predicted_pattern": "one_many_relationship",
+                "reason": "The selected columns include a foreign key not part of the primary key, referencing a single parent table."
+            }
+        else:
+            return {
+                "predicted_pattern": "ambiguous_or_unsupported",
+                "reason": "The selected columns include foreign keys not part of the primary key, referencing multiple parent tables."
+            }
+
+    # Step 5: Default to basic entity
+    return {
+        "predicted_pattern": "basic_entity",
+        "reason": "The selected columns contain a primary key and no foreign keys not part of the primary key."
+    }
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Classify database selections based on schema.")
+    parser.add_argument("--schema", required=True, help="Path to schema JSON file.")
+    parser.add_argument("--cases", required=True, help="Path to cases JSON file.")
+    parser.add_argument("--out", required=True, help="Path to output JSON file.")
+    args = parser.parse_args()
+
+    with open(args.schema, "r") as f:
+        schema = json.load(f)
+
+    with open(args.cases, "r") as f:
+        cases_data = json.load(f)
+        if "cases" in cases_data:
+            cases = cases_data["cases"]
+        else:
+            cases = cases_data
+
+    results = []
+    for case in cases:
+        case_id = case.get("case_id")
+        selected_table = case.get("selected_table").lower()
+        selected_columns = case.get("selected_columns", [])
+        if "selection" in case:
+            selected_table = case["selection"].get("selected_table", selected_table).lower()
+            selected_columns = case["selection"].get("selected_columns", selected_columns)
+
+        result = classify_selection(schema, selected_table, selected_columns)
+        results.append({
+            "case_id": case_id,
+            "selected_table": selected_table,
+            "selected_columns": selected_columns,
+            "predicted_pattern": result["predicted_pattern"],
+            "reason": result["reason"]
+        })
+
+    with open(args.out, "w") as f:
+        json.dump({"results": results}, f, indent=2)
+
+if __name__ == "__main__":
+    main()
+```

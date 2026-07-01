@@ -1,0 +1,133 @@
+```python
+import json
+import sys
+import os
+from collections import defaultdict
+
+def classify_selection(schema, table_name, selected_columns):
+    table = schema["tables"][table_name]
+    columns = {col["name"]: col for col in table["columns"]}
+    selected_columns_set = set(selected_columns)
+    
+    # Filter primary key to selected columns
+    filtered_primary_key = [col for col in table["primary_key"] if col in selected_columns_set]
+    
+    # Filter foreign keys to selected columns
+    selected_foreign_keys = []
+    for fk in table["foreign_keys"]:
+        fk_columns = [col for col in fk["columns"] if col in selected_columns_set]
+        if fk_columns:
+            selected_foreign_keys.append({
+                "columns": fk_columns,
+                "references_table": fk["references_table"],
+                "references_columns": fk["references_columns"]
+            })
+    
+    # Determine which primary key columns are foreign keys
+    pk_columns_are_foreign = set()
+    for fk in selected_foreign_keys:
+        for col in fk["columns"]:
+            if col in filtered_primary_key:
+                pk_columns_are_foreign.add(col)
+    
+    # Determine if all primary key columns are foreign keys
+    all_pk_columns_are_foreign = all(col in pk_columns_are_foreign for col in filtered_primary_key)
+    
+    # Determine if all primary key columns reference the same parent
+    pk_references = set()
+    for fk in selected_foreign_keys:
+        for col in fk["columns"]:
+            if col in filtered_primary_key:
+                pk_references.add(fk["references_table"])
+    
+    # Determine if any non-PK foreign keys exist
+    non_pk_foreign_keys = []
+    for fk in selected_foreign_keys:
+        for col in fk["columns"]:
+            if col not in filtered_primary_key:
+                non_pk_foreign_keys.append(fk["references_table"])
+    
+    # Apply decision order
+    if len(filtered_primary_key) >= 2 and all_pk_columns_are_foreign:
+        if len(pk_references) == 1:
+            return {
+                "predicted_pattern": "reflexive_many_many_relationship",
+                "reason": "The primary key is composed of foreign keys referencing the same parent table."
+            }
+        else:
+            return {
+                "predicted_pattern": "many_many_relationship",
+                "reason": "The primary key is composed of foreign keys referencing different parent tables."
+            }
+    elif all_pk_columns_are_foreign and len(pk_references) == 1:
+        return {
+            "predicted_pattern": "basic_entity_inherited_key",
+            "reason": "All primary key columns are foreign keys referencing the same parent table."
+        }
+    elif len(filtered_primary_key) >= 2 and not all_pk_columns_are_foreign:
+        if any(col in pk_columns_are_foreign for col in filtered_primary_key) and any(col not in pk_columns_are_foreign for col in filtered_primary_key):
+            return {
+                "predicted_pattern": "weak_entity",
+                "reason": "The primary key contains both foreign key and local columns."
+            }
+    elif non_pk_foreign_keys:
+        if len(set(non_pk_foreign_keys)) == 1:
+            return {
+                "predicted_pattern": "one_many_relationship",
+                "reason": "A foreign key exists that is not part of the primary key and references a single parent table."
+            }
+        else:
+            return {
+                "predicted_pattern": "ambiguous_or_unsupported",
+                "reason": "Multiple foreign keys exist that are not part of the primary key and reference different parent tables."
+            }
+    else:
+        return {
+            "predicted_pattern": "basic_entity",
+            "reason": "The selected columns contain a primary key and no foreign keys not part of the primary key."
+        }
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Classify database selections based on schema.")
+    parser.add_argument("--schema", required=True, help="Path to schema JSON file.")
+    parser.add_argument("--cases", required=True, help="Path to cases JSON file.")
+    parser.add_argument("--out", required=True, help="Path to output JSON file.")
+    args = parser.parse_args()
+
+    with open(args.schema, "r") as f:
+        schema = json.load(f)
+
+    with open(args.cases, "r") as f:
+        cases_data = json.load(f)
+        if "cases" in cases_data:
+            cases = cases_data["cases"]
+        else:
+            cases = cases_data
+
+    results = []
+    for case in cases:
+        if "selection" in case:
+            selection = case["selection"]
+        else:
+            selection = case
+        case_id = selection.get("case_id")
+        selected_table = selection.get("selected_table")
+        selected_columns = selection.get("selected_columns", [])
+        if not case_id or not selected_table or not selected_columns:
+            continue
+        result = classify_selection(schema, selected_table, selected_columns)
+        results.append({
+            "case_id": case_id,
+            "selected_table": selected_table,
+            "selected_columns": selected_columns,
+            "predicted_pattern": result["predicted_pattern"],
+            "reason": result["reason"]
+        })
+
+    with open(args.out, "w") as f:
+        json.dump({"results": results}, f, indent=2)
+
+if __name__ == "__main__":
+    main()
+```

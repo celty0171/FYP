@@ -1,0 +1,106 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sankey Diagram: Country to Continent</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-sankey.v1.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+    }
+    .node rect {
+      cursor: move;
+      fill-opacity: 0.9;
+      shape-rendering: crispEdges;
+    }
+    .node text {
+      pointer-events: none;
+      text-anchor: middle;
+    }
+    .link {
+      fill: none;
+      stroke: #000;
+      stroke-opacity: 0.2;
+    }
+    .link:hover {
+      stroke-opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <h2>Country to Continent Sankey Diagram</h2>
+  <svg width="1200" height="800"></svg>
+
+  <script>
+    const svg = d3.select("svg"),
+      width = +svg.attr("width"),
+      height = +svg.attr("height");
+
+    const format = d3.format(",.0f");
+
+    const sankey = d3.sankey()
+      .nodeWidth(36)
+      .nodePadding(10)
+      .size([width - 120, height - 120]);
+
+    const path = sankey.link();
+
+    const data = [
+      // ... (all data entries from the provided JSON)
+    ];
+
+    const nodes = d3.rollup(data, v => format(d3.sum(v, d => d.percentage)), d => d.country, d => d.continent)
+      .map(([key, value]) => ({ name: key }))
+      .concat(d3.rollup(data, v => format(d3.sum(v, d => d.percentage)), d => d.continent, d => d.country)
+        .map(([key, value]) => ({ name: key })));
+
+    const links = data.map(d => ({
+      source: d.country,
+      target: d.continent,
+      value: d.percentage
+    }));
+
+    const nodeById = d3.map(nodes, d => d.name);
+
+    const linkById = d3.map(links, d => d.source + "-" + d.target);
+
+    const graph = {
+      nodes: nodes,
+      links: links
+    };
+
+    sankey.nodes(graph.nodes)
+      .links(graph.links)
+      .layout(32);
+
+    const link = svg.append("g").selectAll(".link")
+      .data(graph.links)
+      .enter().append("path")
+      .attr("class", "link")
+      .attr("d", path)
+      .style("stroke-width", d => Math.max(1, d.width))
+      .sort((a, b) => b.width - a.width);
+
+    const node = svg.append("g").selectAll(".node")
+      .data(graph.nodes)
+      .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+    node.append("rect")
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0)
+      .attr("fill", d => d.color || "steelblue");
+
+    node.append("text")
+      .attr("x", d => d.x0 + (d.x1 - d.x0) / 2)
+      .attr("y", d => d.y0 + (d.y1 - d.y0) / 2)
+      .attr("dy", "0.35em")
+      .attr("text-anchor", "middle")
+      .text(d => d.name);
+  </script>
+</body>
+</html>
+```

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mondial Step 1→2→3 pipeline</title>
+<style>
+  :root { --line:#d8dce3; --bg:#f7f8fa; --accent:#4a78b5; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: var(--bg); color: #222; }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 12px 20px; }
+  header h1 { font-size: 17px; margin: 0; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #666; }
+  main { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 16px 20px; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #555; margin: 0 0 10px; }
+  select, button { font-size: 13px; }
+  select { width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; }
+  #cols { max-height: 240px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:6px; margin-top:8px; }
+  #cols label { display:block; font-size:13px; padding:2px 0; cursor:pointer; }
+  .badge { font-family:monospace; }
+  button { padding: 7px 12px; border: 1px solid var(--accent); background: var(--accent); color:#fff; border-radius:6px; cursor:pointer; }
+  button.ghost { background:#fff; color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  #run { width:100%; margin-top:10px; }
+  .pill { display:inline-block; padding:3px 8px; border-radius:12px; font-size:12px; margin:3px 4px 0 0; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  .pill.sel { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pill.wip { opacity:.6; }
+  pre { background:#0f1115; color:#cdd3de; padding:10px; border-radius:6px; font-size:12px; overflow:auto; }
+  #viz { height:72vh; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fbfbfc; position:relative; }
+  #vizHolder { background:#fff; }
+  iframe#frame { border:0; background:#fff; display:block; }
+  .wip { height:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:#999; font-size:18px; padding:24px; }
+  .vizhead { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
+  .vizhead h2 { margin:0; }
+  .vtools { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .vtools button { padding:4px 9px; font-size:12px; }
+  .vtools button:disabled { opacity:.4; cursor:default; }
+  .vtools .zlabel { font-size:12px; color:#555; min-width:44px; text-align:center; font-family:monospace; }
+  body.vizfull .viz-panel { position:fixed; inset:12px; z-index:1000; margin:0 !important; box-shadow:0 8px 40px rgba(0,0,0,.35); overflow:auto; }
+  body.vizfull #viz { height:calc(100vh - 116px); }
+  .row { margin: 8px 0; font-size: 13px; }
+  .k { color:#666; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mondial visualisation pipeline — Step 1 → 2 → 3 (deterministic)</h1>
+  <p>Step 1 gpt_generated.py · Step 2 gpt_recommend_charts.py · Step 3 render_*_reference.py · data: mondial_data.json</p>
+</header>
+<main>
+  <div class="panel">
+    <h2>1. Selection</h2>
+    <select id="table"></select>
+    <div id="cols"></div>
+    <button id="run">Run pipeline</button>
+  </div>
+  <div>
+    <div class="panel" style="margin-bottom:16px;">
+      <h2>Step 1 — ER pattern &amp; Step 2 — chart recommendation</h2>
+      <div class="row"><span class="k">Pattern:</span> <b id="pattern" class="badge">—</b></div>
+      <div class="row"><span class="k">Recommended (click to render):</span> <span id="charts"></span></div>
+      <div class="row"><span class="k">Selected mapping:</span></div>
+      <pre id="mapping">—</pre>
+    </div>
+    <div class="panel viz-panel">
+      <div class="vizhead">
+        <h2>Step 3 — visualisation</h2>
+        <div class="vtools">
+          <button id="zoomOut" class="ghost" title="Zoom out" disabled>&minus;</button>
+          <span class="zlabel" id="zoomLabel">100%</span>
+          <button id="zoomIn" class="ghost" title="Zoom in" disabled>+</button>
+          <button id="zoomReset" class="ghost" title="Reset zoom" disabled>Reset</button>
+          <button id="expand" class="ghost" title="Toggle fullscreen" disabled>⤢ Fullscreen</button>
+          <button id="openTab" class="ghost" title="Open chart in a new tab" disabled>Open in tab</button>
+          <button id="download" title="Download standalone HTML" disabled>Download</button>
+        </div>
+      </div>
+      <div id="viz"><div class="wip">run the pipeline to render a chart</div></div>
+    </div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let schema = {}, last = null;
+
+async function api(path, body) {
+  const opt = body ? { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) } : {};
+  const r = await fetch(path, opt);
+  return r.json();
+}
+
+function showColumns(table) {
+  const cols = schema[table] || [];
+  $("cols").innerHTML = cols.map(c =>
+    `<label><input type="checkbox" value="${c}"> ${c}</label>`).join("");
+}
+
+function selectedColumns() {
+  return [...document.querySelectorAll('#cols input:checked')].map(i => i.value);
+}
+
+const vstate = { scale: 1, html: null, chart: null };
+
+function setToolsEnabled(on) {
+  ["zoomOut","zoomIn","zoomReset","expand","openTab","download"].forEach(id => $(id).disabled = !on);
+}
+
+function applyZoom() {
+  const f = $("frame"), holder = $("vizHolder");
+  if (!f || !holder) return;
+  const baseW = Math.max(320, $("viz").clientWidth - 2);
+  const baseH = document.body.classList.contains("vizfull")
+    ? (window.innerHeight - 150) : Math.round(window.innerHeight * 0.70);
+  f.style.width = baseW + "px";
+  f.style.height = baseH + "px";
+  f.style.transformOrigin = "0 0";
+  f.style.transform = "scale(" + vstate.scale + ")";
+  holder.style.width = (baseW * vstate.scale) + "px";
+  holder.style.height = (baseH * vstate.scale) + "px";
+  $("zoomLabel").textContent = Math.round(vstate.scale * 100) + "%";
+}
+
+function setZoom(s) { vstate.scale = Math.min(4, Math.max(0.25, s)); applyZoom(); }
+
+function renderViz(step3) {
+  if (step3 && step3.available) {
+    vstate.html = step3.html;
+    vstate.chart = step3.chart || "visualisation";
+    vstate.scale = 1;
+    $("viz").innerHTML = '<div id="vizHolder"><iframe sandbox="allow-scripts" id="frame"></iframe></div>';
+    const f = $("frame");
+    f.addEventListener("load", applyZoom, { once: true });
+    f.srcdoc = step3.html;
+    applyZoom();
+    setToolsEnabled(true);
+  } else {
+    vstate.html = null;
+    const msg = (step3 && step3.html) ? step3.html : "working in process";
+    $("viz").innerHTML = `<div class="wip">${msg}</div>`;
+    setToolsEnabled(false);
+  }
+}
+
+function downloadHtml(open) {
+  if (!vstate.html) return;
+  const blob = new Blob([vstate.html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  if (open) {
+    window.open(url, "_blank");
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (vstate.chart || "visualisation").replace(/\s+/g, "_") + ".html";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+$("zoomIn").onclick = () => setZoom(vstate.scale * 1.2);
+$("zoomOut").onclick = () => setZoom(vstate.scale / 1.2);
+$("zoomReset").onclick = () => setZoom(1);
+$("expand").onclick = () => { document.body.classList.toggle("vizfull"); applyZoom(); };
+$("openTab").onclick = () => downloadHtml(true);
+$("download").onclick = () => downloadHtml(false);
+window.addEventListener("resize", () => { if (vstate.html) applyZoom(); });
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.body.classList.contains("vizfull")) { document.body.classList.remove("vizfull"); applyZoom(); }
+});
+
+function drawCharts(step2) {
+  const rec = step2.recommended_charts || [];
+  const sel = (step2.selected || {}).chart;
+  const byChart = {};
+  (step2.candidates || []).forEach(c => { if (c.mapping && Object.keys(c.mapping).length) byChart[c.chart] = c.mapping; });
+  // also offer "conditional" charts (choropleth/word cloud) the user can interpret as geo/lexical
+  const cond = (step2.candidates || []).filter(c => c.eligible === "conditional" && byChart[c.chart]).map(c => c.chart);
+  const allCharts = rec.concat(cond.filter(c => !rec.includes(c)));
+  const built = new Set(["bar chart","scatter diagram","bubble chart","calendar chart","tree map","circle packing","hierarchy tree","sankey diagram","chord diagram","matrix heatmap","force graph","arc diagram","line chart","stacked bar chart","grouped bar chart","spider chart","choropleth map","word cloud"]);
+  $("charts").innerHTML = allCharts.length ? allCharts.map(c => {
+    const wip = built.has(c.toLowerCase()) ? "" : " wip";
+    const s = (c === sel) ? " sel" : "";
+    const tag = cond.includes(c) ? " (if geo/lexical)" : "";
+    return `<span class="pill${s}${wip}" data-chart="${c}" title="${tag}">${c}${tag}${wip?" ⏳":""}</span>`;
+  }).join("") : '<span class="k">No chart — the selection has a key but no measurable column. Add a numeric or date column to enable a visualisation.</span>';
+  document.querySelectorAll('#charts .pill').forEach(p => p.onclick = async () => {
+    const chart = p.dataset.chart;
+    const mapping = byChart[chart] || (step2.selected||{}).mapping;
+    $("mapping").textContent = JSON.stringify(mapping, null, 2);
+    renderViz(await api("/api/render", { chart, mapping }));
+  });
+}
+
+$("run").onclick = async () => {
+  const table = $("table").value, columns = selectedColumns();
+  if (!columns.length) { alert("pick at least one column"); return; }
+  $("viz").innerHTML = '<div class="wip">running…</div>';
+  const j = await api("/api/run", { table, columns });
+  if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
+  last = j;
+  $("pattern").textContent = j.step1.pattern;
+  $("mapping").textContent = JSON.stringify((j.step2.selected||{}).mapping || {}, null, 2);
+  drawCharts(j.step2);
+  renderViz(j.step3);
+};
+
+(async () => {
+  const j = await api("/api/schema");
+  schema = j.tables;
+  $("table").innerHTML = Object.keys(schema).map(t => `<option>${t}</option>`).join("");
+  $("table").onchange = () => showColumns($("table").value);
+  showColumns($("table").value);
+})();
+</script>
+</body>
+</html>

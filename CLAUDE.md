@@ -60,6 +60,48 @@ and writes `evaluation.json`, `summary.json`, and `summary.md`. Match this shape
 or changing prompts that produce these fields. See `results/prompt_v2_clean_schema/` for a complete
 worked example (incl. `metadata.json` fields).
 
+## The LLM-as-compiler pipeline (deterministic Step 1→2→3)
+
+As of 2026-06-23 the project added a second paradigm alongside per-case prompting: instead of asking
+an LLM to answer each case at run time, prompts ask the LLM to **author a deterministic Python
+program once** ("compile time"), which then runs reproducibly with data read at run time (never in the
+prompt). This dissolves the two documented Stage-3 failure axes (context-budget + library-version
+drift). All three steps now exist as LLM-authored standard-library programs with aligned contracts.
+
+- **Step 1 — pattern classifier.** Prompt `prompts/prompt_v9.md` (v8's Step-1 half, retasked to emit
+  code) → `results/prompt_v9_codegen/`: `classifier_generated.py` (reference) and `gpt_generated.py`
+  (GPT-authored, stricter on partial-PK selections), both 9/9 on the blind cases.
+- **Step 2 — chart recommendation + mapping.** Prompt `prompts/step2_chart_mapping_prompt.md` (latest
+  `_v4.md`) → `results/step2_codegen/`: `recommend_charts_reference.py` and `gpt_recommend_charts.py`.
+  Emits recommended charts + a mapping whose field names match exactly what the Step-3 renderers read.
+  For the two many-many patterns it runs a **data-driven relationship selector** (proposal v2 §4):
+  it measures `density`, `N` and `symmetric` from the rows and ranks charts by an ordered rule table —
+  node-link (Sankey/chord) only while a relationship is sparse & small & has a scalar; once **dense or
+  large** the **matrix heatmap** leads; matrix/force also carry `value` = a scalar column **or** the
+  literal `"count"`, so attribute-free relations (`is_member`, `merges_with`) are covered. Thresholds
+  `DENSE`/`LARGE_N`/`SYMMETRIC_MIN`. `gpt_recommend_charts.py` is the authoritative data-driven one
+  (server loads it); the reference is a schema-only sibling.
+- **Step 3 — renderers.** Layered prompts in `prompts/viz_codegen/`: shared `base_d3v7.md` (D3 v7
+  contract, interactivity, no brace-templating rule) + one `chart_<x>.md` per chart, concatenated at
+  runtime. One renderer per chart lives in `results/viz_codegen_<chart>/render_<chart>_reference.py`,
+  each `render(mapping, rows)` reading grouped `mondial_database/mondial_data.json` via
+  `mapping["table"]`. All 5 patterns / 18 charts built (every chart Step 2 can recommend): bar,
+  scatter, bubble, calendar, choropleth, word cloud (basic); line, stacked, grouped, spider (weak);
+  treemap, circle packing, hierarchy tree (one_many); and for **both** many_many and reflexive_many_many:
+  sankey + chord (node-link, pattern-aware: sankey namespaces the two sides, chord is bipartite for
+  many_many / shared-set for reflexive), **matrix heatmap** (`viz_codegen_matrix`, square-symmetric vs
+  bipartite, count fallback), **force graph** (`viz_codegen_force`, topology), and **arc diagram**
+  (`viz_codegen_arc`, **reflexive-only**). matrix/force/arc read `mapping["value"]` (scalar column or
+  `"count"`), matrix also an optional `category`. Each run dir has a `SUMMARY.md`.
+- **Web front-end.** `experiments/web_pipeline/` (`server.py` + `index.html`, std-lib
+  ThreadingHTTPServer, **no model calls**) chains the three programs and renders the result in a
+  sandboxed iframe; unbuilt charts return `"working in process"`.
+
+The Step-2→Step-3 mapping field-name contract and the base-renderer rules (thinking off,
+`repetition_penalty=1.1`, no f-string/`.format()` brace templating, structural + static-JS validation)
+are the source of truth for extending these — see `prompts/viz_codegen/base_d3v7.md` and each cell's
+`SUMMARY.md`.
+
 ## Commands
 
 Scripts use **only the Python standard library** — no install step, no test suite, no linter.

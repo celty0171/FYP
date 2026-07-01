@@ -1,0 +1,666 @@
+{
+  "results": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "selected_columns": [
+        "code",
+        "population"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart",
+        "calendar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country",
+            "key": "code",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country",
+            "key": "code",
+            "x": "",
+            "y": "",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country",
+            "key": "code",
+            "x": "",
+            "y": "",
+            "size": "",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country",
+            "date": "",
+            "key": "code"
+          }
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": true,
+          "reason": "Key is not marked as geographical.",
+          "mapping": {
+            "table": "country",
+            "region": "",
+            "color": "",
+            "key": "code",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "word cloud",
+          "eligible": true,
+          "reason": "Key is not marked as lexical.",
+          "mapping": {
+            "table": "country",
+            "text": "",
+            "size": "",
+            "key": "code",
+            "measure": "population"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "bubble chart",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "country",
+          "key": "code",
+          "x": "",
+          "y": "",
+          "size": "",
+          "measure": "population"
+        }
+      }
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "selected_columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "identified_pattern": "basic_entity_inherited_key",
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart",
+        "calendar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "economy",
+            "key": "country",
+            "measure": "gdp",
+            "x": "unemployment"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "economy",
+            "key": "country",
+            "x": "unemployment",
+            "y": "",
+            "measure": "gdp"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "economy",
+            "key": "country",
+            "x": "unemployment",
+            "y": "",
+            "size": "",
+            "measure": "gdp"
+          }
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "economy",
+            "date": "",
+            "key": "country"
+          }
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": true,
+          "reason": "Key is not marked as geographical.",
+          "mapping": {
+            "table": "economy",
+            "region": "",
+            "color": "",
+            "key": "country",
+            "measure": "gdp",
+            "x": "unemployment"
+          }
+        },
+        {
+          "chart": "word cloud",
+          "eligible": true,
+          "reason": "Key is not marked as lexical.",
+          "mapping": {
+            "table": "economy",
+            "text": "",
+            "size": "",
+            "key": "country",
+            "measure": "gdp",
+            "x": "unemployment"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "bubble chart",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "economy",
+          "key": "country",
+          "x": "unemployment",
+          "y": "",
+          "size": "",
+          "measure": "gdp"
+        }
+      }
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "selected_columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "bar chart",
+        "scatter diagram",
+        "bubble chart",
+        "calendar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "measure": "elevation",
+            "x": "depth",
+            "y": "dam_height"
+          }
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "depth",
+            "y": "dam_height",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "lake",
+            "key": "name",
+            "x": "depth",
+            "y": "dam_height",
+            "size": "",
+            "measure": "elevation"
+          }
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "lake",
+            "date": "",
+            "key": "name"
+          }
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": true,
+          "reason": "Key is not marked as geographical.",
+          "mapping": {
+            "table": "lake",
+            "region": "",
+            "color": "",
+            "key": "name",
+            "measure": "elevation",
+            "x": "depth",
+            "y": "dam_height"
+          }
+        },
+        {
+          "chart": "word cloud",
+          "eligible": true,
+          "reason": "Key is not marked as lexical.",
+          "mapping": {
+            "table": "lake",
+            "text": "",
+            "size": "",
+            "key": "name",
+            "measure": "elevation",
+            "x": "depth",
+            "y": "dam_height"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "choropleth map",
+        "eligible": true,
+        "reason": "Key is not marked as geographical.",
+        "mapping": {
+          "table": "lake",
+          "region": "",
+          "color": "",
+          "key": "name",
+          "measure": "elevation",
+          "x": "depth",
+          "y": "dam_height"
+        }
+      }
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "selected_columns": [
+        "abbreviation",
+        "established"
+      ],
+      "identified_pattern": "basic_entity",
+      "recommended_charts": [
+        "calendar chart"
+      ],
+      "candidates": [
+        {
+          "chart": "bar chart",
+          "eligible": false,
+          "reason": "Missing required types (key scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "scatter diagram",
+          "eligible": false,
+          "reason": "Missing required types (key scalar scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "bubble chart",
+          "eligible": false,
+          "reason": "Missing required types (key scalar scalar scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "calendar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "organization",
+            "date": "",
+            "key": "abbreviation",
+            "measure": "established"
+          }
+        },
+        {
+          "chart": "choropleth map",
+          "eligible": false,
+          "reason": "Missing required types (key scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "word cloud",
+          "eligible": false,
+          "reason": "Missing required types (key scalar) in selected columns.",
+          "mapping": {}
+        }
+      ],
+      "selected": {
+        "chart": "calendar chart",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "organization",
+          "date": "",
+          "key": "abbreviation",
+          "measure": "established"
+        }
+      }
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "selected_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "identified_pattern": "weak_entity",
+      "recommended_charts": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "candidates": [
+        {
+          "chart": "line chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country_population",
+            "series": "",
+            "x": "",
+            "y": "",
+            "key": "year",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "stacked bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country_population",
+            "group": "",
+            "segment": "",
+            "value": "",
+            "key": "year",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "grouped bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country_population",
+            "group": "",
+            "segment": "",
+            "value": "",
+            "key": "year",
+            "measure": "population"
+          }
+        },
+        {
+          "chart": "spider chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "country_population",
+            "ring": "",
+            "spoke": "",
+            "value": "",
+            "key": "year",
+            "measure": "population"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "line chart",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "country_population",
+          "series": "",
+          "x": "",
+          "y": "",
+          "key": "year",
+          "measure": "population"
+        }
+      }
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "selected_columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "identified_pattern": "weak_entity",
+      "recommended_charts": [
+        "line chart",
+        "stacked bar chart",
+        "grouped bar chart",
+        "spider chart"
+      ],
+      "candidates": [
+        {
+          "chart": "line chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "ethnic_group",
+            "series": "",
+            "x": "",
+            "y": "",
+            "key": "name",
+            "measure": "percentage"
+          }
+        },
+        {
+          "chart": "stacked bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "ethnic_group",
+            "group": "",
+            "segment": "",
+            "value": "",
+            "key": "name",
+            "measure": "percentage"
+          }
+        },
+        {
+          "chart": "grouped bar chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "ethnic_group",
+            "group": "",
+            "segment": "",
+            "value": "",
+            "key": "name",
+            "measure": "percentage"
+          }
+        },
+        {
+          "chart": "spider chart",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "ethnic_group",
+            "ring": "",
+            "spoke": "",
+            "value": "",
+            "key": "name",
+            "measure": "percentage"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "line chart",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "ethnic_group",
+          "series": "",
+          "x": "",
+          "y": "",
+          "key": "name",
+          "measure": "percentage"
+        }
+      }
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "selected_columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "identified_pattern": "one_many_relationship",
+      "recommended_charts": [],
+      "candidates": [
+        {
+          "chart": "tree map",
+          "eligible": false,
+          "reason": "Missing required types (scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "circle packing",
+          "eligible": false,
+          "reason": "Missing required types (scalar) in selected columns.",
+          "mapping": {}
+        },
+        {
+          "chart": "hierarchy tree",
+          "eligible": false,
+          "reason": "Missing required types () in selected columns.",
+          "mapping": {}
+        }
+      ],
+      "selected": {}
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "selected_columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "identified_pattern": "many_many_relationship",
+      "recommended_charts": [
+        "sankey diagram"
+      ],
+      "candidates": [
+        {
+          "chart": "sankey diagram",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "encompasses",
+            "source": "",
+            "target": "",
+            "width": "",
+            "key": "continent",
+            "measure": "percentage"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "sankey diagram",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "encompasses",
+          "source": "",
+          "target": "",
+          "width": "",
+          "key": "continent",
+          "measure": "percentage"
+        }
+      }
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "selected_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "identified_pattern": "reflexive_many_many_relationship",
+      "recommended_charts": [
+        "chord diagram"
+      ],
+      "candidates": [
+        {
+          "chart": "chord diagram",
+          "eligible": true,
+          "reason": "",
+          "mapping": {
+            "table": "borders",
+            "source": "",
+            "target": "",
+            "width": "",
+            "key": "country2",
+            "measure": "length"
+          }
+        }
+      ],
+      "selected": {
+        "chart": "chord diagram",
+        "eligible": true,
+        "reason": "",
+        "mapping": {
+          "table": "borders",
+          "source": "",
+          "target": "",
+          "width": "",
+          "key": "country2",
+          "measure": "length"
+        }
+      }
+    }
+  ]
+}

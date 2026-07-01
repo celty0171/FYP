@@ -1,0 +1,94 @@
+{
+  "dataset": "Mondial",
+  "cases": [
+    {
+      "case_id": "1",
+      "selected_table": "country",
+      "selected_columns": [
+        "code",
+        "population"
+      ],
+      "identified_pattern": "basic_entity"
+    },
+    {
+      "case_id": "2",
+      "selected_table": "economy",
+      "selected_columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "identified_pattern": "basic_entity_inherited_key"
+    },
+    {
+      "case_id": "3",
+      "selected_table": "lake",
+      "selected_columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "identified_pattern": "basic_entity"
+    },
+    {
+      "case_id": "4",
+      "selected_table": "organization",
+      "selected_columns": [
+        "abbreviation",
+        "established"
+      ],
+      "identified_pattern": "basic_entity"
+    },
+    {
+      "case_id": "5",
+      "selected_table": "country_population",
+      "selected_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "identified_pattern": "weak_entity"
+    },
+    {
+      "case_id": "6",
+      "selected_table": "ethnic_group",
+      "selected_columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "identified_pattern": "weak_entity"
+    },
+    {
+      "case_id": "7",
+      "selected_table": "airport",
+      "selected_columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "identified_pattern": "one_many_relationship"
+    },
+    {
+      "case_id": "8",
+      "selected_table": "encompasses",
+      "selected_columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "identified_pattern": "many_many_relationship"
+    },
+    {
+      "case_id": "9",
+      "selected_table": "borders",
+      "selected_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "identified_pattern": "reflexive_many_many_relationship"
+    }
+  ]
+}

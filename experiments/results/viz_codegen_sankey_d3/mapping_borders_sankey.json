@@ -1,0 +1,1 @@
+{"table": "borders", "source": "country1", "target": "country2", "width": "length", "pattern": "reflexive_many_many_relationship", "title": "Country borders (Sankey, reflexive)"}
