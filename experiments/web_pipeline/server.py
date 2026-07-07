@@ -91,11 +91,11 @@ RENDERER_PATHS = {
     "tree map": "viz_codegen_treemap/render_treemap_reference.py",
     "circle packing": "viz_codegen_circlepack/render_circlepack_reference.py",
     "hierarchy tree": "viz_codegen_hierarchytree/render_hierarchytree_reference.py",
-    "sankey diagram": "viz_codegen_sankey_d3/render_sankey_reference.py",
-    "chord diagram": "viz_codegen_chord/render_chord_reference.py",
-    "matrix heatmap": "viz_codegen_matrix/render_matrix_reference.py",
-    "force graph": "viz_codegen_force/render_force_reference.py",
-    "arc diagram": "viz_codegen_arc/render_arc_reference.py",
+    "sankey diagram": "viz_codegen_sankey_d3/sonnet_sankey.py",
+    "chord diagram": "viz_codegen_chord/sonnet_chord.py",
+    "matrix heatmap": "viz_codegen_matrix/sonnet_matrix.py",
+    "force graph": "viz_codegen_force/sonnet_force.py",
+    "arc diagram": "viz_codegen_arc/sonnet_arc.py",
     "line chart": "viz_codegen_weak/render_line_reference.py",
     "stacked bar chart": "viz_codegen_weak/render_stacked_reference.py",
     "grouped bar chart": "viz_codegen_weak/render_grouped_reference.py",
@@ -125,12 +125,27 @@ def filtered_data(table: str, filters: list[dict[str, Any]] | None,
                   joins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """A DATA-shaped view holding the chosen table's joined + filtered rows.
 
-    Renderers read rows via ``_rows_for(mapping, data)`` -> ``data["tables"][table]``,
-    so passing this view (instead of the global DATA) draws the subset with no renderer
-    change. Order is join -> filter; empty joins/filters are the identity.
+    The server selects rows from this view (``_select_rows`` -> ``data["tables"][table]``)
+    and passes them to each renderer's ``render(mapping, rows)``, so passing this view
+    (instead of the global DATA) draws the subset with no renderer change. Order is
+    join -> filter; empty joins/filters are the identity.
     """
     rows = joined_base_rows(table, joins)
     return {"tables": {table: FILTER.apply(rows, filters or [])}}
+
+
+def _select_rows(mapping: dict[str, Any], data: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Pick the rows a renderer draws, owned by the server so it depends only on each
+    renderer's one guaranteed public function `render(mapping, rows)` — never on a
+    private helper whose name varies between LLM-authored renderers. `data` is already
+    the grouped join/filter/aggregate view `{"tables": {table: rows}}`."""
+    src = data if data is not None else DATA
+    table = mapping.get("table")
+    if isinstance(src, dict) and isinstance(src.get("tables"), dict):
+        return src["tables"].get(table, [])
+    if isinstance(src, list):
+        return src
+    return []
 
 
 def render_chart(chart: str | None, mapping: dict[str, Any],
@@ -141,7 +156,7 @@ def render_chart(chart: str | None, mapping: dict[str, Any],
     if mod is None or not mapping:
         return {"chart": chart, "available": False, "html": WORKING}
     try:
-        rows = mod._rows_for(mapping, data if data is not None else DATA)
+        rows = _select_rows(mapping, data)
         if not rows:
             return {"chart": chart, "available": False, "html": "no rows match the current filter"}
         html = _inline_d3(mod.render(mapping, rows))
