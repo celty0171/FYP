@@ -40,6 +40,17 @@
   body.vizfull #viz { height:calc(100vh - 116px); }
   .row { margin: 8px 0; font-size: 13px; }
   .k { color:#666; }
+  #filters { max-height: 260px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:6px; }
+  .fitem { margin:4px 0 8px; font-size:12px; }
+  .fitem .fname { font-weight:bold; }
+  .fitem .fdim { color:#999; font-weight:normal; font-size:11px; }
+  .fitem input[type=number] { width:78px; padding:3px; border:1px solid var(--line); border-radius:4px; }
+  .fvals { max-height:96px; overflow:auto; border:1px solid var(--line); border-radius:4px; padding:4px; margin-top:3px; }
+  .fvals label { display:block; padding:1px 0; cursor:pointer; }
+  .jchip { display:inline-block; font-size:12px; background:#eef2f8; border:1px solid var(--line); border-radius:12px; padding:2px 8px; margin:3px 4px 0 0; }
+  .jchip select { width:auto; font-size:11px; padding:0 2px; margin-left:4px; }
+  .jchip .jdel { cursor:pointer; color:#b55; margin-left:6px; }
+  .jwarn { color:#b07500; }
 </style>
 </head>
 <body>
@@ -52,6 +63,35 @@
     <h2>1. Selection</h2>
     <select id="table"></select>
     <div id="cols"></div>
+    <h2 style="margin-top:14px;">Related columns (join)</h2>
+    <div id="joinPick">
+      <select id="joinSel"></select>
+      <button id="addJoin" class="ghost" style="width:100%;margin-top:4px;">+ add related column</button>
+      <div id="joinList" style="margin-top:6px;"></div>
+    </div>
+    <h2 style="margin-top:14px;">2. Filters</h2>
+    <div id="filters"><span class="k" style="font-size:12px;">pick a table…</span></div>
+    <div id="filterSummary" class="row" style="font-size:12px;color:#555;"></div>
+    <button id="clearFilters" class="ghost" style="width:100%;margin-top:6px;">Clear filters</button>
+    <h2 style="margin-top:14px;">3. Aggregate</h2>
+    <div id="aggregate">
+      <div class="fitem">
+        <div class="fname">Resample <span class="fdim">(optional)</span></div>
+        <select id="rsCol" style="width:auto;"></select>
+        bucket <input id="rsBucket" type="number" style="width:60px;">
+        as <input id="rsAs" style="width:72px;padding:3px;border:1px solid var(--line);border-radius:4px;" placeholder="decade">
+      </div>
+      <div class="fitem">
+        <div class="fname">Group by</div>
+        <div id="groupby" class="fvals"></div>
+      </div>
+      <div class="fitem">
+        <div class="fname">Measures</div>
+        <div id="measures"></div>
+        <button id="addMeasure" class="ghost" style="margin-top:4px;padding:3px 8px;">+ measure</button>
+      </div>
+      <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
+    </div>
     <button id="run">Run pipeline</button>
   </div>
   <div>
@@ -97,6 +137,181 @@ function showColumns(table) {
 
 function selectedColumns() {
   return [...document.querySelectorAll('#cols input:checked')].map(i => i.value);
+}
+
+let colStats = {};
+let joinOpts = [], joinsState = [];
+
+async function showJoins(table) {
+  joinsState = [];
+  const j = await api("/api/join_options", { table });
+  joinOpts = (j && j.options) || [];
+  $("joinSel").innerHTML = joinOpts.map((o, i) =>
+    `<option value="${i}">${o.bring} · ${o.hops}-hop${o.multiplies ? " ⚠ may duplicate" : ""}</option>`).join("")
+    || `<option value="">— none reachable —</option>`;
+  renderJoinList();
+}
+
+function joinAsName(o) {
+  const base = schema[$("table").value] || [];
+  return base.includes(o.column) ? (o.table + "__" + o.column) : o.column;
+}
+
+function renderJoinList() {
+  $("joinList").innerHTML = joinsState.map((j, i) => {
+    const pol = j.multiplies
+      ? `<select data-i="${i}" class="jpol">${["first","explode"].map(p=>`<option${p===j.policy?" selected":""}>${p}</option>`).join("")}</select>`
+      : "";
+    const warn = j.multiplies ? ' <span class="jwarn">⚠</span>' : "";
+    return `<span class="jchip">${joinAsName(j)}${warn}${pol}<span class="jdel" data-i="${i}">✕</span></span>`;
+  }).join("");
+  $("joinList").querySelectorAll(".jdel").forEach(x => x.onclick = () => {
+    joinsState.splice(+x.dataset.i, 1); afterJoinChange();
+  });
+  $("joinList").querySelectorAll(".jpol").forEach(s => s.onchange = () => {
+    joinsState[+s.dataset.i].policy = s.value;
+  });
+}
+
+function collectJoins() {
+  return joinsState.map(j => ({ bring: j.bring, as: joinAsName(j), policy: j.policy }));
+}
+
+async function afterJoinChange() {
+  renderJoinList();
+  await showFilters($("table").value);   // joined column becomes filterable
+  refreshAggColumns();                    // and groupable / measurable
+}
+
+async function showFilters(table) {
+  $("filters").innerHTML = '<span class="k" style="font-size:12px;">loading…</span>';
+  const j = await api("/api/column_stats", { table, joins: collectJoins() });
+  colStats = (j && j.stats) || {};
+  const html = Object.keys(colStats).map(col => {
+    const s = colStats[col];
+    const head = `<div class="fname">${col} <span class="fdim">${s.dim}</span></div>`;
+    if (s.dim === "scalar" || s.dim === "temporal") {
+      const lo = (s.min !== undefined) ? s.min : "";
+      const hi = (s.max !== undefined) ? s.max : "";
+      return `<div class="fitem" data-col="${col}" data-kind="range">${head}
+        <input type="number" class="fmin" placeholder="${lo}"> –
+        <input type="number" class="fmax" placeholder="${hi}"></div>`;
+    }
+    if (Array.isArray(s.values)) {
+      const boxes = s.values.map(v =>
+        `<label><input type="checkbox" class="fval" value="${String(v).replace(/"/g,'&quot;')}" checked> ${v}</label>`).join("");
+      return `<div class="fitem" data-col="${col}" data-kind="in">${head}<div class="fvals">${boxes}</div></div>`;
+    }
+    return `<div class="fitem" data-col="${col}" data-kind="none">${head}
+      <span class="k">${s.distinct} distinct values — too many to filter</span></div>`;
+  }).join("");
+  $("filters").innerHTML = html || '<span class="k" style="font-size:12px;">no filterable columns</span>';
+  updateFilterSummary();
+  $("filters").oninput = updateFilterSummary;
+  $("filters").onchange = updateFilterSummary;
+}
+
+function collectFilters() {
+  const out = [];
+  document.querySelectorAll('#filters .fitem').forEach(item => {
+    const col = item.dataset.col, kind = item.dataset.kind;
+    if (kind === "range") {
+      const mn = item.querySelector('.fmin').value.trim();
+      const mx = item.querySelector('.fmax').value.trim();
+      if (mn === "" && mx === "") return;
+      const f = { column: col, op: "range" };
+      if (mn !== "") f.min = Number(mn);
+      if (mx !== "") f.max = Number(mx);
+      out.push(f);
+    } else if (kind === "in") {
+      const boxes = [...item.querySelectorAll('.fval')];
+      const checked = boxes.filter(b => b.checked);
+      if (checked.length > 0 && checked.length < boxes.length) {
+        out.push({ column: col, op: "in", values: checked.map(b => b.value) });
+      }
+    }
+  });
+  return out;
+}
+
+function updateFilterSummary() {
+  const f = collectFilters();
+  $("filterSummary").textContent = f.length ? f.map(x =>
+    x.op === "range" ? `${x.column} ${x.min ?? "…"}–${x.max ?? "…"}`
+                     : `${x.column} ∈ {${x.values.join(", ")}}`).join(" · ") : "";
+}
+
+const AGG_FNS = ["sum","mean","min","max","count","count_distinct"];
+
+function aggColumns() {
+  const cols = (schema[$("table").value] || []).slice();
+  collectJoins().forEach(j => { if (!cols.includes(j.as)) cols.push(j.as); });
+  const rc = $("rsCol").value, ra = $("rsAs").value.trim();
+  if (rc && (ra || true)) { const d = ra || (rc + "_bucket"); if (!cols.includes(d)) cols.push(d); }
+  return cols;
+}
+
+function measureRow() {
+  const cols = aggColumns();
+  const d = document.createElement("div");
+  d.className = "mrow"; d.style.margin = "3px 0";
+  d.innerHTML =
+    `<select class="mFn" style="width:auto;">${AGG_FNS.map(f=>`<option>${f}</option>`).join("")}</select>
+     <select class="mCol" style="width:auto;">${cols.map(c=>`<option>${c}</option>`).join("")}</select>
+     <input class="mAs" style="width:78px;padding:3px;border:1px solid var(--line);border-radius:4px;" placeholder="alias">
+     <span class="mDel" style="cursor:pointer;color:#b55;">✕</span>`;
+  d.querySelector(".mDel").onclick = () => { d.remove(); updateAggSummary(); };
+  d.oninput = d.onchange = updateAggSummary;
+  return d;
+}
+
+function showAggregate() {
+  const cols = aggColumns();
+  $("rsCol").innerHTML = `<option value="">—</option>` + cols.map(c=>`<option>${c}</option>`).join("");
+  $("rsBucket").value = ""; $("rsAs").value = "";
+  $("groupby").innerHTML = cols.map(c =>
+    `<label><input type="checkbox" class="gb" value="${c}"> ${c}</label>`).join("");
+  $("measures").innerHTML = ""; $("measures").appendChild(measureRow());
+  updateAggSummary();
+}
+
+function refreshAggColumns() {
+  // resample derived column can become a group-by / measure target
+  const cols = aggColumns();
+  const gbChecked = new Set([...document.querySelectorAll('#groupby .gb:checked')].map(i=>i.value));
+  $("groupby").innerHTML = cols.map(c =>
+    `<label><input type="checkbox" class="gb" value="${c}"${gbChecked.has(c)?" checked":""}> ${c}</label>`).join("");
+  document.querySelectorAll('#measures .mCol').forEach(sel => {
+    const v = sel.value;
+    sel.innerHTML = cols.map(c=>`<option>${c}</option>`).join("");
+    if (cols.includes(v)) sel.value = v;
+  });
+  updateAggSummary();
+}
+
+function collectAggregate() {
+  const group_by = [...document.querySelectorAll('#groupby .gb:checked')].map(i=>i.value);
+  const measures = [...document.querySelectorAll('#measures .mrow')].map(r => {
+    const fn = r.querySelector('.mFn').value;
+    const col = r.querySelector('.mCol').value;
+    const as = r.querySelector('.mAs').value.trim();
+    if (fn !== "count" && !col) return null;
+    const m = { fn }; if (fn !== "count") m.column = col; if (as) m.as = as;
+    return m;
+  }).filter(Boolean);
+  if (!group_by.length && !measures.length) return {};
+  const resample = [];
+  const rc = $("rsCol").value, rb = $("rsBucket").value, ra = $("rsAs").value.trim();
+  if (rc && rb) resample.push({ column: rc, bucket: Number(rb), as: ra || (rc + "_bucket") });
+  return { resample, group_by, measures };
+}
+
+function updateAggSummary() {
+  const a = collectAggregate();
+  if (!a.group_by) { $("aggSummary").textContent = ""; return; }
+  const ms = (a.measures||[]).map(m => m.fn === "count" ? "count" : `${m.fn}(${m.column})`).join(", ");
+  const by = a.group_by.length ? " by " + a.group_by.join(", ") : " (overall)";
+  $("aggSummary").textContent = (ms || "—") + by + " — chart describes groups, not raw rows";
 }
 
 const vstate = { scale: 1, html: null, chart: null };
@@ -186,15 +401,34 @@ function drawCharts(step2) {
     const chart = p.dataset.chart;
     const mapping = byChart[chart] || (step2.selected||{}).mapping;
     $("mapping").textContent = JSON.stringify(mapping, null, 2);
-    renderViz(await api("/api/render", { chart, mapping }));
+    const table = $("table").value;
+    const filters = (last && last.filters) || collectFilters();
+    const aggregate = (last && last.aggregate) || collectAggregate();
+    const joins = (last && last.joins) || collectJoins();
+    renderViz(await api("/api/render", { chart, mapping, table, filters, aggregate, joins }));
   });
 }
 
+$("clearFilters").onclick = () => { showFilters($("table").value); };
+$("addJoin").onclick = () => {
+  const i = $("joinSel").value;
+  if (i === "" || !joinOpts[+i]) return;
+  const o = joinOpts[+i];
+  if (joinsState.some(j => j.bring === o.bring)) return;   // no duplicates
+  joinsState.push({ bring: o.bring, table: o.table, column: o.column, multiplies: o.multiplies, policy: "first" });
+  afterJoinChange();
+};
+$("addMeasure").onclick = () => { $("measures").appendChild(measureRow()); updateAggSummary(); };
+$("rsCol").onchange = refreshAggColumns;
+$("rsAs").oninput = refreshAggColumns;
+$("rsBucket").oninput = updateAggSummary;
+
 $("run").onclick = async () => {
   const table = $("table").value, columns = selectedColumns();
+  const filters = collectFilters(), aggregate = collectAggregate(), joins = collectJoins();
   if (!columns.length) { alert("pick at least one column"); return; }
   $("viz").innerHTML = '<div class="wip">running…</div>';
-  const j = await api("/api/run", { table, columns });
+  const j = await api("/api/run", { table, columns, filters, aggregate, joins });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
   $("pattern").textContent = j.step1.pattern;
@@ -207,8 +441,16 @@ $("run").onclick = async () => {
   const j = await api("/api/schema");
   schema = j.tables;
   $("table").innerHTML = Object.keys(schema).map(t => `<option>${t}</option>`).join("");
-  $("table").onchange = () => showColumns($("table").value);
+  $("table").onchange = async () => {
+    showColumns($("table").value);
+    await showJoins($("table").value);
+    showFilters($("table").value);
+    showAggregate();
+  };
   showColumns($("table").value);
+  await showJoins($("table").value);
+  showFilters($("table").value);
+  showAggregate();
 })();
 </script>
 </body>
