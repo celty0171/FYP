@@ -1,0 +1,86 @@
+"""Runtime configuration for the production layer, read from a repo-root ``.env`` (with
+``os.environ`` taking precedence). Std-lib only — no python-dotenv dependency.
+
+Defaults keep the experiment path unchanged: ``VIZER_DATASOURCE=json`` uses the offline
+Mondial JSON files, and nothing here is consulted unless the production layer is used.
+"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]      # FYP/
+EXP = Path(__file__).resolve().parent                # experiments/
+
+
+def _load_env_file(path: Path) -> dict[str, str]:
+    """Parse a simple KEY=VALUE .env file (ignores blanks / # comments / quotes)."""
+    out: dict[str, str] = {}
+    if not path.exists():
+        return out
+    for line in path.read_text("utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        val = val.strip().strip('"').strip("'")
+        out[key.strip()] = val
+    return out
+
+
+def _get(env: dict[str, str], key: str, default: str = "") -> str:
+    # os.environ overrides the .env file, which overrides the default.
+    return os.environ.get(key) or env.get(key) or default
+
+
+@dataclass
+class Config:
+    datasource: str            # "json" | "postgres"
+    schema_path: Path
+    data_path: Path
+    database_url: str
+    row_cap: int
+    dashscope_api_key: str
+    dashscope_base_url: str
+    nl_model: str
+
+    @property
+    def has_llm(self) -> bool:
+        return bool(self.dashscope_api_key)
+
+
+def load_config(env_path: Path | None = None) -> Config:
+    env = _load_env_file(env_path or (REPO_ROOT / ".env"))
+    db = EXP / "mondial_database"
+
+    database_url = _get(env, "DATABASE_URL")
+    if not database_url and _get(env, "PG_HOST"):
+        # Assemble a psycopg2 URL from discrete PG_* parts.
+        user = _get(env, "PG_USER", "postgres")
+        pw = _get(env, "PG_PASSWORD")
+        host = _get(env, "PG_HOST", "localhost")
+        port = _get(env, "PG_PORT", "5432")
+        name = _get(env, "PG_DATABASE", "")
+        auth = user + (":" + pw if pw else "")
+        database_url = "postgresql+psycopg2://" + auth + "@" + host + ":" + port + "/" + name
+
+    try:
+        row_cap = int(_get(env, "VIZER_ROW_CAP", "5000"))
+    except ValueError:
+        row_cap = 5000
+
+    return Config(
+        datasource=_get(env, "VIZER_DATASOURCE", "json").lower(),
+        schema_path=Path(_get(env, "VIZER_SCHEMA_PATH", str(db / "mondial_schema_summary_clean.json"))),
+        data_path=Path(_get(env, "VIZER_DATA_PATH", str(db / "mondial_data.json"))),
+        database_url=database_url,
+        row_cap=row_cap,
+        dashscope_api_key=_get(env, "DASHSCOPE_API_KEY"),
+        dashscope_base_url=_get(
+            env, "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        ),
+        nl_model=_get(env, "NL_MODEL", "qwen-plus"),
+    )

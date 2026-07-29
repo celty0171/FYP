@@ -51,54 +51,115 @@
   .jchip select { width:auto; font-size:11px; padding:0 2px; margin-left:4px; }
   .jchip .jdel { cursor:pointer; color:#b55; margin-left:6px; }
   .jwarn { color:#b07500; }
+
+  /* --- layout & two-mode UI --- */
+  .leftcol { display:flex; flex-direction:column; gap:16px; }
+  .ds-status { font-size:12px; font-weight:bold; padding:7px 10px; border-radius:6px; margin-bottom:10px; }
+  .ds-off { background:#fdecec; color:#b00020; }
+  .ds-on  { background:#e7f6ec; color:#1a7f37; }
+  .conn-grid { display:grid; grid-template-columns:auto 1fr; gap:8px 10px; align-items:center; font-size:13px; }
+  .conn-grid input { padding:6px; border:1px solid var(--line); border-radius:6px; font-size:13px; width:100%; }
+  .conn-out { font-size:12px; margin-top:8px; }
+  .modes { position:relative; }
+  .mode-tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .mtab { flex:1; background:#fff; color:#556; border:1px solid var(--line); padding:9px 6px; border-radius:8px; font-weight:bold; font-size:13px; }
+  .mtab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .mode-hint { font-size:12px; color:#667; margin:0 0 10px; line-height:1.5; }
+  .mode-body textarea { width:100%; padding:9px; border:1px solid var(--line); border-radius:6px; resize:vertical; font-size:14px; font-family:inherit; line-height:1.5; }
+  .mode-body h3 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#667; margin:16px 0 6px; }
+  .fld-label { display:block; font-size:12px; color:#667; margin-bottom:4px; font-weight:bold; }
+  .nl-out { font-size:12px; margin-top:8px; }
+  .nl-out pre { background:#0f1115; }
+  .mode-lock { position:absolute; inset:52px 12px 12px; background:rgba(255,255,255,.86); display:flex; align-items:center; justify-content:center; text-align:center; color:#8a93a3; font-size:14px; line-height:1.6; padding:20px; border-radius:8px; }
+  body.connected .mode-lock { display:none; }
+  body:not(.connected) .modes .mode-tabs,
+  body:not(.connected) .modes .mode-body { opacity:.3; pointer-events:none; filter:grayscale(.4); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Mondial visualisation pipeline — Step 1 → 2 → 3 (deterministic)</h1>
-  <p>Step 1 gpt_generated.py · Step 2 gpt_recommend_charts.py · Step 3 render_*_reference.py · data: mondial_data.json</p>
+  <h1>VizER — visualise your database by its structure</h1>
+  <p>Connect your database, then either <b>describe what you want in plain language</b> or <b>pick tables &amp; columns yourself</b>. The system detects the schema pattern and builds an interactive chart for you.</p>
 </header>
 <main>
-  <div class="panel">
-    <h2>1. Selection</h2>
-    <select id="table"></select>
-    <div id="cols"></div>
-    <h2 style="margin-top:14px;">Related columns (join)</h2>
-    <div id="joinPick">
-      <select id="joinSel"></select>
-      <button id="addJoin" class="ghost" style="width:100%;margin-top:4px;">+ add related column</button>
-      <div id="joinList" style="margin-top:6px;"></div>
+  <div class="leftcol">
+    <!-- Step 1: connect -->
+    <div class="panel">
+      <h2>Step 1 · Connect your database</h2>
+      <div id="dsStatus" class="ds-status ds-off">Not connected</div>
+      <div class="conn-grid">
+        <label>Host</label><input id="pgHost" value="localhost">
+        <label>Port</label><input id="pgPort" value="5432">
+        <label>User</label><input id="pgUser" value="postgres">
+        <label>Password</label><input id="pgPassword" type="password">
+        <label>Database</label><input id="pgDatabase" placeholder="mondial">
+      </div>
+      <button id="pgConnect" style="width:100%;margin-top:10px;">Connect</button>
+      <div id="connOut" class="conn-out"></div>
     </div>
-    <h2 style="margin-top:14px;">2. Filters</h2>
-    <div id="filters"><span class="k" style="font-size:12px;">pick a table…</span></div>
-    <div id="filterSummary" class="row" style="font-size:12px;color:#555;"></div>
-    <button id="clearFilters" class="ghost" style="width:100%;margin-top:6px;">Clear filters</button>
-    <h2 style="margin-top:14px;">3. Aggregate</h2>
-    <div id="aggregate">
-      <div class="fitem">
-        <div class="fname">Resample <span class="fdim">(optional)</span></div>
-        <select id="rsCol" style="width:auto;"></select>
-        bucket <input id="rsBucket" type="number" style="width:60px;">
-        as <input id="rsAs" style="width:72px;padding:3px;border:1px solid var(--line);border-radius:4px;" placeholder="decade">
+
+    <!-- Step 2: two ways to visualise -->
+    <div class="panel modes" id="modesPanel">
+      <h2>Step 2 · Choose how to explore</h2>
+      <div class="mode-tabs">
+        <button class="mtab active" data-mode="nl">🗣 Describe in words</button>
+        <button class="mtab" data-mode="manual">🖱 Pick data yourself</button>
       </div>
-      <div class="fitem">
-        <div class="fname">Group by</div>
-        <div id="groupby" class="fvals"></div>
+
+      <!-- Mode A: natural language -->
+      <div class="mode-body" id="modeNL">
+        <p class="mode-hint">Type what you want to see — the system finds the right table, columns and chart for you.</p>
+        <textarea id="nlText" rows="3" placeholder="e.g. Show the border relationships between South American countries"></textarea>
+        <button id="nlParse" style="width:100%;margin-top:8px;">Generate visualisation</button>
+        <div id="nlOut" class="nl-out"></div>
       </div>
-      <div class="fitem">
-        <div class="fname">Measures</div>
-        <div id="measures"></div>
-        <button id="addMeasure" class="ghost" style="margin-top:4px;padding:3px 8px;">+ measure</button>
+
+      <!-- Mode B: manual table + column selection -->
+      <div class="mode-body" id="modeManual" hidden>
+        <p class="mode-hint">Pick a table and the columns to visualise. Optionally add joins, filters or aggregation.</p>
+        <label class="fld-label">Table</label>
+        <select id="table"></select>
+        <div id="cols"></div>
+        <h3>Related columns (join)</h3>
+        <div id="joinPick">
+          <select id="joinSel"></select>
+          <button id="addJoin" class="ghost" style="width:100%;margin-top:4px;">+ add related column</button>
+          <div id="joinList" style="margin-top:6px;"></div>
+        </div>
+        <h3>Filters</h3>
+        <div id="filters"><span class="k" style="font-size:12px;">pick a table…</span></div>
+        <div id="filterSummary" class="row" style="font-size:12px;color:#555;"></div>
+        <button id="clearFilters" class="ghost" style="width:100%;margin-top:6px;">Clear filters</button>
+        <h3>Aggregate</h3>
+        <div id="aggregate">
+          <div class="fitem">
+            <div class="fname">Resample <span class="fdim">(optional)</span></div>
+            <select id="rsCol" style="width:auto;"></select>
+            bucket <input id="rsBucket" type="number" style="width:60px;">
+            as <input id="rsAs" style="width:72px;padding:3px;border:1px solid var(--line);border-radius:4px;" placeholder="decade">
+          </div>
+          <div class="fitem">
+            <div class="fname">Group by</div>
+            <div id="groupby" class="fvals"></div>
+          </div>
+          <div class="fitem">
+            <div class="fname">Measures</div>
+            <div id="measures"></div>
+            <button id="addMeasure" class="ghost" style="margin-top:4px;padding:3px 8px;">+ measure</button>
+          </div>
+          <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
+        </div>
+        <button id="run">Visualise</button>
       </div>
-      <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
+
+      <div class="mode-lock" id="modeLock">🔌 Connect to a database above to begin.</div>
     </div>
-    <button id="run">Run pipeline</button>
   </div>
   <div>
     <div class="panel" style="margin-bottom:16px;">
-      <h2>Step 1 — ER pattern &amp; Step 2 — chart recommendation</h2>
-      <div class="row"><span class="k">Pattern:</span> <b id="pattern" class="badge">—</b></div>
-      <div class="row"><span class="k">Recommended (click to render):</span> <span id="charts"></span></div>
+      <h2>What the system detected</h2>
+      <div class="row"><span class="k">Schema pattern:</span> <b id="pattern" class="badge">—</b></div>
+      <div class="row"><span class="k">Recommended charts (click to render):</span> <span id="charts"></span></div>
       <div class="row"><span class="k">Selected mapping:</span></div>
       <pre id="mapping">—</pre>
     </div>
@@ -115,7 +176,7 @@
           <button id="download" title="Download standalone HTML" disabled>Download</button>
         </div>
       </div>
-      <div id="viz"><div class="wip">run the pipeline to render a chart</div></div>
+      <div id="viz"><div class="wip">connect a database and run a request to render a chart</div></div>
     </div>
   </div>
 </main>
@@ -423,34 +484,96 @@ $("rsCol").onchange = refreshAggColumns;
 $("rsAs").oninput = refreshAggColumns;
 $("rsBucket").oninput = updateAggSummary;
 
-$("run").onclick = async () => {
-  const table = $("table").value, columns = selectedColumns();
-  const filters = collectFilters(), aggregate = collectAggregate(), joins = collectJoins();
-  if (!columns.length) { alert("pick at least one column"); return; }
+async function runSelection(sel) {
   $("viz").innerHTML = '<div class="wip">running…</div>';
-  const j = await api("/api/run", { table, columns, filters, aggregate, joins });
+  const j = await api("/api/run", {
+    table: sel.table, columns: sel.columns || [],
+    filters: sel.filters || [], aggregate: sel.aggregate || {}, joins: sel.joins || [],
+  });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
   $("pattern").textContent = j.step1.pattern;
   $("mapping").textContent = JSON.stringify((j.step2.selected||{}).mapping || {}, null, 2);
   drawCharts(j.step2);
   renderViz(j.step3);
+}
+
+$("run").onclick = async () => {
+  const sel = { table: $("table").value, columns: selectedColumns(),
+    filters: collectFilters(), aggregate: collectAggregate(), joins: collectJoins() };
+  if (!sel.columns.length) { alert("pick at least one column"); return; }
+  runSelection(sel);
 };
 
-(async () => {
+// Natural-language -> selection (Bailian). Parse, show for confirmation, then run.
+$("nlParse").onclick = async () => {
+  const text = $("nlText").value.trim();
+  if (!text) return;
+  $("nlOut").textContent = "parsing…";
+  const j = await api("/api/nl", { text });
+  if (!j || !j.ok) {
+    $("nlOut").innerHTML = `<span style="color:#b00">${(j && j.error) || "could not resolve"}</span>`;
+    return;
+  }
+  const sel = j.selection;
+  $("nlOut").innerHTML =
+    `<pre style="white-space:pre-wrap;margin:0 0 6px;">${JSON.stringify(sel, null, 2)}</pre>` +
+    `<button id="nlRun" style="width:100%;">Run this selection</button>`;
+  $("nlRun").onclick = () => runSelection(sel);
+};
+
+// (Re)load the table list + selection UI from whatever data source is active.
+async function loadSchema() {
   const j = await api("/api/schema");
   schema = j.tables;
   $("table").innerHTML = Object.keys(schema).map(t => `<option>${t}</option>`).join("");
+  showColumns($("table").value);
+  await showJoins($("table").value);
+  showFilters($("table").value);
+  showAggregate();
+}
+
+function setConnected(on, db) {
+  document.body.classList.toggle("connected", on);
+  const s = $("dsStatus");
+  s.classList.toggle("ds-on", on);
+  s.classList.toggle("ds-off", !on);
+  s.textContent = on ? ("Connected · " + (db || "database")) : "Not connected";
+}
+
+$("pgConnect").onclick = async () => {
+  $("connOut").textContent = "connecting…";
+  const j = await api("/api/connect", {
+    host: $("pgHost").value, port: $("pgPort").value, user: $("pgUser").value,
+    password: $("pgPassword").value, database: $("pgDatabase").value,
+  });
+  if (!j || !j.ok) {
+    setConnected(false);
+    $("connOut").innerHTML = '<span style="color:#b00020">' + ((j && j.error) || "connection failed") + '</span>';
+    return;
+  }
+  setConnected(true, $("pgDatabase").value || j.database);
+  $("connOut").innerHTML = '<span style="color:#1a7f37">connected — ' + j.tables.length + ' tables</span>';
+  await loadSchema();
+};
+
+// Two-mode tabs: Describe in words  |  Pick data yourself
+document.querySelectorAll(".mtab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".mtab").forEach(x => x.classList.toggle("active", x === t));
+  const m = t.dataset.mode;
+  $("modeNL").hidden = (m !== "nl");
+  $("modeManual").hidden = (m !== "manual");
+});
+
+(async () => {
   $("table").onchange = async () => {
     showColumns($("table").value);
     await showJoins($("table").value);
     showFilters($("table").value);
     showAggregate();
   };
-  showColumns($("table").value);
-  await showJoins($("table").value);
-  showFilters($("table").value);
-  showAggregate();
+  // Start locked: the user must connect a database before either mode is usable.
+  setConnected(false);
 })();
 </script>
 </body>

@@ -26,6 +26,13 @@ EXP = Path(__file__).resolve().parents[1]          # experiments/
 HERE = Path(__file__).resolve().parent
 WORKING = "working in process"
 
+# Import the production data-source / config / NL layers as top-level packages.
+import sys
+if str(EXP) not in sys.path:
+    sys.path.insert(0, str(EXP))
+from config import load_config                       # noqa: E402
+from datasource import make_datasource               # noqa: E402
+
 
 def _load(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -34,8 +41,13 @@ def _load(path: Path, name: str):
     return mod
 
 
-SCHEMA = json.loads((EXP / "mondial_database" / "mondial_schema_summary_clean.json").read_text("utf-8"))
-DATA = json.loads((EXP / "mondial_database" / "mondial_data.json").read_text("utf-8"))
+# Data source is chosen by .env (VIZER_DATASOURCE): JSON files by default (experiments
+# unchanged), or a live PostgreSQL database in production. Both yield the same schema
+# dict + row dicts, so nothing downstream changes.
+CONFIG = load_config()
+DS = make_datasource(CONFIG)
+SCHEMA = DS.get_schema()
+TABLES = DS.tables_view()                            # {table: rows}; lazy for live DB
 
 # Renderers load D3 (and, for a few charts, a D3 plugin) from CDNs. In an offline /
 # restricted-network browser those fail (ERR_CONNECTION_CLOSED -> "d3 is not defined" ->
@@ -109,15 +121,72 @@ RENDERERS = {
 }
 
 
+# The active data source can be swapped at runtime from the web UI (POST /api/connect),
+# mirroring VizER's live-DB login form. `.env` still provides the startup default; a form
+# override rebinds the globals below so every downstream read sees the new source.
+DS_STATUS: dict[str, Any] = {
+    "mode": CONFIG.datasource, "database": "", "note": "startup default from .env"
+}
+
+
+def set_datasource(ds, *, mode: str, database: str = "", note: str = "") -> list[str]:
+    """Make ``ds`` the active source (also validates it by reading its schema)."""
+    global DS, SCHEMA, TABLES, DS_STATUS
+    schema = ds.get_schema()
+    DS, SCHEMA, TABLES = ds, schema, ds.tables_view()
+    DS_STATUS = {"mode": mode, "database": database, "note": note}
+    return sorted(SCHEMA.get("tables", {}))
+
+
+def connect_postgres(params: dict[str, Any]) -> dict[str, Any]:
+    """Build a live PostgreSQL source from web-form fields and make it active.
+
+    Body: ``{host, port, user, password, database}`` (as in VizER's db-login). The
+    password is used only to build the connection URL — never logged or echoed back.
+    """
+    from urllib.parse import quote
+
+    host = (params.get("host") or "localhost").strip()
+    port = str(params.get("port") or "5432").strip()
+    user = (params.get("user") or "").strip()
+    password = params.get("password") or ""
+    database = (params.get("database") or "").strip()
+    if not (user and database):
+        return {"ok": False, "error": "user and database are required"}
+    auth = quote(user) + ((":" + quote(password)) if password else "")
+    url = "postgresql+psycopg2://" + auth + "@" + host + ":" + port + "/" + database
+    try:
+        from datasource.postgres_source import PostgresDataSource
+
+        ds = PostgresDataSource(url, row_cap=CONFIG.row_cap)
+        tables = set_datasource(
+            ds, mode="postgres", database=database,
+            note="connected to " + user + "@" + host + ":" + port + "/" + database,
+        )
+        return {"ok": True, "mode": "postgres", "database": database, "tables": tables}
+    except Exception as exc:  # bad creds / driver missing / unreachable host
+        return {"ok": False, "error": str(exc)}
+
+
+def use_default_datasource() -> dict[str, Any]:
+    """Revert to the .env-configured source (usually the bundled Mondial JSON)."""
+    try:
+        ds = make_datasource(CONFIG)
+        tables = set_datasource(ds, mode=CONFIG.datasource, note="reverted to .env default")
+        return {"ok": True, "mode": CONFIG.datasource, "tables": tables}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def joined_base_rows(table: str, joins: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """The base table's rows, enriched with any joined foreign columns (Phase 2).
 
     Runs before filtering so a joined column (e.g. `continent`) can be filtered and
     grouped like a native one. An empty/absent joins list is the identity.
     """
-    rows = DATA.get("tables", {}).get(table) or []
+    rows = TABLES.get(table) or []
     if joins:
-        rows = JOIN.enrich(SCHEMA, DATA.get("tables", {}), table, rows, joins)
+        rows = JOIN.enrich(SCHEMA, TABLES, table, rows, joins)
     return rows
 
 
@@ -139,12 +208,14 @@ def _select_rows(mapping: dict[str, Any], data: dict[str, Any] | None) -> list[d
     renderer's one guaranteed public function `render(mapping, rows)` — never on a
     private helper whose name varies between LLM-authored renderers. `data` is already
     the grouped join/filter/aggregate view `{"tables": {table: rows}}`."""
-    src = data if data is not None else DATA
     table = mapping.get("table")
-    if isinstance(src, dict) and isinstance(src.get("tables"), dict):
-        return src["tables"].get(table, [])
-    if isinstance(src, list):
-        return src
+    if data is None:
+        # No prepared view supplied — read the raw table straight from the data source.
+        return TABLES.get(table) or []
+    if isinstance(data, dict) and isinstance(data.get("tables"), dict):
+        return data["tables"].get(table, [])
+    if isinstance(data, list):
+        return data
     return []
 
 
@@ -184,6 +255,25 @@ def prepared_data(table: str, filters: list[dict[str, Any]] | None,
         _dsch, dtable, _dcols, arows = AGG.prepare(SCHEMA, table, rows, aggregate)
         return {"tables": {dtable: arows}}
     return fdata
+
+
+def nl_select(text: str) -> dict[str, Any]:
+    """Resolve a natural-language request to a structured selection via Bailian.
+
+    Returns ``{"ok", "selection", "error"}``; the front end shows the selection for
+    confirmation and then submits it to ``/api/run``. Degrades gracefully if the LLM is
+    not configured (no ``DASHSCOPE_API_KEY``) or the openai SDK is missing.
+    """
+    if not text:
+        return {"ok": False, "selection": None, "error": "empty request"}
+    if not CONFIG.has_llm:
+        return {"ok": False, "selection": None,
+                "error": "natural-language input needs DASHSCOPE_API_KEY in .env"}
+    try:
+        from nlquery.nl_to_selection import parse
+        return parse(text, SCHEMA)
+    except Exception as exc:  # keep the UI alive if the LLM/lib is unavailable
+        return {"ok": False, "selection": None, "error": str(exc)}
 
 
 def _empty_run(table, columns, filters, aggregate, joins, pattern, reason, msg):
@@ -284,6 +374,8 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/schema":
             tables = {t: [c["name"] for c in SCHEMA["tables"][t]["columns"]] for t in sorted(SCHEMA["tables"])}
             self._send(200, {"tables": tables})
+        elif self.path == "/api/datasource":
+            self._send(200, {"status": DS_STATUS, "tables": sorted(SCHEMA.get("tables", {}))})
         elif self.path.startswith("/api/column_stats"):
             from urllib.parse import parse_qs, urlparse
             q = parse_qs(urlparse(self.path).query)
@@ -299,7 +391,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _column_stats(self, table: str, columns: list[str] | None = None,
                       joins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-        if DATA.get("tables", {}).get(table) is None:
+        if table not in SCHEMA.get("tables", {}):
             return {"error": "unknown table", "stats": {}}
         # Stats come from the *unfiltered* (but joined) rows so control ranges/values
         # stay stable and a joined column gets a control.
@@ -307,7 +399,7 @@ class Handler(BaseHTTPRequestHandler):
         return {"table": table, "stats": FILTER.column_stats(rows, columns)}
 
     def _join_options(self, table: str) -> dict[str, Any]:
-        if DATA.get("tables", {}).get(table) is None:
+        if table not in SCHEMA.get("tables", {}):
             return {"error": "unknown table", "options": []}
         opts = [{"bring": r["table"] + "." + r["column"], "table": r["table"],
                  "column": r["column"], "multiplies": r["multiplies"], "hops": len(r["path"])}
@@ -328,6 +420,16 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(400, {"error": "pick a table and at least one column"})
                     return
                 self._send(200, run_pipeline(table, columns, filters, aggregate, joins))
+            elif self.path == "/api/connect":
+                # Live-DB login from the web form: connect + swap the active data source.
+                self._send(200, connect_postgres(body))
+            elif self.path == "/api/disconnect":
+                self._send(200, use_default_datasource())
+            elif self.path == "/api/nl":
+                # Natural-language -> structured selection (Bailian). Returns the resolved
+                # {table, columns, filters, joins, aggregate} for the UI to confirm, then
+                # the user runs it via /api/run. Never chooses a pattern or chart.
+                self._send(200, nl_select((body.get("text") or "").strip()))
             elif self.path == "/api/render":
                 table = (body.get("table") or (body.get("mapping") or {}).get("table") or "").strip()
                 filters = body.get("filters") or []

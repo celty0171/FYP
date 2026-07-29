@@ -94,8 +94,26 @@ drift). All three steps now exist as LLM-authored standard-library programs with
   (`viz_codegen_arc`, **reflexive-only**). matrix/force/arc read `mapping["value"]` (scalar column or
   `"count"`), matrix also an optional `category`. Each run dir has a `SUMMARY.md`.
 - **Web front-end.** `experiments/web_pipeline/` (`server.py` + `index.html`, std-lib
-  ThreadingHTTPServer, **no model calls**) chains the three programs and renders the result in a
-  sandboxed iframe; unbuilt charts return `"working in process"`.
+  ThreadingHTTPServer, **no model calls at serve time**) chains the three programs and renders the
+  result in a sandboxed iframe; unbuilt charts return `"working in process"`.
+
+## Production layer (opt-in — live SQL + natural-language input)
+
+An optional deployment layer sits **in front of** the pipeline without changing any of the above;
+it is off by default so the experiment path is byte-identical. Configured via a repo-root `.env`
+(gitignored; template `.env.example`), read by `experiments/config.py`. Needs
+`experiments/requirements.txt` (SQLAlchemy + psycopg2 + openai) — the experiment core stays std-lib.
+
+- **Data-source adapter** `experiments/datasource/` — a `DataSource` yields the *same* clean schema
+  dict + row dicts the pipeline consumes, from either the offline JSON files (`JsonFileDataSource`,
+  default `VIZER_DATASOURCE=json`) or a live PostgreSQL DB (`PostgresDataSource`, SQLAlchemy `inspect`
+  for PK/FK/types, `SELECT … LIMIT` for rows with type coercion). `make_datasource(load_config())`
+  picks one; `server.py` reads `SCHEMA`/`TABLES` from it instead of the two JSON globals.
+- **NL → selection** `experiments/nlquery/` — `nl_to_selection.parse(text, schema)` uses the Bailian /
+  DashScope OpenAI-compatible client (`bailian_client.py`, key `DASHSCOPE_API_KEY`) to turn free text
+  into a validated `{table, columns, filters, joins, aggregate}` selection — **never** a pattern or
+  chart label, so blind/gold separation holds. Served at `POST /api/nl` (returns the selection for the
+  UI to confirm, then run via `/api/run`); degrades gracefully when no key is set.
 
 The Step-2→Step-3 mapping field-name contract and the base-renderer rules (thinking off,
 `repetition_penalty=1.1`, no f-string/`.format()` brace templating, structural + static-JS validation)
