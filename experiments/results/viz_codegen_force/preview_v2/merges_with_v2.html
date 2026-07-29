@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sea merges_with force-directed graph</title>
+<style>
+  body { margin:0; background:#fafafa; font-family:'Segoe UI',Arial,sans-serif; }
+  #chart-wrap {
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 16px 32px;
+  }
+  h1 { font-size:18px; font-weight:600; color:#222; margin:0 0 2px; text-align:center; }
+  .subtitle { font-size:12px; color:#888; margin:0 0 10px; text-align:center; }
+  #legend { margin-bottom:6px; }
+  #graph-svg { display:block; }
+  .tooltip {
+    position:fixed; pointer-events:none; background:rgba(30,30,30,.88);
+    color:#fff; border-radius:5px; padding:7px 11px; font-size:12px;
+    line-height:1.5; white-space:pre-wrap; max-width:260px;
+    box-shadow:0 2px 8px rgba(0,0,0,.35); display:none; z-index:999;
+  }
+</style>
+</head>
+<body>
+<div id="chart-wrap">
+  <h1>Sea merges_with force-directed graph</h1>
+  <p class="subtitle">Node size = degree  |  Link width = count</p>
+  <div id="legend"></div>
+  <svg id="graph-svg"></svg>
+</div>
+<div class="tooltip" id="tip"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ── injected data ──────────────────────────────────────────────────
+  const NODES     = [{"id": "Andaman Sea", "label": "Andaman Sea", "group": 0}, {"id": "Arabian Sea", "label": "Arabian Sea", "group": 0}, {"id": "Arafura Sea", "label": "Arafura Sea", "group": 0}, {"id": "Arctic Ocean", "label": "Arctic Ocean", "group": 0}, {"id": "Atlantic Ocean", "label": "Atlantic Ocean", "group": 0}, {"id": "Baffin Bay", "label": "Baffin Bay", "group": 0}, {"id": "Baltic Sea", "label": "Baltic Sea", "group": 0}, {"id": "Banda Sea", "label": "Banda Sea", "group": 0}, {"id": "Barents Sea", "label": "Barents Sea", "group": 0}, {"id": "Bering Sea", "label": "Bering Sea", "group": 0}, {"id": "Black Sea", "label": "Black Sea", "group": 0}, {"id": "Caribbean Sea", "label": "Caribbean Sea", "group": 0}, {"id": "Chukchi Sea", "label": "Chukchi Sea", "group": 0}, {"id": "Coral Sea", "label": "Coral Sea", "group": 0}, {"id": "East China Sea", "label": "East China Sea", "group": 0}, {"id": "East Sibirian Sea", "label": "East Sibirian Sea", "group": 0}, {"id": "Greenland Sea", "label": "Greenland Sea", "group": 0}, {"id": "Gulf of Aden", "label": "Gulf of Aden", "group": 0}, {"id": "Gulf of Bengal", "label": "Gulf of Bengal", "group": 0}, {"id": "Gulf of California", "label": "Gulf of California", "group": 0}, {"id": "Gulf of Mexico", "label": "Gulf of Mexico", "group": 0}, {"id": "Gulf of Oman", "label": "Gulf of Oman", "group": 0}, {"id": "Gulf of Thailand", "label": "Gulf of Thailand", "group": 0}, {"id": "Hudson Bay", "label": "Hudson Bay", "group": 0}, {"id": "Indian Ocean", "label": "Indian Ocean", "group": 0}, {"id": "Irish Sea", "label": "Irish Sea", "group": 0}, {"id": "Java Sea", "label": "Java Sea", "group": 0}, {"id": "Kara Sea", "label": "Kara Sea", "group": 0}, {"id": "Kattegat", "label": "Kattegat", "group": 0}, {"id": "Labrador Sea", "label": "Labrador Sea", "group": 0}, {"id": "Lago de Maracaibo", "label": "Lago de Maracaibo", "group": 0}, {"id": "Laptev Sea", "label": "Laptev Sea", "group": 0}, {"id": "Malakka Strait", "label": "Malakka Strait", "group": 0}, {"id": "Marmara Sea", "label": "Marmara Sea", "group": 0}, {"id": "Mediterranean Sea", "label": "Mediterranean Sea", "group": 0}, {"id": "North Sea", "label": "North Sea", "group": 0}, {"id": "Norwegian Sea", "label": "Norwegian Sea", "group": 0}, {"id": "Pacific Ocean", "label": "Pacific Ocean", "group": 0}, {"id": "Persian Gulf", "label": "Persian Gulf", "group": 0}, {"id": "Red Sea", "label": "Red Sea", "group": 0}, {"id": "San Francisco Bay", "label": "San Francisco Bay", "group": 0}, {"id": "Savu Sea", "label": "Savu Sea", "group": 0}, {"id": "Sea of Azov", "label": "Sea of Azov", "group": 0}, {"id": "Sea of Japan", "label": "Sea of Japan", "group": 0}, {"id": "Sea of Okhotsk", "label": "Sea of Okhotsk", "group": 0}, {"id": "Seto Inland Sea", "label": "Seto Inland Sea", "group": 0}, {"id": "Skagerrak", "label": "Skagerrak", "group": 0}, {"id": "Solomon Sea", "label": "Solomon Sea", "group": 0}, {"id": "South China Sea", "label": "South China Sea", "group": 0}, {"id": "Sulawesi Sea", "label": "Sulawesi Sea", "group": 0}, {"id": "Sulu Sea", "label": "Sulu Sea", "group": 0}, {"id": "Tasman Sea", "label": "Tasman Sea", "group": 0}, {"id": "The Channel", "label": "The Channel", "group": 0}, {"id": "Timor Sea", "label": "Timor Sea", "group": 0}, {"id": "White Sea", "label": "White Sea", "group": 0}, {"id": "Yellow Sea", "label": "Yellow Sea", "group": 0}];
+  const LINKS     = [{"source": "Andaman Sea", "target": "Gulf of Bengal", "w": 1.0}, {"source": "Andaman Sea", "target": "Indian Ocean", "w": 1.0}, {"source": "Andaman Sea", "target": "Malakka Strait", "w": 1.0}, {"source": "Arabian Sea", "target": "Gulf of Aden", "w": 1.0}, {"source": "Arabian Sea", "target": "Gulf of Oman", "w": 1.0}, {"source": "Arabian Sea", "target": "Indian Ocean", "w": 1.0}, {"source": "Arafura Sea", "target": "Banda Sea", "w": 1.0}, {"source": "Arafura Sea", "target": "Coral Sea", "w": 1.0}, {"source": "Arafura Sea", "target": "Timor Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Barents Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Chukchi Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "East Sibirian Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Greenland Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Hudson Bay", "w": 1.0}, {"source": "Arctic Ocean", "target": "Kara Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Labrador Sea", "w": 1.0}, {"source": "Arctic Ocean", "target": "Laptev Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Caribbean Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Greenland Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Gulf of Mexico", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Indian Ocean", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Irish Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Labrador Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Mediterranean Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "North Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "Norwegian Sea", "w": 1.0}, {"source": "Atlantic Ocean", "target": "The Channel", "w": 1.0}, {"source": "Baffin Bay", "target": "Hudson Bay", "w": 1.0}, {"source": "Baffin Bay", "target": "Labrador Sea", "w": 1.0}, {"source": "Baltic Sea", "target": "Kattegat", "w": 1.0}, {"source": "Banda Sea", "target": "Indian Ocean", "w": 1.0}, {"source": "Banda Sea", "target": "Java Sea", "w": 1.0}, {"source": "Banda Sea", "target": "Pacific Ocean", "w": 1.0}, {"source": "Banda Sea", "target": "Savu Sea", "w": 1.0}, {"source": "Banda Sea", "target": "Sulawesi Sea", "w": 1.0}, {"source": "Banda Sea", "target": "Timor Sea", "w": 1.0}, {"source": "Barents Sea", "target": "Kara Sea", "w": 1.0}, {"source": "Barents Sea", "target": "Norwegian Sea", "w": 1.0}, {"source": "Barents Sea", "target": "White Sea", "w": 1.0}, {"source": "Bering Sea", "target": "Chukchi Sea", "w": 1.0}, {"source": "Bering Sea", "target": "Pacific Ocean", "w": 1.0}, {"source": "Black Sea", "target": "Marmara Sea", "w": 1.0}, {"source": "Black Sea", "target": "Sea of Azov", "w": 1.0}, {"source": "Caribbean Sea", "target": "Gulf of Mexico", "w": 1.0}, {"source": "Caribbean Sea", "target": "Lago de Maracaibo", "w": 1.0}, {"source": "Chukchi Sea", "target": "East Sibirian Sea", "w": 1.0}, {"source": "Coral Sea", "target": "Pacific Ocean", "w": 1.0}, {"source": "Coral Sea", "target": "Solomon Sea", "w": 1.0}, {"source": "Coral Sea", "target": "Tasman Sea", "w": 1.0}, {"source": "East China Sea", "target": "Pacific Ocean", "w": 1.0}, {"source": "East China Sea", "target": "Sea of Japan", "w": 1.0}, {"source": "East China Sea", "target": "South China Sea", "w": 1.0}, {"source": "East China Sea", "target": "Yellow Sea", "w": 1.0}, {"source": "East Sibirian Sea", "target": "Laptev Sea", "w": 1.0}, {"source": "Greenland Sea", "target": "Norwegian Sea", "w": 1.0}, {"source": "Gulf of Aden", "target": "Indian Ocean", "w": 1.0}, {"source": "Gulf of Aden", "target": "Red Sea", "w": 1.0}, {"source": "Gulf of Bengal", "target": "Indian Ocean", "w": 1.0}, {"source": "Gulf of California", "target": "Pacific Ocean", "w": 1.0}, {"source": "Gulf of Oman", "target": "Persian Gulf", "w": 1.0}, {"source": "Gulf of Thailand", "target": "South China Sea", "w": 1.0}, {"source": "Hudson Bay", "target": "Labrador Sea", "w": 1.0}, {"source": "Indian Ocean", "target": "Java Sea", "w": 1.0}, {"source": "Indian Ocean", "target": "Pacific Ocean", "w": 1.0}, {"source": "Indian Ocean", "target": "Savu Sea", "w": 1.0}, {"source": "Indian Ocean", "target": "Tasman Sea", "w": 1.0}, {"source": "Indian Ocean", "target": "Timor Sea", "w": 1.0}, {"source": "Java Sea", "target": "Savu Sea", "w": 1.0}, {"source": "Java Sea", "target": "South China Sea", "w": 1.0}, {"source": "Java Sea", "target": "Sulawesi Sea", "w": 1.0}, {"source": "Kara Sea", "target": "Laptev Sea", "w": 1.0}, {"source": "Kattegat", "target": "Skagerrak", "w": 1.0}, {"source": "Malakka Strait", "target": "South China Sea", "w": 1.0}, {"source": "Marmara Sea", "target": "Mediterranean Sea", "w": 1.0}, {"source": "North Sea", "target": "Norwegian Sea", "w": 1.0}, {"source": "North Sea", "target": "Skagerrak", "w": 1.0}, {"source": "North Sea", "target": "The Channel", "w": 1.0}, {"source": "Pacific Ocean", "target": "San Francisco Bay", "w": 1.0}, {"source": "Pacific Ocean", "target": "Sea of Japan", "w": 1.0}, {"source": "Pacific Ocean", "target": "Sea of Okhotsk", "w": 1.0}, {"source": "Pacific Ocean", "target": "Seto Inland Sea", "w": 1.0}, {"source": "Pacific Ocean", "target": "Solomon Sea", "w": 1.0}, {"source": "Pacific Ocean", "target": "South China Sea", "w": 1.0}, {"source": "Pacific Ocean", "target": "Sulawesi Sea", "w": 1.0}, {"source": "Pacific Ocean", "target": "Sulu Sea", "w": 1.0}, {"source": "Pacific Ocean", "target": "Tasman Sea", "w": 1.0}, {"source": "Savu Sea", "target": "Timor Sea", "w": 1.0}, {"source": "Sea of Japan", "target": "Sea of Okhotsk", "w": 1.0}, {"source": "Sea of Japan", "target": "Seto Inland Sea", "w": 1.0}, {"source": "Sea of Japan", "target": "Yellow Sea", "w": 1.0}, {"source": "South China Sea", "target": "Sulu Sea", "w": 1.0}, {"source": "Sulawesi Sea", "target": "Sulu Sea", "w": 1.0}];
+  const IS_BIP    = false;
+  const VAL_LABEL = "count";
+  const TITLE     = "Sea merges_with force-directed graph";
+
+  // ── dimensions ────────────────────────────────────────────────────
+  const W = Math.min(window.innerWidth - 32, 1100);
+  const H = Math.max(620, Math.round(W * 0.70));
+
+  const svg = d3.select("#graph-svg")
+    .attr("width",  W)
+    .attr("height", H)
+    .attr("viewBox", [0, 0, W, H]);
+
+  // defs: arrowhead (optional, not used for undirected but kept for bipartite)
+  const defs = svg.append("defs");
+
+  // ── scales ────────────────────────────────────────────────────────
+  // degree map
+  const degMap = new Map();
+  NODES.forEach(n => degMap.set(n.id, 0));
+  LINKS.forEach(l => {
+    const sid = typeof l.source === "object" ? l.source.id : l.source;
+    const tid = typeof l.target === "object" ? l.target.id : l.target;
+    degMap.set(sid, (degMap.get(sid) || 0) + 1);
+    degMap.set(tid, (degMap.get(tid) || 0) + 1);
+  });
+
+  const maxDeg = d3.max(Array.from(degMap.values())) || 1;
+  const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([3, 14]);
+
+  const maxW = d3.max(LINKS, d => d.w) || 1;
+  const wScale = d3.scaleSqrt().domain([0, maxW]).range([0.8, 6]);
+
+  // colour
+  const bipColour = d3.scaleOrdinal()
+    .domain([0, 1])
+    .range(["#4e79a7", "#f28e2b"]);
+
+  const refColour = d3.scaleSequential()
+    .domain([0, maxDeg])
+    .interpolator(d3.interpolateViridis);
+
+  function nodeColour(d) {
+    if (IS_BIP) return bipColour(d.group);
+    return refColour(degMap.get(d.id) || 0);
+  }
+
+  // ── seed positions on a circle (determinism) ──────────────────────
+  const cx = W / 2, cy = H / 2;
+  const initR = Math.min(W, H) * 0.38;
+  NODES.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / NODES.length;
+    n.x = cx + initR * Math.cos(angle);
+    n.y = cy + initR * Math.sin(angle);
+  });
+
+  // ── simulation ────────────────────────────────────────────────────
+  // Overlap-reduction layout:
+  //  • Bipartite (many-many): bias the two groups into left/right columns via
+  //    forceX(group) and weaken the link pull, so cross-group ribbons stop
+  //    tangling into a central blob (a lightweight bipartite/Sugiyama layout).
+  //  • Reflexive: gentle centring via forceX/forceY, but a stronger, degree-
+  //    scaled repulsion so hubs push the hairball apart.
+  //  • Stronger, padded, multi-iteration collision so circles never overlap.
+  const colX = d => IS_BIP ? (d.group === 0 ? W * 0.27 : W * 0.73) : cx;
+  const sim = d3.forceSimulation(NODES)
+    .force("link", d3.forceLink(LINKS)
+      .id(d => d.id)
+      .distance(d => {
+        const sid = typeof d.source === "object" ? d.source.id : d.source;
+        const tid = typeof d.target === "object" ? d.target.id : d.target;
+        const avgDeg = ((degMap.get(sid) || 1) + (degMap.get(tid) || 1)) / 2;
+        return Math.max(40, 120 / Math.sqrt(avgDeg));
+      })
+      .strength(IS_BIP ? 0.15 : 0.4)
+    )
+    .force("charge", d3.forceManyBody()
+      .strength(d => -80 - (degMap.get(d.id) || 1) * 6)
+      .distanceMax(Math.min(W, H) * 0.9))
+    .force("collide", d3.forceCollide(d => rScale(degMap.get(d.id) || 0) + 4).iterations(2))
+    .force("x", d3.forceX(colX).strength(IS_BIP ? 0.28 : 0.03))
+    .force("y", d3.forceY(cy).strength(0.06))
+    .alphaDecay(0.03)
+    .velocityDecay(0.45);
+
+  // ── DOM elements ──────────────────────────────────────────────────
+  const linkG = svg.append("g").attr("class", "links");
+  const nodeG = svg.append("g").attr("class", "nodes");
+  const labelG = svg.append("g").attr("class", "labels").attr("pointer-events", "none");
+
+  const linkSel = linkG.selectAll("line")
+    .data(LINKS)
+    .join("line")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.35)
+      .attr("stroke-width", d => wScale(d.w));
+
+  const nodeSel = nodeG.selectAll("circle")
+    .data(NODES)
+    .join("circle")
+      .attr("r", d => rScale(degMap.get(d.id) || 0))
+      .attr("fill", nodeColour)
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("cursor", "pointer");
+
+  // Label only top-degree nodes (top 15 % or at least 1)
+  const degThreshold = d3.quantile(
+    Array.from(degMap.values()).sort(d3.ascending),
+    0.85
+  ) || 0;
+
+  const labelSel = labelG.selectAll("text")
+    .data(NODES.filter(n => (degMap.get(n.id) || 0) >= degThreshold))
+    .join("text")
+      .attr("font-size", 10)
+      .attr("fill", "#333")
+      .attr("text-anchor", "middle")
+      .attr("dy", "0.35em")
+      .text(d => d.label);
+
+  // ── tooltip ───────────────────────────────────────────────────────
+  const tip = d3.select("#tip");
+
+  function showTip(event, html) {
+    tip.style("display", "block")
+       .html(html)
+       .style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function moveTip(event) {
+    tip.style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function hideTip() { tip.style("display", "none"); }
+
+  // ── highlight helpers ─────────────────────────────────────────────
+  function neighbourSet(d) {
+    const s = new Set([d.id]);
+    LINKS.forEach(l => {
+      const sid = l.source.id || l.source;
+      const tid = l.target.id || l.target;
+      if (sid === d.id) s.add(tid);
+      if (tid === d.id) s.add(sid);
+    });
+    return s;
+  }
+
+  nodeSel
+    .on("mouseover", function (event, d) {
+      const nbrs = neighbourSet(d);
+      nodeSel.attr("opacity", n => nbrs.has(n.id) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => {
+        const sid = l.source.id || l.source;
+        const tid = l.target.id || l.target;
+        return (sid === d.id || tid === d.id) ? 0.8 : 0.05;
+      });
+      d3.select(this).attr("stroke", "#222").attr("stroke-width", 2.5);
+      const deg = degMap.get(d.id) || 0;
+      showTip(event,
+        "<strong>" + d.label + "</strong><br>Degree: " + deg
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35);
+      d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1.5);
+      hideTip();
+    });
+
+  linkSel
+    .on("mouseover", function (event, d) {
+      const sid = d.source.id || d.source;
+      const tid = d.target.id || d.target;
+      const sLabel = (NODES.find(n => n.id === sid) || {label: sid}).label;
+      const tLabel = (NODES.find(n => n.id === tid) || {label: tid}).label;
+      nodeSel.attr("opacity", n => (n.id === sid || n.id === tid) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => l === d ? 0.9 : 0.05);
+      d3.select(this).attr("stroke", "#e15759").attr("stroke-opacity", 1);
+      showTip(event,
+        "<strong>" + sLabel + "</strong> ↔ <strong>" + tLabel + "</strong>"
+        + "<br>" + VAL_LABEL + ": " + d.w
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35).attr("stroke", "#999");
+      hideTip();
+    });
+
+  // ── drag ──────────────────────────────────────────────────────────
+  nodeSel.call(
+    d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end",  (event, d) => {
+        if (!event.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+  );
+
+  // ── tick ──────────────────────────────────────────────────────────
+  sim.on("tick", () => {
+    // No hard viewport clamp: clamping piled nodes up against the edges and
+    // defeated collision separation. We let the layout spread freely and refit
+    // the viewBox once the simulation settles (see sim.on("end")).
+    linkSel
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeSel
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+
+    labelSel
+      .attr("x", d => d.x)
+      .attr("y", d => d.y - rScale(degMap.get(d.id) || 0) - 4);
+  });
+
+  // ── label declutter: greedily hide overlapping hub labels ─────────
+  // Even top-degree labels collide once hubs cluster. Walk them in
+  // descending-degree order and drop any whose box overlaps an already-kept
+  // one, so the surviving labels never sit on top of each other.
+  function declutterLabels() {
+    const placed = [];
+    labelSel
+      .sort((a, b) => (degMap.get(b.id) || 0) - (degMap.get(a.id) || 0))
+      .each(function (d) {
+        const bb = this.getBBox();
+        const hit = placed.some(p =>
+          !(bb.x + bb.width < p.x || p.x + p.width < bb.x ||
+            bb.y + bb.height < p.y || p.y + p.height < bb.y));
+        if (hit) {
+          d3.select(this).attr("display", "none");
+        } else {
+          d3.select(this).attr("display", null);
+          placed.push(bb);
+        }
+      });
+  }
+
+  // ── refit viewBox after simulation settles ────────────────────────
+  sim.on("end", () => {
+    try {
+      declutterLabels();
+      const bbox = svg.node().getBBox();
+      if (!isFinite(bbox.x) || !isFinite(bbox.y) ||
+          !isFinite(bbox.width) || !isFinite(bbox.height) ||
+          bbox.width === 0 || bbox.height === 0) return;
+      const pad = 20;
+      const vx = bbox.x - pad;
+      const vy = bbox.y - pad;
+      const vw = bbox.width  + pad * 2;
+      const vh = bbox.height + pad * 2;
+      svg.attr("viewBox", [vx, vy, vw, vh].join(" "))
+         .attr("width",  Math.min(vw, window.innerWidth - 32))
+         .attr("height", Math.min(vh, window.innerHeight - 120));
+    } catch (e) { /* getBBox may throw in hidden tabs */ }
+  });
+
+})();
+</script>
+</body>
+</html>

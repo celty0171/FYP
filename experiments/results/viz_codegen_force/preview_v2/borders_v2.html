@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Country borders force-directed graph</title>
+<style>
+  body { margin:0; background:#fafafa; font-family:'Segoe UI',Arial,sans-serif; }
+  #chart-wrap {
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 16px 32px;
+  }
+  h1 { font-size:18px; font-weight:600; color:#222; margin:0 0 2px; text-align:center; }
+  .subtitle { font-size:12px; color:#888; margin:0 0 10px; text-align:center; }
+  #legend { margin-bottom:6px; }
+  #graph-svg { display:block; }
+  .tooltip {
+    position:fixed; pointer-events:none; background:rgba(30,30,30,.88);
+    color:#fff; border-radius:5px; padding:7px 11px; font-size:12px;
+    line-height:1.5; white-space:pre-wrap; max-width:260px;
+    box-shadow:0 2px 8px rgba(0,0,0,.35); display:none; z-index:999;
+  }
+</style>
+</head>
+<body>
+<div id="chart-wrap">
+  <h1>Country borders force-directed graph</h1>
+  <p class="subtitle">Node size = degree  |  Link width = length</p>
+  <div id="legend"></div>
+  <svg id="graph-svg"></svg>
+</div>
+<div class="tooltip" id="tip"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ── injected data ──────────────────────────────────────────────────
+  const NODES     = [{"id": "A", "label": "A", "group": 0}, {"id": "AD", "label": "AD", "group": 0}, {"id": "AFG", "label": "AFG", "group": 0}, {"id": "AL", "label": "AL", "group": 0}, {"id": "AND", "label": "AND", "group": 0}, {"id": "ANG", "label": "ANG", "group": 0}, {"id": "ARM", "label": "ARM", "group": 0}, {"id": "AZ", "label": "AZ", "group": 0}, {"id": "B", "label": "B", "group": 0}, {"id": "BD", "label": "BD", "group": 0}, {"id": "BEN", "label": "BEN", "group": 0}, {"id": "BF", "label": "BF", "group": 0}, {"id": "BG", "label": "BG", "group": 0}, {"id": "BHT", "label": "BHT", "group": 0}, {"id": "BI", "label": "BI", "group": 0}, {"id": "BIH", "label": "BIH", "group": 0}, {"id": "BOL", "label": "BOL", "group": 0}, {"id": "BR", "label": "BR", "group": 0}, {"id": "BRU", "label": "BRU", "group": 0}, {"id": "BY", "label": "BY", "group": 0}, {"id": "BZ", "label": "BZ", "group": 0}, {"id": "CAM", "label": "CAM", "group": 0}, {"id": "CDN", "label": "CDN", "group": 0}, {"id": "CEU", "label": "CEU", "group": 0}, {"id": "CGO", "label": "CGO", "group": 0}, {"id": "CH", "label": "CH", "group": 0}, {"id": "CI", "label": "CI", "group": 0}, {"id": "CN", "label": "CN", "group": 0}, {"id": "CO", "label": "CO", "group": 0}, {"id": "CR", "label": "CR", "group": 0}, {"id": "CY", "label": "CY", "group": 0}, {"id": "CZ", "label": "CZ", "group": 0}, {"id": "D", "label": "D", "group": 0}, {"id": "DJI", "label": "DJI", "group": 0}, {"id": "DK", "label": "DK", "group": 0}, {"id": "DOM", "label": "DOM", "group": 0}, {"id": "DZ", "label": "DZ", "group": 0}, {"id": "E", "label": "E", "group": 0}, {"id": "EAK", "label": "EAK", "group": 0}, {"id": "EAT", "label": "EAT", "group": 0}, {"id": "EAU", "label": "EAU", "group": 0}, {"id": "EC", "label": "EC", "group": 0}, {"id": "ER", "label": "ER", "group": 0}, {"id": "ES", "label": "ES", "group": 0}, {"id": "EST", "label": "EST", "group": 0}, {"id": "ET", "label": "ET", "group": 0}, {"id": "ETH", "label": "ETH", "group": 0}, {"id": "F", "label": "F", "group": 0}, {"id": "FL", "label": "FL", "group": 0}, {"id": "G", "label": "G", "group": 0}, {"id": "GAZA", "label": "GAZA", "group": 0}, {"id": "GB", "label": "GB", "group": 0}, {"id": "GBZ", "label": "GBZ", "group": 0}, {"id": "GCA", "label": "GCA", "group": 0}, {"id": "GE", "label": "GE", "group": 0}, {"id": "GF", "label": "GF", "group": 0}, {"id": "GH", "label": "GH", "group": 0}, {"id": "GQ", "label": "GQ", "group": 0}, {"id": "GR", "label": "GR", "group": 0}, {"id": "GUB", "label": "GUB", "group": 0}, {"id": "GUY", "label": "GUY", "group": 0}, {"id": "H", "label": "H", "group": 0}, {"id": "HK", "label": "HK", "group": 0}, {"id": "HN", "label": "HN", "group": 0}, {"id": "HR", "label": "HR", "group": 0}, {"id": "I", "label": "I", "group": 0}, {"id": "IL", "label": "IL", "group": 0}, {"id": "IND", "label": "IND", "group": 0}, {"id": "IR", "label": "IR", "group": 0}, {"id": "IRL", "label": "IRL", "group": 0}, {"id": "IRQ", "label": "IRQ", "group": 0}, {"id": "JOR", "label": "JOR", "group": 0}, {"id": "K", "label": "K", "group": 0}, {"id": "KG", "label": "KG", "group": 0}, {"id": "KOS", "label": "KOS", "group": 0}, {"id": "KP", "label": "KP", "group": 0}, {"id": "KWT", "label": "KWT", "group": 0}, {"id": "KZ", "label": "KZ", "group": 0}, {"id": "L", "label": "L", "group": 0}, {"id": "LAO", "label": "LAO", "group": 0}, {"id": "LAR", "label": "LAR", "group": 0}, {"id": "LB", "label": "LB", "group": 0}, {"id": "LS", "label": "LS", "group": 0}, {"id": "LT", "label": "LT", "group": 0}, {"id": "LV", "label": "LV", "group": 0}, {"id": "MA", "label": "MA", "group": 0}, {"id": "MAC", "label": "MAC", "group": 0}, {"id": "MAL", "label": "MAL", "group": 0}, {"id": "MC", "label": "MC", "group": 0}, {"id": "MD", "label": "MD", "group": 0}, {"id": "MEL", "label": "MEL", "group": 0}, {"id": "MEX", "label": "MEX", "group": 0}, {"id": "MK", "label": "MK", "group": 0}, {"id": "MNE", "label": "MNE", "group": 0}, {"id": "MNG", "label": "MNG", "group": 0}, {"id": "MOC", "label": "MOC", "group": 0}, {"id": "MW", "label": "MW", "group": 0}, {"id": "MYA", "label": "MYA", "group": 0}, {"id": "N", "label": "N", "group": 0}, {"id": "NAM", "label": "NAM", "group": 0}, {"id": "NEP", "label": "NEP", "group": 0}, {"id": "NGR", "label": "NGR", "group": 0}, {"id": "NIC", "label": "NIC", "group": 0}, {"id": "NL", "label": "NL", "group": 0}, {"id": "OM", "label": "OM", "group": 0}, {"id": "P", "label": "P", "group": 0}, {"id": "PA", "label": "PA", "group": 0}, {"id": "PE", "label": "PE", "group": 0}, {"id": "PK", "label": "PK", "group": 0}, {"id": "PL", "label": "PL", "group": 0}, {"id": "PNG", "label": "PNG", "group": 0}, {"id": "PY", "label": "PY", "group": 0}, {"id": "Q", "label": "Q", "group": 0}, {"id": "R", "label": "R", "group": 0}, {"id": "RA", "label": "RA", "group": 0}, {"id": "RB", "label": "RB", "group": 0}, {"id": "RCA", "label": "RCA", "group": 0}, {"id": "RCB", "label": "RCB", "group": 0}, {"id": "RCH", "label": "RCH", "group": 0}, {"id": "RG", "label": "RG", "group": 0}, {"id": "RH", "label": "RH", "group": 0}, {"id": "RI", "label": "RI", "group": 0}, {"id": "RIM", "label": "RIM", "group": 0}, {"id": "RL", "label": "RL", "group": 0}, {"id": "RMM", "label": "RMM", "group": 0}, {"id": "RN", "label": "RN", "group": 0}, {"id": "RO", "label": "RO", "group": 0}, {"id": "ROK", "label": "ROK", "group": 0}, {"id": "ROU", "label": "ROU", "group": 0}, {"id": "RSA", "label": "RSA", "group": 0}, {"id": "RSM", "label": "RSM", "group": 0}, {"id": "RT", "label": "RT", "group": 0}, {"id": "RWA", "label": "RWA", "group": 0}, {"id": "S", "label": "S", "group": 0}, {"id": "SA", "label": "SA", "group": 0}, {"id": "SD", "label": "SD", "group": 0}, {"id": "SF", "label": "SF", "group": 0}, {"id": "SK", "label": "SK", "group": 0}, {"id": "SLE", "label": "SLE", "group": 0}, {"id": "SLO", "label": "SLO", "group": 0}, {"id": "SMAR", "label": "SMAR", "group": 0}, {"id": "SME", "label": "SME", "group": 0}, {"id": "SN", "label": "SN", "group": 0}, {"id": "SO", "label": "SO", "group": 0}, {"id": "SRB", "label": "SRB", "group": 0}, {"id": "SSD", "label": "SSD", "group": 0}, {"id": "SUD", "label": "SUD", "group": 0}, {"id": "SX", "label": "SX", "group": 0}, {"id": "SYR", "label": "SYR", "group": 0}, {"id": "TCH", "label": "TCH", "group": 0}, {"id": "THA", "label": "THA", "group": 0}, {"id": "TJ", "label": "TJ", "group": 0}, {"id": "TL", "label": "TL", "group": 0}, {"id": "TM", "label": "TM", "group": 0}, {"id": "TN", "label": "TN", "group": 0}, {"id": "TR", "label": "TR", "group": 0}, {"id": "UA", "label": "UA", "group": 0}, {"id": "UAE", "label": "UAE", "group": 0}, {"id": "USA", "label": "USA", "group": 0}, {"id": "UZ", "label": "UZ", "group": 0}, {"id": "V", "label": "V", "group": 0}, {"id": "VN", "label": "VN", "group": 0}, {"id": "WAG", "label": "WAG", "group": 0}, {"id": "WB", "label": "WB", "group": 0}, {"id": "WSA", "label": "WSA", "group": 0}, {"id": "YE", "label": "YE", "group": 0}, {"id": "YV", "label": "YV", "group": 0}, {"id": "Z", "label": "Z", "group": 0}, {"id": "ZW", "label": "ZW", "group": 0}];
+  const LINKS     = [{"source": "A", "target": "CH", "w": 164.0}, {"source": "A", "target": "CZ", "w": 362.0}, {"source": "A", "target": "D", "w": 784.0}, {"source": "A", "target": "FL", "w": 37.0}, {"source": "A", "target": "H", "w": 366.0}, {"source": "A", "target": "I", "w": 430.0}, {"source": "A", "target": "SK", "w": 91.0}, {"source": "A", "target": "SLO", "w": 324.0}, {"source": "AD", "target": "CY", "w": 156.0}, {"source": "AFG", "target": "CN", "w": 76.0}, {"source": "AFG", "target": "IR", "w": 936.0}, {"source": "AFG", "target": "PK", "w": 2430.0}, {"source": "AFG", "target": "TJ", "w": 1206.0}, {"source": "AFG", "target": "TM", "w": 744.0}, {"source": "AFG", "target": "UZ", "w": 137.0}, {"source": "AL", "target": "GR", "w": 282.0}, {"source": "AL", "target": "KOS", "w": 112.0}, {"source": "AL", "target": "MK", "w": 151.0}, {"source": "AL", "target": "MNE", "w": 172.0}, {"source": "AND", "target": "E", "w": 65.0}, {"source": "AND", "target": "F", "w": 60.0}, {"source": "ANG", "target": "CGO", "w": 2511.0}, {"source": "ANG", "target": "NAM", "w": 1376.0}, {"source": "ANG", "target": "RCB", "w": 201.0}, {"source": "ANG", "target": "Z", "w": 1110.0}, {"source": "ARM", "target": "AZ", "w": 787.0}, {"source": "ARM", "target": "GE", "w": 164.0}, {"source": "ARM", "target": "IR", "w": 35.0}, {"source": "ARM", "target": "TR", "w": 268.0}, {"source": "AZ", "target": "GE", "w": 322.0}, {"source": "AZ", "target": "IR", "w": 611.0}, {"source": "AZ", "target": "R", "w": 338.0}, {"source": "AZ", "target": "TR", "w": 9.0}, {"source": "B", "target": "D", "w": 167.0}, {"source": "B", "target": "F", "w": 620.0}, {"source": "B", "target": "L", "w": 148.0}, {"source": "B", "target": "NL", "w": 450.0}, {"source": "BD", "target": "IND", "w": 4053.0}, {"source": "BD", "target": "MYA", "w": 193.0}, {"source": "BEN", "target": "BF", "w": 306.0}, {"source": "BEN", "target": "NGR", "w": 773.0}, {"source": "BEN", "target": "RN", "w": 266.0}, {"source": "BEN", "target": "RT", "w": 644.0}, {"source": "BF", "target": "CI", "w": 584.0}, {"source": "BF", "target": "GH", "w": 548.0}, {"source": "BF", "target": "RMM", "w": 1000.0}, {"source": "BF", "target": "RN", "w": 628.0}, {"source": "BF", "target": "RT", "w": 126.0}, {"source": "BG", "target": "GR", "w": 494.0}, {"source": "BG", "target": "MK", "w": 148.0}, {"source": "BG", "target": "RO", "w": 608.0}, {"source": "BG", "target": "SRB", "w": 318.0}, {"source": "BG", "target": "TR", "w": 240.0}, {"source": "BHT", "target": "CN", "w": 470.0}, {"source": "BHT", "target": "IND", "w": 605.0}, {"source": "BI", "target": "CGO", "w": 233.0}, {"source": "BI", "target": "EAT", "w": 451.0}, {"source": "BI", "target": "RWA", "w": 290.0}, {"source": "BIH", "target": "HR", "w": 932.0}, {"source": "BIH", "target": "MNE", "w": 249.0}, {"source": "BIH", "target": "SRB", "w": 357.0}, {"source": "BOL", "target": "BR", "w": 3403.0}, {"source": "BOL", "target": "PE", "w": 1212.0}, {"source": "BOL", "target": "PY", "w": 753.0}, {"source": "BOL", "target": "RA", "w": 942.0}, {"source": "BOL", "target": "RCH", "w": 942.0}, {"source": "BR", "target": "CO", "w": 1790.0}, {"source": "BR", "target": "GF", "w": 649.0}, {"source": "BR", "target": "GUY", "w": 1308.0}, {"source": "BR", "target": "PE", "w": 2659.0}, {"source": "BR", "target": "PY", "w": 1371.0}, {"source": "BR", "target": "RA", "w": 1263.0}, {"source": "BR", "target": "ROU", "w": 1050.0}, {"source": "BR", "target": "SME", "w": 515.0}, {"source": "BR", "target": "YV", "w": 2137.0}, {"source": "BRU", "target": "MAL", "w": 381.0}, {"source": "BY", "target": "LT", "w": 502.0}, {"source": "BY", "target": "LV", "w": 141.0}, {"source": "BY", "target": "PL", "w": 605.0}, {"source": "BY", "target": "R", "w": 1312.0}, {"source": "BY", "target": "UA", "w": 891.0}, {"source": "BZ", "target": "GCA", "w": 266.0}, {"source": "BZ", "target": "MEX", "w": 250.0}, {"source": "CAM", "target": "G", "w": 298.0}, {"source": "CAM", "target": "GQ", "w": 189.0}, {"source": "CAM", "target": "NGR", "w": 1690.0}, {"source": "CAM", "target": "RCA", "w": 797.0}, {"source": "CAM", "target": "RCB", "w": 523.0}, {"source": "CAM", "target": "TCH", "w": 1094.0}, {"source": "CDN", "target": "USA", "w": 8893.0}, {"source": "CEU", "target": "MA", "w": 6.3}, {"source": "CGO", "target": "EAT", "w": 459.0}, {"source": "CGO", "target": "EAU", "w": 765.0}, {"source": "CGO", "target": "RCA", "w": 1577.0}, {"source": "CGO", "target": "RCB", "w": 2410.0}, {"source": "CGO", "target": "RWA", "w": 217.0}, {"source": "CGO", "target": "SSD", "w": 639.0}, {"source": "CGO", "target": "Z", "w": 1930.0}, {"source": "CH", "target": "D", "w": 334.0}, {"source": "CH", "target": "F", "w": 573.0}, {"source": "CH", "target": "FL", "w": 41.0}, {"source": "CH", "target": "I", "w": 740.0}, {"source": "CI", "target": "GH", "w": 668.0}, {"source": "CI", "target": "LB", "w": 716.0}, {"source": "CI", "target": "RG", "w": 610.0}, {"source": "CI", "target": "RMM", "w": 532.0}, {"source": "CN", "target": "HK", "w": 30.0}, {"source": "CN", "target": "IND", "w": 3380.0}, {"source": "CN", "target": "KG", "w": 858.0}, {"source": "CN", "target": "KP", "w": 1416.0}, {"source": "CN", "target": "KZ", "w": 1533.0}, {"source": "CN", "target": "LAO", "w": 423.0}, {"source": "CN", "target": "MAC", "w": 0.34}, {"source": "CN", "target": "MNG", "w": 4673.0}, {"source": "CN", "target": "MYA", "w": 2185.0}, {"source": "CN", "target": "NEP", "w": 1236.0}, {"source": "CN", "target": "PK", "w": 523.0}, {"source": "CN", "target": "R", "w": 4179.0}, {"source": "CN", "target": "TJ", "w": 414.0}, {"source": "CN", "target": "VN", "w": 1281.0}, {"source": "CO", "target": "EC", "w": 708.0}, {"source": "CO", "target": "PA", "w": 339.0}, {"source": "CO", "target": "PE", "w": 1494.0}, {"source": "CO", "target": "YV", "w": 2341.0}, {"source": "CR", "target": "NIC", "w": 309.0}, {"source": "CR", "target": "PA", "w": 348.0}, {"source": "CZ", "target": "D", "w": 646.0}, {"source": "CZ", "target": "PL", "w": 658.0}, {"source": "CZ", "target": "SK", "w": 215.0}, {"source": "D", "target": "DK", "w": 68.0}, {"source": "D", "target": "F", "w": 451.0}, {"source": "D", "target": "L", "w": 138.0}, {"source": "D", "target": "NL", "w": 577.0}, {"source": "D", "target": "PL", "w": 456.0}, {"source": "DJI", "target": "ER", "w": 113.0}, {"source": "DJI", "target": "ETH", "w": 337.0}, {"source": "DJI", "target": "SO", "w": 58.0}, {"source": "DOM", "target": "RH", "w": 275.0}, {"source": "DZ", "target": "LAR", "w": 982.0}, {"source": "DZ", "target": "MA", "w": 1559.0}, {"source": "DZ", "target": "RIM", "w": 463.0}, {"source": "DZ", "target": "RMM", "w": 1376.0}, {"source": "DZ", "target": "RN", "w": 956.0}, {"source": "DZ", "target": "TN", "w": 965.0}, {"source": "DZ", "target": "WSA", "w": 42.0}, {"source": "E", "target": "F", "w": 623.0}, {"source": "E", "target": "GBZ", "w": 1.2}, {"source": "E", "target": "P", "w": 1214.0}, {"source": "EAK", "target": "EAT", "w": 769.0}, {"source": "EAK", "target": "EAU", "w": 933.0}, {"source": "EAK", "target": "ETH", "w": 830.0}, {"source": "EAK", "target": "SO", "w": 682.0}, {"source": "EAK", "target": "SSD", "w": 232.0}, {"source": "EAT", "target": "EAU", "w": 396.0}, {"source": "EAT", "target": "MOC", "w": 756.0}, {"source": "EAT", "target": "MW", "w": 475.0}, {"source": "EAT", "target": "RWA", "w": 217.0}, {"source": "EAT", "target": "Z", "w": 338.0}, {"source": "EAU", "target": "RWA", "w": 169.0}, {"source": "EAU", "target": "SSD", "w": 435.0}, {"source": "EC", "target": "PE", "w": 1529.0}, {"source": "ER", "target": "ETH", "w": 912.0}, {"source": "ER", "target": "SUD", "w": 605.0}, {"source": "ES", "target": "GCA", "w": 203.0}, {"source": "ES", "target": "HN", "w": 342.0}, {"source": "EST", "target": "LV", "w": 267.0}, {"source": "EST", "target": "R", "w": 324.0}, {"source": "ET", "target": "GAZA", "w": 11.0}, {"source": "ET", "target": "IL", "w": 255.0}, {"source": "ET", "target": "LAR", "w": 1150.0}, {"source": "ET", "target": "SUD", "w": 1273.0}, {"source": "ETH", "target": "SO", "w": 1626.0}, {"source": "ETH", "target": "SSD", "w": 934.0}, {"source": "ETH", "target": "SUD", "w": 769.0}, {"source": "F", "target": "I", "w": 488.0}, {"source": "F", "target": "L", "w": 73.0}, {"source": "F", "target": "MC", "w": 4.4}, {"source": "G", "target": "GQ", "w": 350.0}, {"source": "G", "target": "RCB", "w": 1903.0}, {"source": "GAZA", "target": "IL", "w": 51.0}, {"source": "GB", "target": "IRL", "w": 360.0}, {"source": "GCA", "target": "HN", "w": 256.0}, {"source": "GCA", "target": "MEX", "w": 962.0}, {"source": "GE", "target": "R", "w": 894.0}, {"source": "GE", "target": "TR", "w": 252.0}, {"source": "GF", "target": "SME", "w": 556.0}, {"source": "GH", "target": "RT", "w": 877.0}, {"source": "GR", "target": "MK", "w": 228.0}, {"source": "GR", "target": "TR", "w": 206.0}, {"source": "GUB", "target": "RG", "w": 386.0}, {"source": "GUB", "target": "SN", "w": 338.0}, {"source": "GUY", "target": "SME", "w": 836.0}, {"source": "GUY", "target": "YV", "w": 789.0}, {"source": "H", "target": "HR", "w": 329.0}, {"source": "H", "target": "RO", "w": 443.0}, {"source": "H", "target": "SK", "w": 515.0}, {"source": "H", "target": "SLO", "w": 102.0}, {"source": "H", "target": "SRB", "w": 151.0}, {"source": "H", "target": "UA", "w": 103.0}, {"source": "HN", "target": "NIC", "w": 922.0}, {"source": "HR", "target": "MNE", "w": 25.0}, {"source": "HR", "target": "SLO", "w": 546.0}, {"source": "HR", "target": "SRB", "w": 241.0}, {"source": "I", "target": "RSM", "w": 39.0}, {"source": "I", "target": "SLO", "w": 235.0}, {"source": "I", "target": "V", "w": 3.2}, {"source": "IL", "target": "JOR", "w": 238.0}, {"source": "IL", "target": "RL", "w": 79.0}, {"source": "IL", "target": "SYR", "w": 76.0}, {"source": "IL", "target": "WB", "w": 307.0}, {"source": "IND", "target": "MYA", "w": 1463.0}, {"source": "IND", "target": "NEP", "w": 1690.0}, {"source": "IND", "target": "PK", "w": 2912.0}, {"source": "IR", "target": "IRQ", "w": 1458.0}, {"source": "IR", "target": "PK", "w": 909.0}, {"source": "IR", "target": "TM", "w": 992.0}, {"source": "IR", "target": "TR", "w": 499.0}, {"source": "IRQ", "target": "JOR", "w": 181.0}, {"source": "IRQ", "target": "KWT", "w": 242.0}, {"source": "IRQ", "target": "SA", "w": 814.0}, {"source": "IRQ", "target": "SYR", "w": 605.0}, {"source": "IRQ", "target": "TR", "w": 331.0}, {"source": "JOR", "target": "SA", "w": 728.0}, {"source": "JOR", "target": "SYR", "w": 375.0}, {"source": "JOR", "target": "WB", "w": 97.0}, {"source": "K", "target": "LAO", "w": 541.0}, {"source": "K", "target": "THA", "w": 803.0}, {"source": "K", "target": "VN", "w": 1228.0}, {"source": "KG", "target": "KZ", "w": 1051.0}, {"source": "KG", "target": "TJ", "w": 870.0}, {"source": "KG", "target": "UZ", "w": 1099.0}, {"source": "KOS", "target": "MK", "w": 159.0}, {"source": "KOS", "target": "MNE", "w": 79.0}, {"source": "KOS", "target": "SRB", "w": 352.0}, {"source": "KP", "target": "R", "w": 18.0}, {"source": "KP", "target": "ROK", "w": 238.0}, {"source": "KWT", "target": "SA", "w": 222.0}, {"source": "KZ", "target": "R", "w": 7644.0}, {"source": "KZ", "target": "TM", "w": 379.0}, {"source": "KZ", "target": "UZ", "w": 2203.0}, {"source": "LAO", "target": "MYA", "w": 235.0}, {"source": "LAO", "target": "THA", "w": 1754.0}, {"source": "LAO", "target": "VN", "w": 2130.0}, {"source": "LAR", "target": "RN", "w": 354.0}, {"source": "LAR", "target": "SUD", "w": 383.0}, {"source": "LAR", "target": "TCH", "w": 1055.0}, {"source": "LAR", "target": "TN", "w": 459.0}, {"source": "LB", "target": "RG", "w": 563.0}, {"source": "LB", "target": "SLE", "w": 306.0}, {"source": "LS", "target": "RSA", "w": 909.0}, {"source": "LT", "target": "LV", "w": 453.0}, {"source": "LT", "target": "PL", "w": 91.0}, {"source": "LT", "target": "R", "w": 261.0}, {"source": "LV", "target": "R", "w": 332.0}, {"source": "MA", "target": "MEL", "w": 9.6}, {"source": "MA", "target": "WSA", "w": 443.0}, {"source": "MAL", "target": "RI", "w": 1782.0}, {"source": "MAL", "target": "THA", "w": 506.0}, {"source": "MD", "target": "RO", "w": 450.0}, {"source": "MD", "target": "UA", "w": 939.0}, {"source": "MEX", "target": "USA", "w": 3326.0}, {"source": "MK", "target": "SRB", "w": 62.0}, {"source": "MNE", "target": "SRB", "w": 124.0}, {"source": "MNG", "target": "R", "w": 3452.0}, {"source": "MOC", "target": "MW", "w": 1569.0}, {"source": "MOC", "target": "RSA", "w": 491.0}, {"source": "MOC", "target": "SD", "w": 105.0}, {"source": "MOC", "target": "Z", "w": 419.0}, {"source": "MOC", "target": "ZW", "w": 1231.0}, {"source": "MW", "target": "Z", "w": 837.0}, {"source": "MYA", "target": "THA", "w": 1800.0}, {"source": "N", "target": "R", "w": 191.0}, {"source": "N", "target": "S", "w": 1619.0}, {"source": "N", "target": "SF", "w": 729.0}, {"source": "NAM", "target": "RB", "w": 1360.0}, {"source": "NAM", "target": "RSA", "w": 855.0}, {"source": "NAM", "target": "Z", "w": 233.0}, {"source": "NGR", "target": "RN", "w": 1497.0}, {"source": "NGR", "target": "TCH", "w": 87.0}, {"source": "OM", "target": "SA", "w": 676.0}, {"source": "OM", "target": "UAE", "w": 410.0}, {"source": "OM", "target": "YE", "w": 288.0}, {"source": "PE", "target": "RCH", "w": 168.0}, {"source": "PL", "target": "R", "w": 209.0}, {"source": "PL", "target": "SK", "w": 444.0}, {"source": "PL", "target": "UA", "w": 428.0}, {"source": "PNG", "target": "RI", "w": 820.0}, {"source": "PY", "target": "RA", "w": 2531.0}, {"source": "Q", "target": "SA", "w": 60.0}, {"source": "R", "target": "SF", "w": 1309.0}, {"source": "R", "target": "UA", "w": 1944.0}, {"source": "RA", "target": "RCH", "w": 6691.0}, {"source": "RA", "target": "ROU", "w": 541.0}, {"source": "RB", "target": "RSA", "w": 1840.0}, {"source": "RB", "target": "ZW", "w": 813.0}, {"source": "RCA", "target": "RCB", "w": 467.0}, {"source": "RCA", "target": "SSD", "w": 989.0}, {"source": "RCA", "target": "SUD", "w": 175.0}, {"source": "RCA", "target": "TCH", "w": 1197.0}, {"source": "RG", "target": "RMM", "w": 858.0}, {"source": "RG", "target": "SLE", "w": 652.0}, {"source": "RG", "target": "SN", "w": 330.0}, {"source": "RI", "target": "TL", "w": 228.0}, {"source": "RIM", "target": "RMM", "w": 2237.0}, {"source": "RIM", "target": "SN", "w": 813.0}, {"source": "RIM", "target": "WSA", "w": 1561.0}, {"source": "RL", "target": "SYR", "w": 375.0}, {"source": "RMM", "target": "RN", "w": 821.0}, {"source": "RMM", "target": "SN", "w": 419.0}, {"source": "RN", "target": "TCH", "w": 1175.0}, {"source": "RO", "target": "SRB", "w": 476.0}, {"source": "RO", "target": "UA", "w": 531.0}, {"source": "RSA", "target": "SD", "w": 430.0}, {"source": "RSA", "target": "ZW", "w": 225.0}, {"source": "S", "target": "SF", "w": 586.0}, {"source": "SA", "target": "UAE", "w": 457.0}, {"source": "SA", "target": "YE", "w": 1458.0}, {"source": "SK", "target": "UA", "w": 90.0}, {"source": "SMAR", "target": "SX", "w": 15.0}, {"source": "SN", "target": "WAG", "w": 740.0}, {"source": "SSD", "target": "SUD", "w": 2184.0}, {"source": "SUD", "target": "TCH", "w": 1360.0}, {"source": "SYR", "target": "TR", "w": 822.0}, {"source": "TJ", "target": "UZ", "w": 1161.0}, {"source": "TM", "target": "UZ", "w": 1621.0}, {"source": "Z", "target": "ZW", "w": 797.0}];
+  const IS_BIP    = false;
+  const VAL_LABEL = "length";
+  const TITLE     = "Country borders force-directed graph";
+
+  // ── dimensions ────────────────────────────────────────────────────
+  const W = Math.min(window.innerWidth - 32, 1100);
+  const H = Math.max(620, Math.round(W * 0.70));
+
+  const svg = d3.select("#graph-svg")
+    .attr("width",  W)
+    .attr("height", H)
+    .attr("viewBox", [0, 0, W, H]);
+
+  // defs: arrowhead (optional, not used for undirected but kept for bipartite)
+  const defs = svg.append("defs");
+
+  // ── scales ────────────────────────────────────────────────────────
+  // degree map
+  const degMap = new Map();
+  NODES.forEach(n => degMap.set(n.id, 0));
+  LINKS.forEach(l => {
+    const sid = typeof l.source === "object" ? l.source.id : l.source;
+    const tid = typeof l.target === "object" ? l.target.id : l.target;
+    degMap.set(sid, (degMap.get(sid) || 0) + 1);
+    degMap.set(tid, (degMap.get(tid) || 0) + 1);
+  });
+
+  const maxDeg = d3.max(Array.from(degMap.values())) || 1;
+  const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([3, 14]);
+
+  const maxW = d3.max(LINKS, d => d.w) || 1;
+  const wScale = d3.scaleSqrt().domain([0, maxW]).range([0.8, 6]);
+
+  // colour
+  const bipColour = d3.scaleOrdinal()
+    .domain([0, 1])
+    .range(["#4e79a7", "#f28e2b"]);
+
+  const refColour = d3.scaleSequential()
+    .domain([0, maxDeg])
+    .interpolator(d3.interpolateViridis);
+
+  function nodeColour(d) {
+    if (IS_BIP) return bipColour(d.group);
+    return refColour(degMap.get(d.id) || 0);
+  }
+
+  // ── seed positions on a circle (determinism) ──────────────────────
+  const cx = W / 2, cy = H / 2;
+  const initR = Math.min(W, H) * 0.38;
+  NODES.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / NODES.length;
+    n.x = cx + initR * Math.cos(angle);
+    n.y = cy + initR * Math.sin(angle);
+  });
+
+  // ── simulation ────────────────────────────────────────────────────
+  // Overlap-reduction layout:
+  //  • Bipartite (many-many): bias the two groups into left/right columns via
+  //    forceX(group) and weaken the link pull, so cross-group ribbons stop
+  //    tangling into a central blob (a lightweight bipartite/Sugiyama layout).
+  //  • Reflexive: gentle centring via forceX/forceY, but a stronger, degree-
+  //    scaled repulsion so hubs push the hairball apart.
+  //  • Stronger, padded, multi-iteration collision so circles never overlap.
+  const colX = d => IS_BIP ? (d.group === 0 ? W * 0.27 : W * 0.73) : cx;
+  const sim = d3.forceSimulation(NODES)
+    .force("link", d3.forceLink(LINKS)
+      .id(d => d.id)
+      .distance(d => {
+        const sid = typeof d.source === "object" ? d.source.id : d.source;
+        const tid = typeof d.target === "object" ? d.target.id : d.target;
+        const avgDeg = ((degMap.get(sid) || 1) + (degMap.get(tid) || 1)) / 2;
+        return Math.max(40, 120 / Math.sqrt(avgDeg));
+      })
+      .strength(IS_BIP ? 0.15 : 0.4)
+    )
+    .force("charge", d3.forceManyBody()
+      .strength(d => -80 - (degMap.get(d.id) || 1) * 6)
+      .distanceMax(Math.min(W, H) * 0.9))
+    .force("collide", d3.forceCollide(d => rScale(degMap.get(d.id) || 0) + 4).iterations(2))
+    .force("x", d3.forceX(colX).strength(IS_BIP ? 0.28 : 0.03))
+    .force("y", d3.forceY(cy).strength(0.06))
+    .alphaDecay(0.03)
+    .velocityDecay(0.45);
+
+  // ── DOM elements ──────────────────────────────────────────────────
+  const linkG = svg.append("g").attr("class", "links");
+  const nodeG = svg.append("g").attr("class", "nodes");
+  const labelG = svg.append("g").attr("class", "labels").attr("pointer-events", "none");
+
+  const linkSel = linkG.selectAll("line")
+    .data(LINKS)
+    .join("line")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.35)
+      .attr("stroke-width", d => wScale(d.w));
+
+  const nodeSel = nodeG.selectAll("circle")
+    .data(NODES)
+    .join("circle")
+      .attr("r", d => rScale(degMap.get(d.id) || 0))
+      .attr("fill", nodeColour)
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("cursor", "pointer");
+
+  // Label only top-degree nodes (top 15 % or at least 1)
+  const degThreshold = d3.quantile(
+    Array.from(degMap.values()).sort(d3.ascending),
+    0.85
+  ) || 0;
+
+  const labelSel = labelG.selectAll("text")
+    .data(NODES.filter(n => (degMap.get(n.id) || 0) >= degThreshold))
+    .join("text")
+      .attr("font-size", 10)
+      .attr("fill", "#333")
+      .attr("text-anchor", "middle")
+      .attr("dy", "0.35em")
+      .text(d => d.label);
+
+  // ── tooltip ───────────────────────────────────────────────────────
+  const tip = d3.select("#tip");
+
+  function showTip(event, html) {
+    tip.style("display", "block")
+       .html(html)
+       .style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function moveTip(event) {
+    tip.style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function hideTip() { tip.style("display", "none"); }
+
+  // ── highlight helpers ─────────────────────────────────────────────
+  function neighbourSet(d) {
+    const s = new Set([d.id]);
+    LINKS.forEach(l => {
+      const sid = l.source.id || l.source;
+      const tid = l.target.id || l.target;
+      if (sid === d.id) s.add(tid);
+      if (tid === d.id) s.add(sid);
+    });
+    return s;
+  }
+
+  nodeSel
+    .on("mouseover", function (event, d) {
+      const nbrs = neighbourSet(d);
+      nodeSel.attr("opacity", n => nbrs.has(n.id) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => {
+        const sid = l.source.id || l.source;
+        const tid = l.target.id || l.target;
+        return (sid === d.id || tid === d.id) ? 0.8 : 0.05;
+      });
+      d3.select(this).attr("stroke", "#222").attr("stroke-width", 2.5);
+      const deg = degMap.get(d.id) || 0;
+      showTip(event,
+        "<strong>" + d.label + "</strong><br>Degree: " + deg
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35);
+      d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1.5);
+      hideTip();
+    });
+
+  linkSel
+    .on("mouseover", function (event, d) {
+      const sid = d.source.id || d.source;
+      const tid = d.target.id || d.target;
+      const sLabel = (NODES.find(n => n.id === sid) || {label: sid}).label;
+      const tLabel = (NODES.find(n => n.id === tid) || {label: tid}).label;
+      nodeSel.attr("opacity", n => (n.id === sid || n.id === tid) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => l === d ? 0.9 : 0.05);
+      d3.select(this).attr("stroke", "#e15759").attr("stroke-opacity", 1);
+      showTip(event,
+        "<strong>" + sLabel + "</strong> ↔ <strong>" + tLabel + "</strong>"
+        + "<br>" + VAL_LABEL + ": " + d.w
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35).attr("stroke", "#999");
+      hideTip();
+    });
+
+  // ── drag ──────────────────────────────────────────────────────────
+  nodeSel.call(
+    d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end",  (event, d) => {
+        if (!event.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+  );
+
+  // ── tick ──────────────────────────────────────────────────────────
+  sim.on("tick", () => {
+    // No hard viewport clamp: clamping piled nodes up against the edges and
+    // defeated collision separation. We let the layout spread freely and refit
+    // the viewBox once the simulation settles (see sim.on("end")).
+    linkSel
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeSel
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+
+    labelSel
+      .attr("x", d => d.x)
+      .attr("y", d => d.y - rScale(degMap.get(d.id) || 0) - 4);
+  });
+
+  // ── label declutter: greedily hide overlapping hub labels ─────────
+  // Even top-degree labels collide once hubs cluster. Walk them in
+  // descending-degree order and drop any whose box overlaps an already-kept
+  // one, so the surviving labels never sit on top of each other.
+  function declutterLabels() {
+    const placed = [];
+    labelSel
+      .sort((a, b) => (degMap.get(b.id) || 0) - (degMap.get(a.id) || 0))
+      .each(function (d) {
+        const bb = this.getBBox();
+        const hit = placed.some(p =>
+          !(bb.x + bb.width < p.x || p.x + p.width < bb.x ||
+            bb.y + bb.height < p.y || p.y + p.height < bb.y));
+        if (hit) {
+          d3.select(this).attr("display", "none");
+        } else {
+          d3.select(this).attr("display", null);
+          placed.push(bb);
+        }
+      });
+  }
+
+  // ── refit viewBox after simulation settles ────────────────────────
+  sim.on("end", () => {
+    try {
+      declutterLabels();
+      const bbox = svg.node().getBBox();
+      if (!isFinite(bbox.x) || !isFinite(bbox.y) ||
+          !isFinite(bbox.width) || !isFinite(bbox.height) ||
+          bbox.width === 0 || bbox.height === 0) return;
+      const pad = 20;
+      const vx = bbox.x - pad;
+      const vy = bbox.y - pad;
+      const vw = bbox.width  + pad * 2;
+      const vh = bbox.height + pad * 2;
+      svg.attr("viewBox", [vx, vy, vw, vh].join(" "))
+         .attr("width",  Math.min(vw, window.innerWidth - 32))
+         .attr("height", Math.min(vh, window.innerHeight - 120));
+    } catch (e) { /* getBBox may throw in hidden tabs */ }
+  });
+
+})();
+</script>
+</body>
+</html>

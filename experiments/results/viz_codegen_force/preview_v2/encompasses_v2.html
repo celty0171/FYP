@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Country–continent force-directed graph</title>
+<style>
+  body { margin:0; background:#fafafa; font-family:'Segoe UI',Arial,sans-serif; }
+  #chart-wrap {
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 16px 32px;
+  }
+  h1 { font-size:18px; font-weight:600; color:#222; margin:0 0 2px; text-align:center; }
+  .subtitle { font-size:12px; color:#888; margin:0 0 10px; text-align:center; }
+  #legend { margin-bottom:6px; }
+  #graph-svg { display:block; }
+  .tooltip {
+    position:fixed; pointer-events:none; background:rgba(30,30,30,.88);
+    color:#fff; border-radius:5px; padding:7px 11px; font-size:12px;
+    line-height:1.5; white-space:pre-wrap; max-width:260px;
+    box-shadow:0 2px 8px rgba(0,0,0,.35); display:none; z-index:999;
+  }
+</style>
+</head>
+<body>
+<div id="chart-wrap">
+  <h1>Country–continent force-directed graph</h1>
+  <p class="subtitle">Node size = degree  |  Link width = percentage</p>
+  <div id="legend"><div style='display:flex;gap:18px;align-items:center;font-size:12px;color:#555;margin-bottom:4px;'><span><span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#4e79a7;margin-right:4px;'></span>country</span><span><span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:#f28e2b;margin-right:4px;'></span>continent</span></div></div>
+  <svg id="graph-svg"></svg>
+</div>
+<div class="tooltip" id="tip"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ── injected data ──────────────────────────────────────────────────
+  const NODES     = [{"id": "src::A", "label": "A", "group": 0}, {"id": "src::AD", "label": "AD", "group": 0}, {"id": "src::AFG", "label": "AFG", "group": 0}, {"id": "src::AG", "label": "AG", "group": 0}, {"id": "src::AL", "label": "AL", "group": 0}, {"id": "src::AND", "label": "AND", "group": 0}, {"id": "src::ANG", "label": "ANG", "group": 0}, {"id": "src::ARM", "label": "ARM", "group": 0}, {"id": "src::ARU", "label": "ARU", "group": 0}, {"id": "src::AS", "label": "AS", "group": 0}, {"id": "src::AUS", "label": "AUS", "group": 0}, {"id": "src::AXA", "label": "AXA", "group": 0}, {"id": "src::AZ", "label": "AZ", "group": 0}, {"id": "src::B", "label": "B", "group": 0}, {"id": "src::BD", "label": "BD", "group": 0}, {"id": "src::BDS", "label": "BDS", "group": 0}, {"id": "src::BEN", "label": "BEN", "group": 0}, {"id": "src::BF", "label": "BF", "group": 0}, {"id": "src::BG", "label": "BG", "group": 0}, {"id": "src::BHT", "label": "BHT", "group": 0}, {"id": "src::BI", "label": "BI", "group": 0}, {"id": "src::BIH", "label": "BIH", "group": 0}, {"id": "src::BM", "label": "BM", "group": 0}, {"id": "src::BOL", "label": "BOL", "group": 0}, {"id": "src::BR", "label": "BR", "group": 0}, {"id": "src::BRN", "label": "BRN", "group": 0}, {"id": "src::BRU", "label": "BRU", "group": 0}, {"id": "src::BS", "label": "BS", "group": 0}, {"id": "src::BVI", "label": "BVI", "group": 0}, {"id": "src::BY", "label": "BY", "group": 0}, {"id": "src::BZ", "label": "BZ", "group": 0}, {"id": "src::C", "label": "C", "group": 0}, {"id": "src::CAM", "label": "CAM", "group": 0}, {"id": "src::CC", "label": "CC", "group": 0}, {"id": "src::CDN", "label": "CDN", "group": 0}, {"id": "src::CEU", "label": "CEU", "group": 0}, {"id": "src::CGO", "label": "CGO", "group": 0}, {"id": "src::CH", "label": "CH", "group": 0}, {"id": "src::CI", "label": "CI", "group": 0}, {"id": "src::CK", "label": "CK", "group": 0}, {"id": "src::CL", "label": "CL", "group": 0}, {"id": "src::CN", "label": "CN", "group": 0}, {"id": "src::CO", "label": "CO", "group": 0}, {"id": "src::COM", "label": "COM", "group": 0}, {"id": "src::CR", "label": "CR", "group": 0}, {"id": "src::CUR", "label": "CUR", "group": 0}, {"id": "src::CV", "label": "CV", "group": 0}, {"id": "src::CX", "label": "CX", "group": 0}, {"id": "src::CY", "label": "CY", "group": 0}, {"id": "src::CYM", "label": "CYM", "group": 0}, {"id": "src::CZ", "label": "CZ", "group": 0}, {"id": "src::D", "label": "D", "group": 0}, {"id": "src::DJI", "label": "DJI", "group": 0}, {"id": "src::DK", "label": "DK", "group": 0}, {"id": "src::DOM", "label": "DOM", "group": 0}, {"id": "src::DZ", "label": "DZ", "group": 0}, {"id": "src::E", "label": "E", "group": 0}, {"id": "src::EAK", "label": "EAK", "group": 0}, {"id": "src::EAT", "label": "EAT", "group": 0}, {"id": "src::EAU", "label": "EAU", "group": 0}, {"id": "src::EC", "label": "EC", "group": 0}, {"id": "src::ER", "label": "ER", "group": 0}, {"id": "src::ES", "label": "ES", "group": 0}, {"id": "src::EST", "label": "EST", "group": 0}, {"id": "src::ET", "label": "ET", "group": 0}, {"id": "src::ETH", "label": "ETH", "group": 0}, {"id": "src::F", "label": "F", "group": 0}, {"id": "src::FALK", "label": "FALK", "group": 0}, {"id": "src::FJI", "label": "FJI", "group": 0}, {"id": "src::FL", "label": "FL", "group": 0}, {"id": "src::FO", "label": "FO", "group": 0}, {"id": "src::FSM", "label": "FSM", "group": 0}, {"id": "src::G", "label": "G", "group": 0}, {"id": "src::GAZA", "label": "GAZA", "group": 0}, {"id": "src::GB", "label": "GB", "group": 0}, {"id": "src::GBG", "label": "GBG", "group": 0}, {"id": "src::GBJ", "label": "GBJ", "group": 0}, {"id": "src::GBM", "label": "GBM", "group": 0}, {"id": "src::GBZ", "label": "GBZ", "group": 0}, {"id": "src::GCA", "label": "GCA", "group": 0}, {"id": "src::GE", "label": "GE", "group": 0}, {"id": "src::GF", "label": "GF", "group": 0}, {"id": "src::GH", "label": "GH", "group": 0}, {"id": "src::GL", "label": "GL", "group": 0}, {"id": "src::GP", "label": "GP", "group": 0}, {"id": "src::GQ", "label": "GQ", "group": 0}, {"id": "src::GR", "label": "GR", "group": 0}, {"id": "src::GU", "label": "GU", "group": 0}, {"id": "src::GUB", "label": "GUB", "group": 0}, {"id": "src::GUY", "label": "GUY", "group": 0}, {"id": "src::H", "label": "H", "group": 0}, {"id": "src::HELX", "label": "HELX", "group": 0}, {"id": "src::HK", "label": "HK", "group": 0}, {"id": "src::HN", "label": "HN", "group": 0}, {"id": "src::HR", "label": "HR", "group": 0}, {"id": "src::I", "label": "I", "group": 0}, {"id": "src::IL", "label": "IL", "group": 0}, {"id": "src::IND", "label": "IND", "group": 0}, {"id": "src::IR", "label": "IR", "group": 0}, {"id": "src::IRL", "label": "IRL", "group": 0}, {"id": "src::IRQ", "label": "IRQ", "group": 0}, {"id": "src::IS", "label": "IS", "group": 0}, {"id": "src::J", "label": "J", "group": 0}, {"id": "src::JA", "label": "JA", "group": 0}, {"id": "src::JOR", "label": "JOR", "group": 0}, {"id": "src::K", "label": "K", "group": 0}, {"id": "src::KG", "label": "KG", "group": 0}, {"id": "src::KIR", "label": "KIR", "group": 0}, {"id": "src::KN", "label": "KN", "group": 0}, {"id": "src::KOS", "label": "KOS", "group": 0}, {"id": "src::KP", "label": "KP", "group": 0}, {"id": "src::KWT", "label": "KWT", "group": 0}, {"id": "src::KZ", "label": "KZ", "group": 0}, {"id": "src::L", "label": "L", "group": 0}, {"id": "src::LAO", "label": "LAO", "group": 0}, {"id": "src::LAR", "label": "LAR", "group": 0}, {"id": "src::LB", "label": "LB", "group": 0}, {"id": "src::LS", "label": "LS", "group": 0}, {"id": "src::LT", "label": "LT", "group": 0}, {"id": "src::LV", "label": "LV", "group": 0}, {"id": "src::M", "label": "M", "group": 0}, {"id": "src::MA", "label": "MA", "group": 0}, {"id": "src::MAC", "label": "MAC", "group": 0}, {"id": "src::MAL", "label": "MAL", "group": 0}, {"id": "src::MC", "label": "MC", "group": 0}, {"id": "src::MD", "label": "MD", "group": 0}, {"id": "src::MEL", "label": "MEL", "group": 0}, {"id": "src::MEX", "label": "MEX", "group": 0}, {"id": "src::MH", "label": "MH", "group": 0}, {"id": "src::MK", "label": "MK", "group": 0}, {"id": "src::MNE", "label": "MNE", "group": 0}, {"id": "src::MNG", "label": "MNG", "group": 0}, {"id": "src::MNTS", "label": "MNTS", "group": 0}, {"id": "src::MOC", "label": "MOC", "group": 0}, {"id": "src::MP", "label": "MP", "group": 0}, {"id": "src::MQ", "label": "MQ", "group": 0}, {"id": "src::MS", "label": "MS", "group": 0}, {"id": "src::MV", "label": "MV", "group": 0}, {"id": "src::MW", "label": "MW", "group": 0}, {"id": "src::MYA", "label": "MYA", "group": 0}, {"id": "src::MYT", "label": "MYT", "group": 0}, {"id": "src::N", "label": "N", "group": 0}, {"id": "src::NAM", "label": "NAM", "group": 0}, {"id": "src::NAU", "label": "NAU", "group": 0}, {"id": "src::NCL", "label": "NCL", "group": 0}, {"id": "src::NEP", "label": "NEP", "group": 0}, {"id": "src::NF", "label": "NF", "group": 0}, {"id": "src::NGR", "label": "NGR", "group": 0}, {"id": "src::NIC", "label": "NIC", "group": 0}, {"id": "src::NL", "label": "NL", "group": 0}, {"id": "src::NLB", "label": "NLB", "group": 0}, {"id": "src::NU", "label": "NU", "group": 0}, {"id": "src::NZ", "label": "NZ", "group": 0}, {"id": "src::OM", "label": "OM", "group": 0}, {"id": "src::P", "label": "P", "group": 0}, {"id": "src::PA", "label": "PA", "group": 0}, {"id": "src::PAL", "label": "PAL", "group": 0}, {"id": "src::PE", "label": "PE", "group": 0}, {"id": "src::PF", "label": "PF", "group": 0}, {"id": "src::PK", "label": "PK", "group": 0}, {"id": "src::PL", "label": "PL", "group": 0}, {"id": "src::PN", "label": "PN", "group": 0}, {"id": "src::PNG", "label": "PNG", "group": 0}, {"id": "src::PR", "label": "PR", "group": 0}, {"id": "src::PY", "label": "PY", "group": 0}, {"id": "src::Q", "label": "Q", "group": 0}, {"id": "src::R", "label": "R", "group": 0}, {"id": "src::RA", "label": "RA", "group": 0}, {"id": "src::RB", "label": "RB", "group": 0}, {"id": "src::RC", "label": "RC", "group": 0}, {"id": "src::RCA", "label": "RCA", "group": 0}, {"id": "src::RCB", "label": "RCB", "group": 0}, {"id": "src::RCH", "label": "RCH", "group": 0}, {"id": "src::RE", "label": "RE", "group": 0}, {"id": "src::RG", "label": "RG", "group": 0}, {"id": "src::RH", "label": "RH", "group": 0}, {"id": "src::RI", "label": "RI", "group": 0}, {"id": "src::RIM", "label": "RIM", "group": 0}, {"id": "src::RL", "label": "RL", "group": 0}, {"id": "src::RM", "label": "RM", "group": 0}, {"id": "src::RMM", "label": "RMM", "group": 0}, {"id": "src::RN", "label": "RN", "group": 0}, {"id": "src::RO", "label": "RO", "group": 0}, {"id": "src::ROK", "label": "ROK", "group": 0}, {"id": "src::ROU", "label": "ROU", "group": 0}, {"id": "src::RP", "label": "RP", "group": 0}, {"id": "src::RSA", "label": "RSA", "group": 0}, {"id": "src::RSM", "label": "RSM", "group": 0}, {"id": "src::RT", "label": "RT", "group": 0}, {"id": "src::RWA", "label": "RWA", "group": 0}, {"id": "src::S", "label": "S", "group": 0}, {"id": "src::SA", "label": "SA", "group": 0}, {"id": "src::SBAR", "label": "SBAR", "group": 0}, {"id": "src::SD", "label": "SD", "group": 0}, {"id": "src::SF", "label": "SF", "group": 0}, {"id": "src::SGP", "label": "SGP", "group": 0}, {"id": "src::SK", "label": "SK", "group": 0}, {"id": "src::SLE", "label": "SLE", "group": 0}, {"id": "src::SLO", "label": "SLO", "group": 0}, {"id": "src::SMAR", "label": "SMAR", "group": 0}, {"id": "src::SME", "label": "SME", "group": 0}, {"id": "src::SN", "label": "SN", "group": 0}, {"id": "src::SO", "label": "SO", "group": 0}, {"id": "src::SOL", "label": "SOL", "group": 0}, {"id": "src::SPM", "label": "SPM", "group": 0}, {"id": "src::SRB", "label": "SRB", "group": 0}, {"id": "src::SSD", "label": "SSD", "group": 0}, {"id": "src::STP", "label": "STP", "group": 0}, {"id": "src::SUD", "label": "SUD", "group": 0}, {"id": "src::SVA", "label": "SVA", "group": 0}, {"id": "src::SX", "label": "SX", "group": 0}, {"id": "src::SY", "label": "SY", "group": 0}, {"id": "src::SYR", "label": "SYR", "group": 0}, {"id": "src::TCH", "label": "TCH", "group": 0}, {"id": "src::THA", "label": "THA", "group": 0}, {"id": "src::TJ", "label": "TJ", "group": 0}, {"id": "src::TL", "label": "TL", "group": 0}, {"id": "src::TM", "label": "TM", "group": 0}, {"id": "src::TN", "label": "TN", "group": 0}, {"id": "src::TO", "label": "TO", "group": 0}, {"id": "src::TOK", "label": "TOK", "group": 0}, {"id": "src::TR", "label": "TR", "group": 0}, {"id": "src::TT", "label": "TT", "group": 0}, {"id": "src::TUCA", "label": "TUCA", "group": 0}, {"id": "src::TUV", "label": "TUV", "group": 0}, {"id": "src::UA", "label": "UA", "group": 0}, {"id": "src::UAE", "label": "UAE", "group": 0}, {"id": "src::USA", "label": "USA", "group": 0}, {"id": "src::UZ", "label": "UZ", "group": 0}, {"id": "src::V", "label": "V", "group": 0}, {"id": "src::VIRG", "label": "VIRG", "group": 0}, {"id": "src::VN", "label": "VN", "group": 0}, {"id": "src::VU", "label": "VU", "group": 0}, {"id": "src::WAG", "label": "WAG", "group": 0}, {"id": "src::WB", "label": "WB", "group": 0}, {"id": "src::WD", "label": "WD", "group": 0}, {"id": "src::WF", "label": "WF", "group": 0}, {"id": "src::WG", "label": "WG", "group": 0}, {"id": "src::WL", "label": "WL", "group": 0}, {"id": "src::WS", "label": "WS", "group": 0}, {"id": "src::WSA", "label": "WSA", "group": 0}, {"id": "src::WV", "label": "WV", "group": 0}, {"id": "src::YE", "label": "YE", "group": 0}, {"id": "src::YV", "label": "YV", "group": 0}, {"id": "src::Z", "label": "Z", "group": 0}, {"id": "src::ZW", "label": "ZW", "group": 0}, {"id": "tgt::Africa", "label": "Africa", "group": 1}, {"id": "tgt::Asia", "label": "Asia", "group": 1}, {"id": "tgt::Australia/Oceania", "label": "Australia/Oceania", "group": 1}, {"id": "tgt::Europe", "label": "Europe", "group": 1}, {"id": "tgt::North America", "label": "North America", "group": 1}, {"id": "tgt::South America", "label": "South America", "group": 1}];
+  const LINKS     = [{"source": "src::A", "target": "tgt::Europe", "w": 100.0}, {"source": "src::AD", "target": "tgt::Europe", "w": 100.0}, {"source": "src::AFG", "target": "tgt::Asia", "w": 100.0}, {"source": "src::AG", "target": "tgt::North America", "w": 100.0}, {"source": "src::AL", "target": "tgt::Europe", "w": 100.0}, {"source": "src::AND", "target": "tgt::Europe", "w": 100.0}, {"source": "src::ANG", "target": "tgt::Africa", "w": 100.0}, {"source": "src::ARM", "target": "tgt::Asia", "w": 100.0}, {"source": "src::ARU", "target": "tgt::South America", "w": 100.0}, {"source": "src::AS", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::AUS", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::AXA", "target": "tgt::North America", "w": 100.0}, {"source": "src::AZ", "target": "tgt::Asia", "w": 100.0}, {"source": "src::B", "target": "tgt::Europe", "w": 100.0}, {"source": "src::BD", "target": "tgt::Asia", "w": 100.0}, {"source": "src::BDS", "target": "tgt::North America", "w": 100.0}, {"source": "src::BEN", "target": "tgt::Africa", "w": 100.0}, {"source": "src::BF", "target": "tgt::Africa", "w": 100.0}, {"source": "src::BG", "target": "tgt::Europe", "w": 100.0}, {"source": "src::BHT", "target": "tgt::Asia", "w": 100.0}, {"source": "src::BI", "target": "tgt::Africa", "w": 100.0}, {"source": "src::BIH", "target": "tgt::Europe", "w": 100.0}, {"source": "src::BM", "target": "tgt::North America", "w": 100.0}, {"source": "src::BOL", "target": "tgt::South America", "w": 100.0}, {"source": "src::BR", "target": "tgt::South America", "w": 100.0}, {"source": "src::BRN", "target": "tgt::Asia", "w": 100.0}, {"source": "src::BRU", "target": "tgt::Asia", "w": 100.0}, {"source": "src::BS", "target": "tgt::North America", "w": 100.0}, {"source": "src::BVI", "target": "tgt::North America", "w": 100.0}, {"source": "src::BY", "target": "tgt::Europe", "w": 100.0}, {"source": "src::BZ", "target": "tgt::North America", "w": 100.0}, {"source": "src::C", "target": "tgt::North America", "w": 100.0}, {"source": "src::CAM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CC", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::CDN", "target": "tgt::North America", "w": 100.0}, {"source": "src::CEU", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CGO", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CH", "target": "tgt::Europe", "w": 100.0}, {"source": "src::CI", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CK", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::CL", "target": "tgt::Asia", "w": 100.0}, {"source": "src::CN", "target": "tgt::Asia", "w": 100.0}, {"source": "src::CO", "target": "tgt::South America", "w": 100.0}, {"source": "src::COM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CR", "target": "tgt::North America", "w": 100.0}, {"source": "src::CUR", "target": "tgt::South America", "w": 100.0}, {"source": "src::CV", "target": "tgt::Africa", "w": 100.0}, {"source": "src::CX", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::CY", "target": "tgt::Europe", "w": 100.0}, {"source": "src::CYM", "target": "tgt::North America", "w": 100.0}, {"source": "src::CZ", "target": "tgt::Europe", "w": 100.0}, {"source": "src::D", "target": "tgt::Europe", "w": 100.0}, {"source": "src::DJI", "target": "tgt::Africa", "w": 100.0}, {"source": "src::DK", "target": "tgt::Europe", "w": 100.0}, {"source": "src::DOM", "target": "tgt::North America", "w": 100.0}, {"source": "src::DZ", "target": "tgt::Africa", "w": 100.0}, {"source": "src::E", "target": "tgt::Europe", "w": 100.0}, {"source": "src::EAK", "target": "tgt::Africa", "w": 100.0}, {"source": "src::EAT", "target": "tgt::Africa", "w": 100.0}, {"source": "src::EAU", "target": "tgt::Africa", "w": 100.0}, {"source": "src::EC", "target": "tgt::South America", "w": 100.0}, {"source": "src::ER", "target": "tgt::Africa", "w": 100.0}, {"source": "src::ES", "target": "tgt::North America", "w": 100.0}, {"source": "src::EST", "target": "tgt::Europe", "w": 100.0}, {"source": "src::ET", "target": "tgt::Africa", "w": 92.7}, {"source": "src::ET", "target": "tgt::Asia", "w": 7.3}, {"source": "src::ETH", "target": "tgt::Africa", "w": 100.0}, {"source": "src::F", "target": "tgt::Europe", "w": 100.0}, {"source": "src::FALK", "target": "tgt::South America", "w": 100.0}, {"source": "src::FJI", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::FL", "target": "tgt::Europe", "w": 100.0}, {"source": "src::FO", "target": "tgt::Europe", "w": 100.0}, {"source": "src::FSM", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::G", "target": "tgt::Africa", "w": 100.0}, {"source": "src::GAZA", "target": "tgt::Asia", "w": 100.0}, {"source": "src::GB", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GBG", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GBJ", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GBM", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GBZ", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GCA", "target": "tgt::North America", "w": 100.0}, {"source": "src::GE", "target": "tgt::Asia", "w": 100.0}, {"source": "src::GF", "target": "tgt::South America", "w": 100.0}, {"source": "src::GH", "target": "tgt::Africa", "w": 100.0}, {"source": "src::GL", "target": "tgt::North America", "w": 100.0}, {"source": "src::GP", "target": "tgt::North America", "w": 100.0}, {"source": "src::GQ", "target": "tgt::Africa", "w": 100.0}, {"source": "src::GR", "target": "tgt::Europe", "w": 100.0}, {"source": "src::GU", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::GUB", "target": "tgt::Africa", "w": 100.0}, {"source": "src::GUY", "target": "tgt::South America", "w": 100.0}, {"source": "src::H", "target": "tgt::Europe", "w": 100.0}, {"source": "src::HELX", "target": "tgt::Africa", "w": 100.0}, {"source": "src::HK", "target": "tgt::Asia", "w": 100.0}, {"source": "src::HN", "target": "tgt::North America", "w": 100.0}, {"source": "src::HR", "target": "tgt::Europe", "w": 100.0}, {"source": "src::I", "target": "tgt::Europe", "w": 100.0}, {"source": "src::IL", "target": "tgt::Asia", "w": 100.0}, {"source": "src::IND", "target": "tgt::Asia", "w": 100.0}, {"source": "src::IR", "target": "tgt::Asia", "w": 100.0}, {"source": "src::IRL", "target": "tgt::Europe", "w": 100.0}, {"source": "src::IRQ", "target": "tgt::Asia", "w": 100.0}, {"source": "src::IS", "target": "tgt::Europe", "w": 100.0}, {"source": "src::J", "target": "tgt::Asia", "w": 100.0}, {"source": "src::JA", "target": "tgt::North America", "w": 100.0}, {"source": "src::JOR", "target": "tgt::Asia", "w": 100.0}, {"source": "src::K", "target": "tgt::Asia", "w": 100.0}, {"source": "src::KG", "target": "tgt::Asia", "w": 100.0}, {"source": "src::KIR", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::KN", "target": "tgt::North America", "w": 100.0}, {"source": "src::KOS", "target": "tgt::Europe", "w": 100.0}, {"source": "src::KP", "target": "tgt::Asia", "w": 100.0}, {"source": "src::KWT", "target": "tgt::Asia", "w": 100.0}, {"source": "src::KZ", "target": "tgt::Asia", "w": 94.6}, {"source": "src::KZ", "target": "tgt::Europe", "w": 5.4}, {"source": "src::L", "target": "tgt::Europe", "w": 100.0}, {"source": "src::LAO", "target": "tgt::Asia", "w": 100.0}, {"source": "src::LAR", "target": "tgt::Africa", "w": 100.0}, {"source": "src::LB", "target": "tgt::Africa", "w": 100.0}, {"source": "src::LS", "target": "tgt::Africa", "w": 100.0}, {"source": "src::LT", "target": "tgt::Europe", "w": 100.0}, {"source": "src::LV", "target": "tgt::Europe", "w": 100.0}, {"source": "src::M", "target": "tgt::Europe", "w": 100.0}, {"source": "src::MA", "target": "tgt::Africa", "w": 100.0}, {"source": "src::MAC", "target": "tgt::Asia", "w": 100.0}, {"source": "src::MAL", "target": "tgt::Asia", "w": 100.0}, {"source": "src::MC", "target": "tgt::Europe", "w": 100.0}, {"source": "src::MD", "target": "tgt::Europe", "w": 100.0}, {"source": "src::MEL", "target": "tgt::Africa", "w": 100.0}, {"source": "src::MEX", "target": "tgt::North America", "w": 100.0}, {"source": "src::MH", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::MK", "target": "tgt::Europe", "w": 100.0}, {"source": "src::MNE", "target": "tgt::Europe", "w": 100.0}, {"source": "src::MNG", "target": "tgt::Asia", "w": 100.0}, {"source": "src::MNTS", "target": "tgt::North America", "w": 100.0}, {"source": "src::MOC", "target": "tgt::Africa", "w": 100.0}, {"source": "src::MP", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::MQ", "target": "tgt::North America", "w": 100.0}, {"source": "src::MS", "target": "tgt::Africa", "w": 100.0}, {"source": "src::MV", "target": "tgt::Asia", "w": 100.0}, {"source": "src::MW", "target": "tgt::Africa", "w": 100.0}, {"source": "src::MYA", "target": "tgt::Asia", "w": 100.0}, {"source": "src::MYT", "target": "tgt::Africa", "w": 100.0}, {"source": "src::N", "target": "tgt::Europe", "w": 100.0}, {"source": "src::NAM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::NAU", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::NCL", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::NEP", "target": "tgt::Asia", "w": 100.0}, {"source": "src::NF", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::NGR", "target": "tgt::Africa", "w": 100.0}, {"source": "src::NIC", "target": "tgt::North America", "w": 100.0}, {"source": "src::NL", "target": "tgt::Europe", "w": 100.0}, {"source": "src::NLB", "target": "tgt::South America", "w": 100.0}, {"source": "src::NU", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::NZ", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::OM", "target": "tgt::Asia", "w": 100.0}, {"source": "src::P", "target": "tgt::Europe", "w": 100.0}, {"source": "src::PA", "target": "tgt::North America", "w": 100.0}, {"source": "src::PAL", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::PE", "target": "tgt::South America", "w": 100.0}, {"source": "src::PF", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::PK", "target": "tgt::Asia", "w": 100.0}, {"source": "src::PL", "target": "tgt::Europe", "w": 100.0}, {"source": "src::PN", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::PNG", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::PR", "target": "tgt::North America", "w": 100.0}, {"source": "src::PY", "target": "tgt::South America", "w": 100.0}, {"source": "src::Q", "target": "tgt::Asia", "w": 100.0}, {"source": "src::R", "target": "tgt::Asia", "w": 76.85}, {"source": "src::R", "target": "tgt::Europe", "w": 23.15}, {"source": "src::RA", "target": "tgt::South America", "w": 100.0}, {"source": "src::RB", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RC", "target": "tgt::Asia", "w": 100.0}, {"source": "src::RCA", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RCB", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RCH", "target": "tgt::South America", "w": 100.0}, {"source": "src::RE", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RG", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RH", "target": "tgt::North America", "w": 100.0}, {"source": "src::RI", "target": "tgt::Asia", "w": 78.0}, {"source": "src::RI", "target": "tgt::Australia/Oceania", "w": 22.0}, {"source": "src::RIM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RL", "target": "tgt::Asia", "w": 100.0}, {"source": "src::RM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RMM", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RN", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RO", "target": "tgt::Europe", "w": 100.0}, {"source": "src::ROK", "target": "tgt::Asia", "w": 100.0}, {"source": "src::ROU", "target": "tgt::South America", "w": 100.0}, {"source": "src::RP", "target": "tgt::Asia", "w": 100.0}, {"source": "src::RSA", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RSM", "target": "tgt::Europe", "w": 100.0}, {"source": "src::RT", "target": "tgt::Africa", "w": 100.0}, {"source": "src::RWA", "target": "tgt::Africa", "w": 100.0}, {"source": "src::S", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SA", "target": "tgt::Asia", "w": 100.0}, {"source": "src::SBAR", "target": "tgt::North America", "w": 100.0}, {"source": "src::SD", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SF", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SGP", "target": "tgt::Asia", "w": 100.0}, {"source": "src::SK", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SLE", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SLO", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SMAR", "target": "tgt::North America", "w": 100.0}, {"source": "src::SME", "target": "tgt::South America", "w": 100.0}, {"source": "src::SN", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SO", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SOL", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::SPM", "target": "tgt::North America", "w": 100.0}, {"source": "src::SRB", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SSD", "target": "tgt::Africa", "w": 100.0}, {"source": "src::STP", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SUD", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SVA", "target": "tgt::Europe", "w": 100.0}, {"source": "src::SX", "target": "tgt::North America", "w": 100.0}, {"source": "src::SY", "target": "tgt::Africa", "w": 100.0}, {"source": "src::SYR", "target": "tgt::Asia", "w": 100.0}, {"source": "src::TCH", "target": "tgt::Africa", "w": 100.0}, {"source": "src::THA", "target": "tgt::Asia", "w": 100.0}, {"source": "src::TJ", "target": "tgt::Asia", "w": 100.0}, {"source": "src::TL", "target": "tgt::Asia", "w": 100.0}, {"source": "src::TM", "target": "tgt::Asia", "w": 100.0}, {"source": "src::TN", "target": "tgt::Africa", "w": 100.0}, {"source": "src::TO", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::TOK", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::TR", "target": "tgt::Asia", "w": 97.0}, {"source": "src::TR", "target": "tgt::Europe", "w": 3.0}, {"source": "src::TT", "target": "tgt::North America", "w": 100.0}, {"source": "src::TUCA", "target": "tgt::North America", "w": 100.0}, {"source": "src::TUV", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::UA", "target": "tgt::Europe", "w": 100.0}, {"source": "src::UAE", "target": "tgt::Asia", "w": 100.0}, {"source": "src::USA", "target": "tgt::North America", "w": 100.0}, {"source": "src::UZ", "target": "tgt::Asia", "w": 100.0}, {"source": "src::V", "target": "tgt::Europe", "w": 100.0}, {"source": "src::VIRG", "target": "tgt::North America", "w": 100.0}, {"source": "src::VN", "target": "tgt::Asia", "w": 100.0}, {"source": "src::VU", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::WAG", "target": "tgt::Africa", "w": 100.0}, {"source": "src::WB", "target": "tgt::Asia", "w": 100.0}, {"source": "src::WD", "target": "tgt::North America", "w": 100.0}, {"source": "src::WF", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::WG", "target": "tgt::North America", "w": 100.0}, {"source": "src::WL", "target": "tgt::North America", "w": 100.0}, {"source": "src::WS", "target": "tgt::Australia/Oceania", "w": 100.0}, {"source": "src::WSA", "target": "tgt::Africa", "w": 100.0}, {"source": "src::WV", "target": "tgt::North America", "w": 100.0}, {"source": "src::YE", "target": "tgt::Asia", "w": 100.0}, {"source": "src::YV", "target": "tgt::South America", "w": 100.0}, {"source": "src::Z", "target": "tgt::Africa", "w": 100.0}, {"source": "src::ZW", "target": "tgt::Africa", "w": 100.0}];
+  const IS_BIP    = true;
+  const VAL_LABEL = "percentage";
+  const TITLE     = "Country\u2013continent force-directed graph";
+
+  // ── dimensions ────────────────────────────────────────────────────
+  const W = Math.min(window.innerWidth - 32, 1100);
+  const H = Math.max(620, Math.round(W * 0.70));
+
+  const svg = d3.select("#graph-svg")
+    .attr("width",  W)
+    .attr("height", H)
+    .attr("viewBox", [0, 0, W, H]);
+
+  // defs: arrowhead (optional, not used for undirected but kept for bipartite)
+  const defs = svg.append("defs");
+
+  // ── scales ────────────────────────────────────────────────────────
+  // degree map
+  const degMap = new Map();
+  NODES.forEach(n => degMap.set(n.id, 0));
+  LINKS.forEach(l => {
+    const sid = typeof l.source === "object" ? l.source.id : l.source;
+    const tid = typeof l.target === "object" ? l.target.id : l.target;
+    degMap.set(sid, (degMap.get(sid) || 0) + 1);
+    degMap.set(tid, (degMap.get(tid) || 0) + 1);
+  });
+
+  const maxDeg = d3.max(Array.from(degMap.values())) || 1;
+  const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([3, 14]);
+
+  const maxW = d3.max(LINKS, d => d.w) || 1;
+  const wScale = d3.scaleSqrt().domain([0, maxW]).range([0.8, 6]);
+
+  // colour
+  const bipColour = d3.scaleOrdinal()
+    .domain([0, 1])
+    .range(["#4e79a7", "#f28e2b"]);
+
+  const refColour = d3.scaleSequential()
+    .domain([0, maxDeg])
+    .interpolator(d3.interpolateViridis);
+
+  function nodeColour(d) {
+    if (IS_BIP) return bipColour(d.group);
+    return refColour(degMap.get(d.id) || 0);
+  }
+
+  // ── seed positions on a circle (determinism) ──────────────────────
+  const cx = W / 2, cy = H / 2;
+  const initR = Math.min(W, H) * 0.38;
+  NODES.forEach((n, i) => {
+    const angle = (2 * Math.PI * i) / NODES.length;
+    n.x = cx + initR * Math.cos(angle);
+    n.y = cy + initR * Math.sin(angle);
+  });
+
+  // ── simulation ────────────────────────────────────────────────────
+  // Overlap-reduction layout:
+  //  • Bipartite (many-many): bias the two groups into left/right columns via
+  //    forceX(group) and weaken the link pull, so cross-group ribbons stop
+  //    tangling into a central blob (a lightweight bipartite/Sugiyama layout).
+  //  • Reflexive: gentle centring via forceX/forceY, but a stronger, degree-
+  //    scaled repulsion so hubs push the hairball apart.
+  //  • Stronger, padded, multi-iteration collision so circles never overlap.
+  const colX = d => IS_BIP ? (d.group === 0 ? W * 0.27 : W * 0.73) : cx;
+  const sim = d3.forceSimulation(NODES)
+    .force("link", d3.forceLink(LINKS)
+      .id(d => d.id)
+      .distance(d => {
+        const sid = typeof d.source === "object" ? d.source.id : d.source;
+        const tid = typeof d.target === "object" ? d.target.id : d.target;
+        const avgDeg = ((degMap.get(sid) || 1) + (degMap.get(tid) || 1)) / 2;
+        return Math.max(40, 120 / Math.sqrt(avgDeg));
+      })
+      .strength(IS_BIP ? 0.15 : 0.4)
+    )
+    .force("charge", d3.forceManyBody()
+      .strength(d => -80 - (degMap.get(d.id) || 1) * 6)
+      .distanceMax(Math.min(W, H) * 0.9))
+    .force("collide", d3.forceCollide(d => rScale(degMap.get(d.id) || 0) + 4).iterations(2))
+    .force("x", d3.forceX(colX).strength(IS_BIP ? 0.28 : 0.03))
+    .force("y", d3.forceY(cy).strength(0.06))
+    .alphaDecay(0.03)
+    .velocityDecay(0.45);
+
+  // ── DOM elements ──────────────────────────────────────────────────
+  const linkG = svg.append("g").attr("class", "links");
+  const nodeG = svg.append("g").attr("class", "nodes");
+  const labelG = svg.append("g").attr("class", "labels").attr("pointer-events", "none");
+
+  const linkSel = linkG.selectAll("line")
+    .data(LINKS)
+    .join("line")
+      .attr("stroke", "#999")
+      .attr("stroke-opacity", 0.35)
+      .attr("stroke-width", d => wScale(d.w));
+
+  const nodeSel = nodeG.selectAll("circle")
+    .data(NODES)
+    .join("circle")
+      .attr("r", d => rScale(degMap.get(d.id) || 0))
+      .attr("fill", nodeColour)
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+      .attr("cursor", "pointer");
+
+  // Label only top-degree nodes (top 15 % or at least 1)
+  const degThreshold = d3.quantile(
+    Array.from(degMap.values()).sort(d3.ascending),
+    0.85
+  ) || 0;
+
+  const labelSel = labelG.selectAll("text")
+    .data(NODES.filter(n => (degMap.get(n.id) || 0) >= degThreshold))
+    .join("text")
+      .attr("font-size", 10)
+      .attr("fill", "#333")
+      .attr("text-anchor", "middle")
+      .attr("dy", "0.35em")
+      .text(d => d.label);
+
+  // ── tooltip ───────────────────────────────────────────────────────
+  const tip = d3.select("#tip");
+
+  function showTip(event, html) {
+    tip.style("display", "block")
+       .html(html)
+       .style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function moveTip(event) {
+    tip.style("left", (event.clientX + 14) + "px")
+       .style("top",  (event.clientY - 10) + "px");
+  }
+  function hideTip() { tip.style("display", "none"); }
+
+  // ── highlight helpers ─────────────────────────────────────────────
+  function neighbourSet(d) {
+    const s = new Set([d.id]);
+    LINKS.forEach(l => {
+      const sid = l.source.id || l.source;
+      const tid = l.target.id || l.target;
+      if (sid === d.id) s.add(tid);
+      if (tid === d.id) s.add(sid);
+    });
+    return s;
+  }
+
+  nodeSel
+    .on("mouseover", function (event, d) {
+      const nbrs = neighbourSet(d);
+      nodeSel.attr("opacity", n => nbrs.has(n.id) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => {
+        const sid = l.source.id || l.source;
+        const tid = l.target.id || l.target;
+        return (sid === d.id || tid === d.id) ? 0.8 : 0.05;
+      });
+      d3.select(this).attr("stroke", "#222").attr("stroke-width", 2.5);
+      const deg = degMap.get(d.id) || 0;
+      showTip(event,
+        "<strong>" + d.label + "</strong><br>Degree: " + deg
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35);
+      d3.select(this).attr("stroke", "#fff").attr("stroke-width", 1.5);
+      hideTip();
+    });
+
+  linkSel
+    .on("mouseover", function (event, d) {
+      const sid = d.source.id || d.source;
+      const tid = d.target.id || d.target;
+      const sLabel = (NODES.find(n => n.id === sid) || {label: sid}).label;
+      const tLabel = (NODES.find(n => n.id === tid) || {label: tid}).label;
+      nodeSel.attr("opacity", n => (n.id === sid || n.id === tid) ? 1 : 0.15);
+      linkSel.attr("stroke-opacity", l => l === d ? 0.9 : 0.05);
+      d3.select(this).attr("stroke", "#e15759").attr("stroke-opacity", 1);
+      showTip(event,
+        "<strong>" + sLabel + "</strong> ↔ <strong>" + tLabel + "</strong>"
+        + "<br>" + VAL_LABEL + ": " + d.w
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function () {
+      nodeSel.attr("opacity", 1);
+      linkSel.attr("stroke-opacity", 0.35).attr("stroke", "#999");
+      hideTip();
+    });
+
+  // ── drag ──────────────────────────────────────────────────────────
+  nodeSel.call(
+    d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end",  (event, d) => {
+        if (!event.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      })
+  );
+
+  // ── tick ──────────────────────────────────────────────────────────
+  sim.on("tick", () => {
+    // No hard viewport clamp: clamping piled nodes up against the edges and
+    // defeated collision separation. We let the layout spread freely and refit
+    // the viewBox once the simulation settles (see sim.on("end")).
+    linkSel
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    nodeSel
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+
+    labelSel
+      .attr("x", d => d.x)
+      .attr("y", d => d.y - rScale(degMap.get(d.id) || 0) - 4);
+  });
+
+  // ── label declutter: greedily hide overlapping hub labels ─────────
+  // Even top-degree labels collide once hubs cluster. Walk them in
+  // descending-degree order and drop any whose box overlaps an already-kept
+  // one, so the surviving labels never sit on top of each other.
+  function declutterLabels() {
+    const placed = [];
+    labelSel
+      .sort((a, b) => (degMap.get(b.id) || 0) - (degMap.get(a.id) || 0))
+      .each(function (d) {
+        const bb = this.getBBox();
+        const hit = placed.some(p =>
+          !(bb.x + bb.width < p.x || p.x + p.width < bb.x ||
+            bb.y + bb.height < p.y || p.y + p.height < bb.y));
+        if (hit) {
+          d3.select(this).attr("display", "none");
+        } else {
+          d3.select(this).attr("display", null);
+          placed.push(bb);
+        }
+      });
+  }
+
+  // ── refit viewBox after simulation settles ────────────────────────
+  sim.on("end", () => {
+    try {
+      declutterLabels();
+      const bbox = svg.node().getBBox();
+      if (!isFinite(bbox.x) || !isFinite(bbox.y) ||
+          !isFinite(bbox.width) || !isFinite(bbox.height) ||
+          bbox.width === 0 || bbox.height === 0) return;
+      const pad = 20;
+      const vx = bbox.x - pad;
+      const vy = bbox.y - pad;
+      const vw = bbox.width  + pad * 2;
+      const vh = bbox.height + pad * 2;
+      svg.attr("viewBox", [vx, vy, vw, vh].join(" "))
+         .attr("width",  Math.min(vw, window.innerWidth - 32))
+         .attr("height", Math.min(vh, window.innerHeight - 120));
+    } catch (e) { /* getBBox may throw in hidden tabs */ }
+  });
+
+})();
+</script>
+</body>
+</html>

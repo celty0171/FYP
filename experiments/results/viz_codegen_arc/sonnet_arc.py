@@ -1,489 +1,1242 @@
+# import argparse
+# import json
+# import html
+# import pathlib
+# from collections import defaultdict, deque
+
+
+# # ---------------------------------------------------------------------------
+# # Ordering helpers (Reverse Cuthill-McKee + barycenter refinement)
+# # ---------------------------------------------------------------------------
+
+# def _build_adj(n_nodes, edges):
+#     """Return adjacency list (unweighted) for n_nodes nodes."""
+#     adj = defaultdict(set)
+#     for i, j, _ in edges:
+#         adj[i].add(j)
+#         adj[j].add(i)
+#     return adj
+
+
+# def _rcm_order(n_nodes, adj):
+#     """
+#     Reverse Cuthill-McKee ordering.
+#     BFS from the lowest-degree node, visiting neighbours by increasing degree,
+#     then reverse the result to cluster connected nodes.
+#     """
+#     degree = {i: len(adj[i]) for i in range(n_nodes)}
+#     visited = [False] * n_nodes
+#     order = []
+
+#     # Find the starting node: lowest degree among unvisited
+#     def _start():
+#         return min((i for i in range(n_nodes) if not visited[i]),
+#                    key=lambda x: degree[x])
+
+#     while len(order) < n_nodes:
+#         start = _start()
+#         queue = deque([start])
+#         visited[start] = True
+#         while queue:
+#             node = queue.popleft()
+#             order.append(node)
+#             neighbours = sorted(adj[node], key=lambda x: degree[x])
+#             for nb in neighbours:
+#                 if not visited[nb]:
+#                     visited[nb] = True
+#                     queue.append(nb)
+
+#     return list(reversed(order))
+
+
+# def _total_weighted_length(order, edges):
+#     """Sum of |pos[i] - pos[j]| * w for all edges (proxy for crossings)."""
+#     pos = [0] * len(order)
+#     for rank, node in enumerate(order):
+#         pos[node] = rank
+#     return sum(abs(pos[i] - pos[j]) * w for i, j, w in edges)
+
+
+# def _barycenter_refine(order, adj, edges, iterations=10):
+#     """
+#     Barycenter iteration: repeatedly move each node to the weighted mean
+#     position of its neighbours and re-sort.
+#     """
+#     n = len(order)
+#     # Build weight lookup
+#     weight_map = defaultdict(float)
+#     for i, j, w in edges:
+#         weight_map[(i, j)] += w
+#         weight_map[(j, i)] += w
+
+#     best_order = list(order)
+#     best_cost = _total_weighted_length(best_order, edges)
+
+#     current = list(order)
+#     for _ in range(iterations):
+#         pos = [0.0] * n
+#         for rank, node in enumerate(current):
+#             pos[node] = float(rank)
+
+#         scores = []
+#         for node in range(n):
+#             neighbours = list(adj[node])
+#             if not neighbours:
+#                 scores.append((pos[node], node))
+#             else:
+#                 total_w = sum(weight_map[(node, nb)] for nb in neighbours)
+#                 if total_w == 0:
+#                     scores.append((pos[node], node))
+#                 else:
+#                     bary = sum(weight_map[(node, nb)] * pos[nb]
+#                                for nb in neighbours) / total_w
+#                     scores.append((bary, node))
+
+#         scores.sort(key=lambda x: x[0])
+#         new_order = [node for _, node in scores]
+#         cost = _total_weighted_length(new_order, edges)
+#         if cost < best_cost:
+#             best_cost = cost
+#             best_order = new_order
+#         current = new_order
+
+#     return best_order
+
+
+# def _compute_order(n_nodes, edges):
+#     """Return the best node order found by RCM + barycenter refinement."""
+#     if n_nodes == 0:
+#         return []
+#     adj = _build_adj(n_nodes, edges)
+#     seed = _rcm_order(n_nodes, adj)
+#     refined = _barycenter_refine(seed, adj, edges)
+#     seed_cost = _total_weighted_length(seed, edges)
+#     refined_cost = _total_weighted_length(refined, edges)
+#     return refined if refined_cost <= seed_cost else seed
+
+
+# # ---------------------------------------------------------------------------
+# # Main render function
+# # ---------------------------------------------------------------------------
+
+# def render(mapping: dict, rows: list) -> str:
+#     # ------------------------------------------------------------------
+#     # 0. Validate pattern
+#     # ------------------------------------------------------------------
+#     pattern = mapping.get("pattern", "")
+#     if "many_many" in pattern and "reflexive" not in pattern:
+#         raise ValueError(
+#             "Arc diagram renderer only supports reflexive_many_many_relationship. "
+#             "Received pattern: " + repr(pattern)
+#         )
+
+#     # ------------------------------------------------------------------
+#     # 1. Read column names from mapping
+#     # ------------------------------------------------------------------
+#     src_col = mapping["source"]
+#     tgt_col = mapping["target"]
+#     val_col = mapping.get("value", mapping.get("width", "count"))
+#     title_raw = mapping.get("title", "Arc Diagram")
+#     title_escaped = html.escape(str(title_raw))
+
+#     # ------------------------------------------------------------------
+#     # 2. Build node set and aggregate edges
+#     # ------------------------------------------------------------------
+#     node_set = set()
+#     for row in rows:
+#         s = row.get(src_col)
+#         t = row.get(tgt_col)
+#         if s is not None:
+#             node_set.add(str(s))
+#         if t is not None:
+#             node_set.add(str(t))
+
+#     # Sorted list of all node names (initial sort; will be reordered)
+#     all_names = sorted(node_set)
+#     name_to_idx = {name: i for i, name in enumerate(all_names)}
+#     n_nodes = len(all_names)
+
+#     # Aggregate undirected edges
+#     edge_map = defaultdict(float)
+#     for row in rows:
+#         s = row.get(src_col)
+#         t = row.get(tgt_col)
+#         if s is None or t is None:
+#             continue
+#         si = name_to_idx.get(str(s))
+#         ti = name_to_idx.get(str(t))
+#         if si is None or ti is None:
+#             continue
+#         if si == ti:
+#             continue  # drop self-loops
+#         key = (min(si, ti), max(si, ti))
+#         if val_col == "count":
+#             edge_map[key] += 1.0
+#         else:
+#             try:
+#                 w = float(row.get(val_col, 1))
+#             except (TypeError, ValueError):
+#                 w = 1.0
+#             edge_map[key] += w
+
+#     # Raw edges list: (i, j, w) with i < j
+#     raw_edges = [(i, j, w) for (i, j), w in edge_map.items()]
+
+#     # ------------------------------------------------------------------
+#     # 3. Degenerate data guard
+#     # ------------------------------------------------------------------
+#     if n_nodes == 0 or len(raw_edges) == 0:
+#         return (
+#             "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+#             "<title>" + title_escaped + "</title></head>"
+#             "<body style='font-family:sans-serif;padding:2em;'>"
+#             "<h2>" + title_escaped + "</h2>"
+#             "<p>No data to display.</p>"
+#             "</body></html>"
+#         )
+
+#     # ------------------------------------------------------------------
+#     # 4. Compute axis order (minimise arc crossings)
+#     # ------------------------------------------------------------------
+#     best_order = _compute_order(n_nodes, raw_edges)
+#     # best_order[rank] = original index
+#     # new_pos[original_index] = rank
+#     new_pos = [0] * n_nodes
+#     for rank, orig in enumerate(best_order):
+#         new_pos[orig] = rank
+
+#     # Reordered names list
+#     ordered_names = [all_names[orig] for orig in best_order]
+
+#     # Remap edges to new positions
+#     remapped_edges = []
+#     for i, j, w in raw_edges:
+#         ni, nj = new_pos[i], new_pos[j]
+#         remapped_edges.append((min(ni, nj), max(ni, nj), w))
+
+#     # ------------------------------------------------------------------
+#     # 5. Compute per-node degree (unweighted)
+#     # ------------------------------------------------------------------
+#     degree = [0] * n_nodes
+#     for ni, nj, _ in remapped_edges:
+#         degree[ni] += 1
+#         degree[nj] += 1
+
+#     # ------------------------------------------------------------------
+#     # 6. Escape names for safe HTML/JS embedding
+#     # ------------------------------------------------------------------
+#     escaped_names = [html.escape(name) for name in ordered_names]
+
+#     # ------------------------------------------------------------------
+#     # 7. Serialise data for injection
+#     # ------------------------------------------------------------------
+#     def safe_json(obj):
+#         return json.dumps(obj).replace("</", "<\\/")
+
+#     names_json = safe_json(escaped_names)
+#     deg_json = safe_json(degree)
+
+#     links_list = [{"i": ni, "j": nj, "w": w} for ni, nj, w in remapped_edges]
+#     links_json = safe_json(links_list)
+
+#     val_label = "count" if val_col == "count" else html.escape(str(val_col))
+#     subtitle_text = html.escape(
+#         "Arc thickness \u2192 " + val_label + "   \u2022   Node size & colour \u2192 degree"
+#     )
+
+#     # ------------------------------------------------------------------
+#     # 8. Build HTML via string concatenation (no f-strings / .format)
+#     # ------------------------------------------------------------------
+
+#     # The JavaScript template uses __NAMES__, __DEG__, __LINKS__,
+#     # __TITLE__, __SUBTITLE__ as replacement tokens.
+
+#     js_template = """
+#     const names = __NAMES__;
+#     const deg   = __DEG__;
+#     const links = __LINKS__;
+#     const TITLE    = __TITLE__;
+#     const SUBTITLE = __SUBTITLE__;
+
+#     // ---- layout constants ----
+#     const NODE_PAD   = 60;   // left/right padding before first/after last node
+#     const TOP_PAD    = 24;   // space above the tallest arc apex
+#     const BOTTOM_PAD = 20;   // space below labels
+#     const MIN_NODE_R = 2;
+#     const MAX_NODE_R = 10;
+#     const FONT_SIZE  = 9;
+#     const LABEL_ANGLE = -90; // degrees, rotated below axis
+
+#     const n = names.length;
+
+#     // ---- x scale ----
+#     const totalWidth = Math.max(900, n * 18 + NODE_PAD * 2);
+#     const xScale = d3.scalePoint()
+#         .domain(d3.range(n))
+#         .range([NODE_PAD, totalWidth - NODE_PAD])
+#         .padding(0.5);
+
+#     // ---- compute maxR (tallest arc) ----
+#     let maxR = 0;
+#     links.forEach(function(lk) {
+#         const r = Math.abs(xScale(lk.j) - xScale(lk.i)) / 2;
+#         if (r > maxR) maxR = r;
+#     });
+
+#     // ---- longest label for labelSpace ----
+#     let maxLabelLen = 0;
+#     names.forEach(function(nm) { if (nm.length > maxLabelLen) maxLabelLen = nm.length; });
+#     const labelSpace = maxLabelLen * FONT_SIZE * 0.62 + 12;
+
+#     const baseY  = maxR + TOP_PAD;
+#     const svgH   = baseY + labelSpace + BOTTOM_PAD;
+#     const svgW   = totalWidth;
+
+#     // ---- scales ----
+#     const maxDeg = d3.max(deg) || 1;
+#     const rScale = d3.scaleSqrt().domain([0, maxDeg]).range([MIN_NODE_R, MAX_NODE_R]);
+#     const colScale = d3.scaleSequential(d3.interpolateViridis).domain([0, maxDeg]);
+
+#     const wExtent = d3.extent(links, function(lk) { return lk.w; });
+#     const strokeScale = d3.scaleSqrt()
+#         .domain([wExtent[0], wExtent[1]])
+#         .range([1, 6])
+#         .clamp(true);
+
+#     // ---- SVG ----
+#     const svg = d3.select("#chart")
+#         .append("svg")
+#         .attr("width",  svgW)
+#         .attr("height", svgH)
+#         .style("display", "block")
+#         .style("margin", "0 auto");
+
+#     // title
+#     svg.append("text")
+#         .attr("x", svgW / 2).attr("y", 18)
+#         .attr("text-anchor", "middle")
+#         .attr("font-size", 15).attr("font-weight", "bold")
+#         .attr("font-family", "sans-serif").attr("fill", "#222")
+#         .text(TITLE);
+
+#     svg.append("text")
+#         .attr("x", svgW / 2).attr("y", 34)
+#         .attr("text-anchor", "middle")
+#         .attr("font-size", 10).attr("fill", "#666")
+#         .attr("font-family", "sans-serif")
+#         .text(SUBTITLE);
+
+#     const g = svg.append("g").attr("transform", "translate(0,0)");
+
+#     // baseline
+#     g.append("line")
+#         .attr("x1", NODE_PAD - 10).attr("x2", totalWidth - NODE_PAD + 10)
+#         .attr("y1", baseY).attr("y2", baseY)
+#         .attr("stroke", "#ccc").attr("stroke-width", 1);
+
+#     // ---- tooltip ----
+#     const tooltip = d3.select("body").append("div")
+#         .attr("id", "tooltip")
+#         .style("position", "absolute")
+#         .style("background", "rgba(255,255,255,0.95)")
+#         .style("border", "1px solid #bbb")
+#         .style("border-radius", "4px")
+#         .style("padding", "6px 10px")
+#         .style("font-size", "12px")
+#         .style("font-family", "sans-serif")
+#         .style("pointer-events", "none")
+#         .style("display", "none")
+#         .style("box-shadow", "0 2px 6px rgba(0,0,0,0.15)");
+
+#     // ---- draw arcs (longest first so short arcs sit on top) ----
+#     const sortedLinks = links.slice().sort(function(a, b) {
+#         return Math.abs(xScale(b.j) - xScale(b.i)) - Math.abs(xScale(a.j) - xScale(a.i));
+#     });
+
+#     const arcPaths = g.selectAll(".arc")
+#         .data(sortedLinks)
+#         .enter().append("path")
+#         .attr("class", "arc")
+#         .attr("fill", "none")
+#         .attr("stroke", "#4477aa")
+#         .attr("stroke-linecap", "round")
+#         .attr("stroke-opacity", 0.35)
+#         .attr("stroke-width", function(lk) { return strokeScale(lk.w); })
+#         .attr("d", function(lk) {
+#             const x1 = xScale(lk.i);
+#             const x2 = xScale(lk.j);
+#             const r  = Math.abs(x2 - x1) / 2;
+#             return "M " + x1 + "," + baseY + " A " + r + "," + r + " 0 0,1 " + x2 + "," + baseY;
+#         })
+#         .on("mouseover", function(event, lk) {
+#             d3.select(this).attr("stroke-opacity", 0.95).attr("stroke", "#cc4400");
+#             tooltip
+#                 .style("display", "block")
+#                 .html("<strong>" + names[lk.i] + "</strong> &harr; <strong>" + names[lk.j] + "</strong><br/>weight: " + (+lk.w.toFixed(4)));
+#         })
+#         .on("mousemove", function(event) {
+#             tooltip
+#                 .style("left", (event.pageX + 12) + "px")
+#                 .style("top",  (event.pageY - 28) + "px");
+#         })
+#         .on("mouseout", function() {
+#             d3.select(this).attr("stroke-opacity", 0.35).attr("stroke", "#4477aa");
+#             tooltip.style("display", "none");
+#         });
+
+#     // ---- draw nodes ----
+#     // Determine label thinning: show every k-th label when nodes are dense
+#     const step = Math.ceil(n / 80);
+
+#     const nodeG = g.selectAll(".node")
+#         .data(d3.range(n))
+#         .enter().append("g")
+#         .attr("class", "node")
+#         .attr("transform", function(i) { return "translate(" + xScale(i) + "," + baseY + ")"; })
+#         .style("cursor", "pointer");
+
+#     nodeG.append("circle")
+#         .attr("r", function(i) { return rScale(deg[i]); })
+#         .attr("fill", function(i) { return colScale(deg[i]); })
+#         .attr("stroke", "#fff")
+#         .attr("stroke-width", 1.2);
+
+#     nodeG.filter(function(i) { return i % step === 0; })
+#         .append("text")
+#         .attr("transform", "rotate(" + LABEL_ANGLE + ")")
+#         .attr("dy", "-4")
+#         .attr("text-anchor", "start")
+#         .attr("font-size", FONT_SIZE + "px")
+#         .attr("font-family", "sans-serif")
+#         .attr("fill", "#333")
+#         .text(function(i) { return names[i]; });
+
+#     // node hover
+#     nodeG.on("mouseover", function(event, i) {
+#             // highlight incident arcs
+#             arcPaths.attr("stroke-opacity", function(lk) {
+#                 return (lk.i === i || lk.j === i) ? 0.9 : 0.05;
+#             }).attr("stroke", function(lk) {
+#                 return (lk.i === i || lk.j === i) ? "#cc4400" : "#4477aa";
+#             });
+#             // highlight neighbour nodes
+#             nodeG.select("circle").attr("opacity", function(j) {
+#                 if (j === i) return 1;
+#                 const linked = links.some(function(lk) {
+#                     return (lk.i === i && lk.j === j) || (lk.j === i && lk.i === j);
+#                 });
+#                 return linked ? 1 : 0.15;
+#             });
+#             tooltip
+#                 .style("display", "block")
+#                 .html("<strong>" + names[i] + "</strong><br/>degree: " + deg[i]);
+#         })
+#         .on("mousemove", function(event) {
+#             tooltip
+#                 .style("left", (event.pageX + 12) + "px")
+#                 .style("top",  (event.pageY - 28) + "px");
+#         })
+#         .on("mouseout", function() {
+#             arcPaths.attr("stroke-opacity", 0.35).attr("stroke", "#4477aa");
+#             nodeG.select("circle").attr("opacity", 1);
+#             tooltip.style("display", "none");
+#         });
+
+#     // ---- refit SVG to content ----
+#     (function() {
+#         try {
+#             const bb = svg.node().getBBox();
+#             const pad = 16;
+#             svg.attr("viewBox", (bb.x - pad) + " " + (bb.y - pad) + " " +
+#                                  (bb.width + pad * 2) + " " + (bb.height + pad * 2))
+#                .attr("width",  bb.width  + pad * 2)
+#                .attr("height", bb.height + pad * 2);
+#         } catch(e) { /* getBBox may fail in some environments; ignore */ }
+#     })();
+# """
+
+#     js_filled = (js_template
+#                  .replace("__NAMES__",    names_json)
+#                  .replace("__DEG__",      deg_json)
+#                  .replace("__LINKS__",    links_json)
+#                  .replace("__TITLE__",    safe_json(title_escaped))
+#                  .replace("__SUBTITLE__", safe_json(subtitle_text)))
+
+#     html_parts = [
+#         "<!DOCTYPE html>",
+#         "<html lang=\"en\">",
+#         "<head>",
+#         "  <meta charset=\"utf-8\">",
+#         "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+#         "  <title>" + title_escaped + "</title>",
+#         "  <style>",
+#         "    body { margin: 0; background: #fafafa; font-family: sans-serif; }",
+#         "    #chart { width: 100%; overflow-x: auto; padding: 16px 0; box-sizing: border-box; text-align: center; }",
+#         "    svg { display: block; margin: 0 auto; }",
+#         "  </style>",
+#         "</head>",
+#         "<body>",
+#         "  <div id=\"chart\"></div>",
+#         "  <script src=\"https://d3js.org/d3.v7.min.js\"></script>",
+#         "  <script>",
+#         js_filled,
+#         "  </script>",
+#         "</body>",
+#         "</html>",
+#     ]
+
+#     return "\n".join(html_parts)
+
+
+# # ---------------------------------------------------------------------------
+# # CLI
+# # ---------------------------------------------------------------------------
+
+# def main():
+#     parser = argparse.ArgumentParser(description="Render an arc diagram for a reflexive many-many relationship.")
+#     parser.add_argument("--mapping", required=True, help="Path to mapping JSON file")
+#     parser.add_argument("--data",    required=True, help="Path to data JSON file (array or Mondial grouped DB)")
+#     parser.add_argument("--out",     required=True, help="Output HTML file path")
+#     args = parser.parse_args()
+
+#     mapping_path = pathlib.Path(args.mapping)
+#     data_path    = pathlib.Path(args.data)
+#     out_path     = pathlib.Path(args.out)
+
+#     with mapping_path.open(encoding="utf-8") as f:
+#         mapping = json.load(f)
+
+#     # Support bare mapping or Stage-1/2 result object
+#     if "chart_mapping" in mapping:
+#         mapping = mapping["chart_mapping"]
+#     elif "selected_visualisation" in mapping:
+#         mapping = mapping["selected_visualisation"]["encoding"]
+
+#     with data_path.open(encoding="utf-8") as f:
+#         raw = json.load(f)
+
+#     # Support grouped Mondial DB or plain array
+#     if isinstance(raw, dict) and "tables" in raw:
+#         table = mapping.get("table")
+#         if not table:
+#             raise ValueError("Mapping must include a 'table' field when data is the grouped Mondial DB.")
+#         rows = raw["tables"][table]
+#     elif isinstance(raw, list):
+#         rows = raw
+#     else:
+#         raise ValueError("Data file must be a JSON array or a Mondial grouped DB object.")
+
+#     html_out = render(mapping, rows)
+
+#     out_path.parent.mkdir(parents=True, exist_ok=True)
+#     with out_path.open("w", encoding="utf-8") as f:
+#         f.write(html_out)
+
+#     print("Written:", out_path)
+
+
+# if __name__ == "__main__":
+#     main()
+
 import argparse
-import json
 import html
+import json
+import math
 import pathlib
+import sys
 
 
-def render(mapping: dict, rows: list[dict]) -> str:
-    # ------------------------------------------------------------------ #
-    # 0. Read mapping fields                                               #
-    # ------------------------------------------------------------------ #
-    source_col = mapping["source"]
-    target_col = mapping["target"]
-    pattern    = mapping.get("pattern", "")
-    title      = mapping.get("title", "Arc Diagram")
+# ---------------------------------------------------------------------------
+# Spectral / Fiedler ordering helpers (pure Python, std-lib only)
+# ---------------------------------------------------------------------------
 
-    # Resolve value column: support "value", legacy "width", or "count"
-    value_col = mapping.get("value") or mapping.get("width") or "count"
+def _dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
 
-    # Reject non-reflexive patterns explicitly
+
+def _norm(v):
+    n = math.sqrt(_dot(v, v))
+    return n
+
+
+def _normalise(v):
+    n = _norm(v)
+    if n == 0:
+        return v[:]
+    return [x / n for x in v]
+
+
+def _demean(v):
+    mu = sum(v) / len(v)
+    return [x - mu for x in v]
+
+
+def _matvec_laplacian_shift(adj, deg, c, v):
+    """Compute (cI - L) * v  =  c*v - L*v  =  c*v - (D - A)*v."""
+    n = len(v)
+    result = [c * v[i] - deg[i] * v[i] for i in range(n)]
+    for i, neighbours in enumerate(adj):
+        for j, w in neighbours:
+            result[i] += w * v[j]
+    return result
+
+
+def _fiedler_order(nodes, edges):
+    """
+    Return a list of node indices ordered by the Fiedler vector
+    (eigenvector of the second-smallest eigenvalue of the Laplacian).
+    Works per connected component; concatenates components.
+    edges: list of (i, j, w) with i < j, all indices in [0, n).
+    """
+    n = len(nodes)
+    if n == 0:
+        return []
+    if n == 1:
+        return [0]
+
+    # Build adjacency list (weighted) and degree vector
+    adj = [[] for _ in range(n)]
+    deg = [0.0] * n
+    for i, j, w in edges:
+        adj[i].append((j, w))
+        adj[j].append((i, w))
+        deg[i] += w
+        deg[j] += w
+
+    # Find connected components via BFS
+    visited = [-1] * n
+    components = []
+    for start in range(n):
+        if visited[start] != -1:
+            continue
+        comp = []
+        queue = [start]
+        visited[start] = len(components)
+        head = 0
+        while head < len(queue):
+            u = queue[head]; head += 1
+            comp.append(u)
+            for v, _ in adj[u]:
+                if visited[v] == -1:
+                    visited[v] = len(components)
+                    queue.append(v)
+        components.append(comp)
+
+    order = []
+    for comp in components:
+        if len(comp) == 1:
+            order.extend(comp)
+            continue
+        if len(comp) == 2:
+            order.extend(comp)
+            continue
+
+        # Sub-problem: Fiedler vector for this component
+        nc = len(comp)
+        idx = {v: k for k, v in enumerate(comp)}
+
+        sub_adj = [[] for _ in range(nc)]
+        sub_deg = [0.0] * nc
+        for gi in comp:
+            for gj, w in adj[gi]:
+                li, lj = idx[gi], idx[gj]
+                sub_adj[li].append((lj, w))
+                sub_deg[li] += w  # already double-counted but symmetric
+
+        # c >= largest eigenvalue of L; use 2*max_deg + 1
+        max_deg = max(sub_deg)
+        c = 2.0 * max_deg + 1.0
+
+        # Power iteration on (cI - L) to find Fiedler vector
+        # Start with a random-ish but deterministic vector
+        import hashlib
+        seed_bytes = hashlib.md5(str(comp).encode()).digest()
+        seed_val = int.from_bytes(seed_bytes[:4], 'little')
+        v = [(((seed_val >> k) & 1) * 2 - 1) * (k + 1) for k in range(nc)]
+        v = _normalise(_demean(v))
+
+        for _ in range(200):
+            v_new = _matvec_laplacian_shift(sub_adj, sub_deg, c, v)
+            v_new = _normalise(_demean(v_new))
+            if _norm([v_new[k] - v[k] for k in range(nc)]) < 1e-9:
+                break
+            v = v_new
+
+        # Sort component nodes by Fiedler value
+        comp_order = sorted(range(nc), key=lambda k: v[k])
+        order.extend(comp[k] for k in comp_order)
+
+    return order
+
+
+def _barycenter_refine(order, edges, names, n_passes=60):
+    """
+    Barycenter iteration: repeatedly move each node to the mean position
+    of its neighbours and re-sort.  Tie-break on current position (not id).
+    Returns the permutation (list of original node indices) with the
+    lowest total weighted span.
+    """
+    n = len(order)
+    if n <= 2:
+        return order[:]
+
+    # Build adjacency: node -> list of (neighbour_original_idx, weight)
+    adj = [[] for _ in range(n)]
+    for i, j, w in edges:
+        adj[i].append((j, w))
+        adj[j].append((i, w))
+
+    def total_span(perm):
+        pos = [0] * n
+        for rank, node in enumerate(perm):
+            pos[node] = rank
+        return sum(w * abs(pos[i] - pos[j]) for i, j, w in edges)
+
+    best = order[:]
+    best_span = total_span(best)
+    current = order[:]
+
+    for _ in range(n_passes):
+        pos = [0] * n
+        for rank, node in enumerate(current):
+            pos[node] = rank
+
+        bary = []
+        for node in range(n):
+            nbrs = adj[node]
+            if nbrs:
+                total_w = sum(w for _, w in nbrs)
+                if total_w > 0:
+                    bc = sum(w * pos[nb] for nb, w in nbrs) / total_w
+                else:
+                    bc = float(pos[node])
+            else:
+                bc = float(pos[node])
+            bary.append((bc, pos[node], node))  # tie-break on current pos
+
+        bary.sort()
+        current = [t[2] for t in bary]
+
+        sp = total_span(current)
+        if sp < best_span:
+            best_span = sp
+            best = current[:]
+
+    return best
+
+
+# ---------------------------------------------------------------------------
+# Main render function
+# ---------------------------------------------------------------------------
+
+def render(mapping: dict, rows: list) -> str:
+    # ---- Read mapping fields -----------------------------------------------
+    pattern = mapping.get("pattern", "")
     if pattern and pattern != "reflexive_many_many_relationship":
         raise ValueError(
-            "Arc diagram renderer only supports reflexive_many_many_relationship, "
+            "arc_diagram renderer only supports reflexive_many_many_relationship, "
             "got: " + str(pattern)
         )
 
-    # ------------------------------------------------------------------ #
-    # 1. Build node set (sorted union)                                    #
-    # ------------------------------------------------------------------ #
-    all_vals: set[str] = set()
-    for row in rows:
-        sv = row.get(source_col)
-        tv = row.get(target_col)
-        if sv is not None:
-            all_vals.add(str(sv))
-        if tv is not None:
-            all_vals.add(str(tv))
+    src_col = mapping["source"]
+    tgt_col = mapping["target"]
+    val_col = mapping.get("value", mapping.get("width", "count"))
+    title   = mapping.get("title", "Arc Diagram")
 
-    # Preliminary sorted list (will be reordered by degree later)
-    prelim_names = sorted(all_vals)
-    prelim_idx   = {n: i for i, n in enumerate(prelim_names)}
+    # ---- Graceful empty-data handling --------------------------------------
+    if not rows:
+        return _no_data_html(html.escape(title))
 
-    # ------------------------------------------------------------------ #
-    # 2. Aggregate undirected edges, drop self-loops                      #
-    # ------------------------------------------------------------------ #
-    edge_map: dict[tuple[int, int], float] = {}
+    # ---- Build node set ----------------------------------------------------
+    node_set = set()
     for row in rows:
-        sv = row.get(source_col)
-        tv = row.get(target_col)
-        if sv is None or tv is None:
+        s = row.get(src_col)
+        t = row.get(tgt_col)
+        if s is not None:
+            node_set.add(str(s))
+        if t is not None:
+            node_set.add(str(t))
+
+    if not node_set:
+        return _no_data_html(html.escape(title))
+
+    names_raw = sorted(node_set)          # initial alphabetical sort (will be reordered)
+    name_to_idx = {name: i for i, name in enumerate(names_raw)}
+    n = len(names_raw)
+
+    # ---- Aggregate undirected edges ----------------------------------------
+    edge_map = {}   # (min_idx, max_idx) -> weight
+    for row in rows:
+        s = row.get(src_col)
+        t = row.get(tgt_col)
+        if s is None or t is None:
             continue
-        sv, tv = str(sv), str(tv)
-        if sv not in prelim_idx or tv not in prelim_idx:
+        si = name_to_idx.get(str(s))
+        ti = name_to_idx.get(str(t))
+        if si is None or ti is None:
             continue
-        i, j = prelim_idx[sv], prelim_idx[tv]
-        if i == j:
+        if si == ti:
             continue  # drop self-loops
-        key = (min(i, j), max(i, j))
-        if value_col == "count":
+        key = (min(si, ti), max(si, ti))
+        if val_col == "count":
             w = 1.0
         else:
+            raw_w = row.get(val_col)
             try:
-                w = float(row[value_col]) if row.get(value_col) is not None else 1.0
-            except (ValueError, TypeError):
+                w = float(raw_w) if raw_w is not None else 1.0
+            except (TypeError, ValueError):
                 w = 1.0
         edge_map[key] = edge_map.get(key, 0.0) + w
 
-    # ------------------------------------------------------------------ #
-    # 3. Unweighted degree per node                                       #
-    # ------------------------------------------------------------------ #
-    degree: dict[int, int] = {i: 0 for i in range(len(prelim_names))}
-    for (i, j) in edge_map:
-        degree[i] = degree.get(i, 0) + 1
-        degree[j] = degree.get(j, 0) + 1
+    if not edge_map:
+        return _no_data_html(html.escape(title))
 
-    # ------------------------------------------------------------------ #
-    # 4. Order axis by degree descending (hubs first), break ties by name #
-    # ------------------------------------------------------------------ #
-    sorted_prelim = sorted(
-        range(len(prelim_names)),
-        key=lambda i: (-degree[i], prelim_names[i])
-    )
-    # new_names[new_idx] = name
-    new_names = [prelim_names[old] for old in sorted_prelim]
-    # mapping old prelim index -> new axis index
-    old_to_new = {old: new for new, old in enumerate(sorted_prelim)}
+    edges_raw = [(i, j, w) for (i, j), w in edge_map.items()]
 
-    n_nodes = len(new_names)
+    # ---- Compute unweighted degree (connectivity count) --------------------
+    deg_raw = [0] * n
+    for i, j, _ in edges_raw:
+        deg_raw[i] += 1
+        deg_raw[j] += 1
 
-    # ------------------------------------------------------------------ #
-    # 5. Remap edges to new axis indices                                  #
-    # ------------------------------------------------------------------ #
-    links_raw = []
-    for (oi, oj), w in edge_map.items():
-        ni, nj = old_to_new[oi], old_to_new[oj]
-        a, b = (ni, nj) if ni < nj else (nj, ni)
-        links_raw.append({"i": a, "j": b, "w": w})
-    # Sort longest arcs first so short local arcs sit on top
-    links_raw.sort(key=lambda l: -(l["j"] - l["i"]))
+    # ---- Axis ordering: Fiedler seed + barycenter refinement ---------------
+    fiedler_order = _fiedler_order(list(range(n)), edges_raw)
+    best_order    = _barycenter_refine(fiedler_order, edges_raw, names_raw, n_passes=60)
 
-    # Per-node degree in new order
-    new_deg = [degree[sorted_prelim[new]] for new in range(n_nodes)]
+    # best_order[rank] = original node index
+    # Build rank lookup: original_idx -> rank
+    rank_of = [0] * n
+    for rank, orig in enumerate(best_order):
+        rank_of[orig] = rank
 
-    # ------------------------------------------------------------------ #
-    # 6. Escape all strings for safe HTML embedding                       #
-    # ------------------------------------------------------------------ #
-    names_escaped = [html.escape(name) for name in new_names]
-    title_escaped = html.escape(title)
+    # Reorder names and degrees into axis order
+    names_ordered = [names_raw[best_order[r]] for r in range(n)]
+    deg_ordered   = [deg_raw[best_order[r]]   for r in range(n)]
 
-    if value_col == "count":
-        value_label_escaped = html.escape("count")
+    # Remap edges to axis indices
+    links = []
+    for i, j, w in edges_raw:
+        ri = rank_of[i]
+        rj = rank_of[j]
+        links.append({"i": min(ri, rj), "j": max(ri, rj), "w": w})
+
+    # Sort links longest-first so short local arcs render on top
+    links.sort(key=lambda lk: lk["j"] - lk["i"], reverse=True)
+
+    # ---- Escape all string data before embedding ---------------------------
+    names_escaped = [html.escape(nm) for nm in names_ordered]
+
+    # ---- Determine subtitle ------------------------------------------------
+    if val_col == "count":
+        arc_enc = "Arc thickness: edge count"
     else:
-        value_label_escaped = html.escape(str(value_col))
+        arc_enc = "Arc thickness: " + html.escape(str(val_col))
+    subtitle = arc_enc + " · Node size &amp; colour: degree"
 
-    source_col_escaped = html.escape(str(source_col))
-    target_col_escaped = html.escape(str(target_col))
+    # ---- Serialise to JSON (script-safe) -----------------------------------
+    def safe_json(obj):
+        return json.dumps(obj).replace("</", "<\\/")
 
-    subtitle_escaped = (
-        "Arc thickness = " + value_label_escaped +
-        " &middot; Node size &amp; colour = degree (# connections)" +
-        " &middot; Axis ordered by degree"
-    )
+    names_json = safe_json(names_escaped)
+    deg_json   = safe_json(deg_ordered)
+    links_json = safe_json(links)
+    title_js   = safe_json(html.escape(title))
+    subtitle_js = safe_json(subtitle)
 
-    # ------------------------------------------------------------------ #
-    # 7. Serialise for injection                                          #
-    # ------------------------------------------------------------------ #
-    names_json      = json.dumps(names_escaped)
-    deg_json        = json.dumps(new_deg)
-    links_json      = json.dumps(links_raw)
-    value_label_json = json.dumps(value_label_escaped)
-    n_nodes_json    = json.dumps(n_nodes)
-
-    # ------------------------------------------------------------------ #
-    # 8. Build HTML via string concatenation                              #
-    # ------------------------------------------------------------------ #
-    parts = []
-
-    parts.append("""<!DOCTYPE html>
+    # ---- Build HTML via string concatenation (no f-strings / .format) ------
+    html_parts = []
+    html_parts.append("""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>""")
-    parts.append(title_escaped)
-    parts.append("""</title>
+    html_parts.append(html.escape(title))
+    html_parts.append("""</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", system-ui, sans-serif;
-    background: #f7f8fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f8f9fa;
     color: #222;
-    padding: 18px;
+    padding: 24px 16px 40px;
   }
-  h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
-  .subtitle {
-    font-size: 0.80rem;
-    color: #555;
-    margin-bottom: 14px;
+  #chart-container {
+    text-align: center;
   }
-  #chart-wrap {
+  svg {
+    display: block;
+    margin: 0 auto;
     background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.09);
-    padding: 16px 10px;
-    overflow: auto;
-    display: inline-block;
-    min-width: 100%;
-  }
-  svg { display: block; margin: 0 auto; }
-  .arc-path {
-    fill: none;
-    stroke-linecap: round;
-    transition: stroke-opacity 0.15s, stroke-width 0.15s;
-  }
-  .arc-path.dimmed { stroke-opacity: 0.04 !important; }
-  .arc-path.highlighted { stroke-opacity: 0.92 !important; }
-  .node-circle {
-    stroke: #fff;
-    stroke-width: 1.5px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .node-circle.dimmed { opacity: 0.18; }
-  .node-label {
-    font-size: 9px;
-    fill: #333;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .node-label.dimmed { opacity: 0.18; }
-  .axis-line {
-    stroke: #ccc;
-    stroke-width: 1px;
+    border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.10);
+    overflow: visible;
   }
   #tooltip {
-    position: fixed;
+    position: absolute;
     pointer-events: none;
-    background: rgba(25,25,35,0.93);
+    background: rgba(30,30,40,.88);
     color: #fff;
-    border-radius: 7px;
-    padding: 8px 13px;
-    font-size: 13px;
-    line-height: 1.6;
-    max-width: 340px;
-    z-index: 9999;
-    display: none;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.25);
+    border-radius: 5px;
+    padding: 7px 11px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 260px;
+    white-space: pre-wrap;
+    opacity: 0;
+    transition: opacity .12s;
+    z-index: 999;
   }
 </style>
 </head>
 <body>
-<h1>""")
-    parts.append(title_escaped)
-    parts.append("""</h1>
-<div class="subtitle">""")
-    parts.append(subtitle_escaped)
-    parts.append("""</div>
-<div id="chart-wrap">
-  <svg id="arc-svg"></svg>
-</div>
+<div id="chart-container"></div>
 <div id="tooltip"></div>
-
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
-(function () {
+(function() {
   "use strict";
 
-  // ---- injected data ----
-  const NAMES       = """ + names_json + """;
-  const DEG         = """ + deg_json + """;
-  const LINKS       = """ + links_json + """;
-  const N           = """ + n_nodes_json + """;
-  const VALUE_LABEL = """ + value_label_json + """;
+  // ── Embedded data ─────────────────────────────────────────────────────────
+  const NAMES    = """ + names_json + """;
+  const DEG      = """ + deg_json + """;
+  const LINKS    = """ + links_json + """;
+  const TITLE    = """ + title_js + """;
+  const SUBTITLE = """ + subtitle_js + """;
 
-  if (N === 0) {
-    document.getElementById("chart-wrap").textContent = "No data to display.";
+  const n = NAMES.length;
+
+  // ── Guard: nothing to draw ────────────────────────────────────────────────
+  if (n === 0 || LINKS.length === 0) {
+    document.getElementById("chart-container").innerHTML =
+      "<p style='padding:2em;color:#666'>No data to display.</p>";
     return;
   }
 
-  // ---- layout constants ----
-  const LEFT_PAD    = 40;
-  const RIGHT_PAD   = 40;
-  const TOP_PAD     = 18;
-  const BOTTOM_PAD  = 24;
-  const NODE_STEP   = Math.max(14, Math.min(40, Math.floor(900 / Math.max(N, 1))));
-  const AXIS_WIDTH  = LEFT_PAD + (N - 1) * NODE_STEP + RIGHT_PAD;
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const NODE_SPACING  = 28;          // px between adjacent nodes
+  const LEFT_PAD      = 60;
+  const RIGHT_PAD     = 60;
+  const TOP_PAD       = 18;
+  const BOTTOM_PAD    = 20;
+  const FONT_SIZE     = 9;
+  const AXIS_STROKE   = 0.5;
 
-  // x-position of node i
-  function xPos(i) { return LEFT_PAD + i * NODE_STEP; }
+  // ── X scale ───────────────────────────────────────────────────────────────
+  const axisWidth = (n - 1) * NODE_SPACING;
+  const xOf = function(rank) { return LEFT_PAD + rank * NODE_SPACING; };
 
-  // Compute maxR from actual links
-  let maxR = 0;
-  LINKS.forEach(function (l) {
-    const r = Math.abs(xPos(l.j) - xPos(l.i)) / 2;
-    if (r > maxR) maxR = r;
+  // ── Arc heights: compute raw radii, then cap ──────────────────────────────
+  const rawR = LINKS.map(function(lk) {
+    return Math.abs(xOf(lk.j) - xOf(lk.i)) / 2;
   });
 
-  // Estimate label space: longest label * approx char width at 9px
-  const maxLabelLen = NAMES.reduce(function (m, n) { return Math.max(m, n.length); }, 0);
-  const LABEL_SPACE = Math.min(maxLabelLen * 5.5 + 8, 140);
+  // 95th-percentile cap: keep figure compact even if one bridge arc exists
+  const sortedR = rawR.slice().sort(function(a, b) { return a - b; });
+  const p95idx  = Math.floor(sortedR.length * 0.95);
+  const p95R    = sortedR[Math.max(0, p95idx - 1)] || sortedR[sortedR.length - 1] || 1;
+  // Cap = max(p95R * 1.6, 120) but never more than axisWidth * 0.45
+  const capR    = Math.min(Math.max(p95R * 1.6, 120), axisWidth * 0.45 + 1);
+  const maxR    = Math.min(Math.max.apply(null, rawR.concat([1])), capR);
 
-  const BASE_Y   = maxR + TOP_PAD;
-  const SVG_H    = BASE_Y + LABEL_SPACE + BOTTOM_PAD;
-  const SVG_W    = AXIS_WIDTH;
+  // ── Longest label → label space ───────────────────────────────────────────
+  // Decide which labels to show (thin when dense)
+  const labelStep = n > 80 ? 5 : n > 40 ? 3 : n > 20 ? 2 : 1;
+  const shownLabels = NAMES.filter(function(_, i) { return i % labelStep === 0; });
+  const maxLabelLen = shownLabels.reduce(function(mx, nm) {
+    return Math.max(mx, nm.length);
+  }, 0);
+  const labelSpace = maxLabelLen * FONT_SIZE * 0.62 + 12;
 
-  // ---- scales ----
-  const maxDeg = d3.max(DEG) || 1;
-  const minDeg = d3.min(DEG) || 0;
+  // ── SVG dimensions ────────────────────────────────────────────────────────
+  const baseY    = maxR + TOP_PAD;
+  const svgW     = axisWidth + LEFT_PAD + RIGHT_PAD;
+  const svgH     = baseY + labelSpace + BOTTOM_PAD;
 
-  const rScale = d3.scaleSqrt()
-    .domain([0, maxDeg])
-    .range([2, 9]);
+  // ── Scales ────────────────────────────────────────────────────────────────
+  const maxDeg   = Math.max.apply(null, DEG.concat([1]));
+  const minDeg   = Math.min.apply(null, DEG.concat([0]));
+  const rScale   = d3.scaleSqrt().domain([0, maxDeg]).range([2, 10]);
+  const colScale = d3.scaleSequential(d3.interpolateViridis).domain([0, maxDeg]);
 
-  const colourScale = d3.scaleSequential()
-    .domain([0, maxDeg])
-    .interpolator(d3.interpolateViridis);
+  const maxW     = Math.max.apply(null, LINKS.map(function(lk) { return lk.w; }).concat([1]));
+  const minW     = Math.min.apply(null, LINKS.map(function(lk) { return lk.w; }).concat([0]));
+  const swScale  = d3.scaleSqrt().domain([0, maxW]).range([0.8, 5]);
 
-  const maxW = d3.max(LINKS, function (l) { return l.w; }) || 1;
-  const strokeScale = d3.scaleSqrt()
-    .domain([0, maxW])
-    .range([0.6, 5]);
+  // Single-hue arc colour: mid-dark muted blue; optionally ramp on w
+  // We use a single fixed hue (#4477aa) at varying opacity for clarity.
+  const ARC_COLOR = "#4477aa";
 
-  // ---- SVG ----
-  const svg = d3.select("#arc-svg")
-    .attr("width",  SVG_W)
-    .attr("height", SVG_H);
+  // ── SVG root ──────────────────────────────────────────────────────────────
+  const container = d3.select("#chart-container");
 
-  // ---- tooltip ----
+  // Title + subtitle
+  container.append("div")
+    .style("font-size", "17px")
+    .style("font-weight", "600")
+    .style("margin-bottom", "4px")
+    .style("color", "#1a1a2e")
+    .text(TITLE);
+
+  container.append("div")
+    .style("font-size", "11px")
+    .style("color", "#666")
+    .style("margin-bottom", "14px")
+    .html(SUBTITLE);
+
+  const svg = container.append("svg")
+    .attr("width",  svgW)
+    .attr("height", svgH);
+
+  const g = svg.append("g");
+
+  // ── Axis baseline ─────────────────────────────────────────────────────────
+  g.append("line")
+    .attr("x1", LEFT_PAD - 10)
+    .attr("x2", LEFT_PAD + axisWidth + 10)
+    .attr("y1", baseY)
+    .attr("y2", baseY)
+    .attr("stroke", "#ccc")
+    .attr("stroke-width", AXIS_STROKE);
+
+  // ── Tooltip ───────────────────────────────────────────────────────────────
   const tooltip = d3.select("#tooltip");
-  function showTip(content) { tooltip.style("display", "block").html(content); }
+
+  function showTip(event, html_str) {
+    tooltip
+      .style("opacity", 1)
+      .html(html_str)
+      .style("left", (event.pageX + 14) + "px")
+      .style("top",  (event.pageY - 10) + "px");
+  }
   function moveTip(event) {
     tooltip
-      .style("left", (event.clientX + 14) + "px")
-      .style("top",  (event.clientY - 10) + "px");
+      .style("left", (event.pageX + 14) + "px")
+      .style("top",  (event.pageY - 10) + "px");
   }
-  function hideTip() { tooltip.style("display", "none"); }
+  function hideTip() {
+    tooltip.style("opacity", 0);
+  }
 
-  // ---- axis baseline ----
-  svg.append("line")
-    .attr("class", "axis-line")
-    .attr("x1", LEFT_PAD - 10)
-    .attr("y1", BASE_Y)
-    .attr("x2", LEFT_PAD + (N - 1) * NODE_STEP + 10)
-    .attr("y2", BASE_Y);
+  // ── Highlight state ───────────────────────────────────────────────────────
+  // We'll use CSS classes + JS opacity for highlight/dim.
+  let activeNode = null;
+  let activeLink = null;
 
-  // ---- arcs ----
-  // Build adjacency: node -> set of neighbour indices, for highlight
-  const adjSet = new Map();
-  NAMES.forEach(function (_, i) { adjSet.set(i, new Set()); });
-  LINKS.forEach(function (l) {
-    adjSet.get(l.i).add(l.j);
-    adjSet.get(l.j).add(l.i);
-  });
+  function resetHighlight() {
+    activeNode = null;
+    activeLink = null;
+    arcPaths.attr("opacity", 0.38)
+             .attr("stroke-width", function(d) { return swScale(d.w); });
+    nodeCircles.attr("opacity", 1);
+  }
 
-  const arcSel = svg.append("g")
-    .attr("class", "arcs")
-    .selectAll("path")
+  function highlightNode(idx) {
+    activeNode = idx;
+    // Dim all arcs, then brighten incident ones
+    arcPaths.attr("opacity", function(d) {
+      return (d.i === idx || d.j === idx) ? 0.85 : 0.08;
+    });
+    nodeCircles.attr("opacity", function(d, i) {
+      if (i === idx) return 1;
+      // Check if neighbour
+      var incident = LINKS.some(function(lk) {
+        return (lk.i === idx && lk.j === i) || (lk.j === idx && lk.i === i);
+      });
+      return incident ? 0.85 : 0.18;
+    });
+  }
+
+  function highlightLink(lk) {
+    activeLink = lk;
+    arcPaths.attr("opacity", function(d) {
+      return (d === lk) ? 0.92 : 0.07;
+    }).attr("stroke-width", function(d) {
+      return d === lk ? Math.max(swScale(d.w) + 1.5, 3) : swScale(d.w);
+    });
+    nodeCircles.attr("opacity", function(d, i) {
+      return (i === lk.i || i === lk.j) ? 1 : 0.18;
+    });
+  }
+
+  // ── Draw arcs (longest first, so short arcs sit on top) ───────────────────
+  const arcPaths = g.selectAll("path.arc")
     .data(LINKS)
-    .join("path")
-      .attr("class", "arc-path")
-      .attr("d", function (l) {
-        const x1 = xPos(l.i);
-        const x2 = xPos(l.j);
-        const r  = Math.abs(x2 - x1) / 2;
-        return "M " + x1 + "," + BASE_Y +
-               " A " + r + "," + r + " 0 0,1 " + x2 + "," + BASE_Y;
-      })
-      .attr("stroke", "#3a7abf")
-      .attr("stroke-width", function (l) { return strokeScale(l.w); })
-      .attr("stroke-opacity", 0.35)
-      .on("mouseover", function (event, l) {
-        const val = l.w.toLocaleString(undefined, { maximumFractionDigits: 2 });
-        showTip(
-          "<strong>" + NAMES[l.i] + "</strong>" +
-          " &harr; <strong>" + NAMES[l.j] + "</strong>" +
-          "<br/>" + VALUE_LABEL + ": <strong>" + val + "</strong>"
-        );
-        moveTip(event);
-        arcSel.classed("dimmed", function (r) { return r !== l; })
-              .classed("highlighted", function (r) { return r === l; });
-        nodeSel.classed("dimmed", function (_, k) {
-          return k !== l.i && k !== l.j;
-        });
-        labelSel.classed("dimmed", function (_, k) {
-          return k !== l.i && k !== l.j;
-        });
-      })
-      .on("mousemove", moveTip)
-      .on("mouseout", function () {
-        hideTip();
-        arcSel.classed("dimmed", false).classed("highlighted", false);
-        nodeSel.classed("dimmed", false);
-        labelSel.classed("dimmed", false);
-      });
+    .enter()
+    .append("path")
+    .attr("class", "arc")
+    .attr("fill", "none")
+    .attr("stroke", ARC_COLOR)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-width", function(d) { return swScale(d.w); })
+    .attr("opacity", 0.38)
+    .attr("d", function(d) {
+      var x1 = xOf(d.i);
+      var x2 = xOf(d.j);
+      var rawRadius = Math.abs(x2 - x1) / 2;
+      var rx = rawRadius;
+      var ry = Math.min(rawRadius, capR);  // flatten over-tall arcs
+      // SVG elliptical arc: M x1,baseY A rx,ry 0 0,1 x2,baseY
+      return "M " + x1 + "," + baseY +
+             " A " + rx + "," + ry + " 0 0,1 " + x2 + "," + baseY;
+    })
+    .on("mouseover", function(event, d) {
+      highlightLink(d);
+      var wLabel = d.w % 1 === 0 ? d.w : d.w.toFixed(2);
+      showTip(event,
+        "<strong>" + NAMES[d.i] + "</strong> &harr; <strong>" + NAMES[d.j] + "</strong>" +
+        "<br/>Weight: " + wLabel
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function() {
+      resetHighlight();
+      hideTip();
+    });
 
-  // ---- nodes ----
-  const nodeSel = svg.append("g")
-    .attr("class", "nodes")
-    .selectAll("circle")
-    .data(NAMES)
-    .join("circle")
-      .attr("class", "node-circle")
-      .attr("cx", function (_, i) { return xPos(i); })
-      .attr("cy", BASE_Y)
-      .attr("r",  function (_, i) { return rScale(DEG[i]); })
-      .attr("fill", function (_, i) { return colourScale(DEG[i]); })
-      .on("mouseover", function (event, name) {
-        const i = NAMES.indexOf(name);
-        const deg = DEG[i];
-        showTip(
-          "<strong>" + name + "</strong>" +
-          "<br/>Degree: <strong>" + deg + "</strong>"
-        );
-        moveTip(event);
-        const nbrs = adjSet.get(i);
-        arcSel.classed("dimmed", function (l) {
-          return l.i !== i && l.j !== i;
-        }).classed("highlighted", false);
-        nodeSel.classed("dimmed", function (_, k) {
-          return k !== i && !nbrs.has(k);
-        });
-        labelSel.classed("dimmed", function (_, k) {
-          return k !== i && !nbrs.has(k);
-        });
-      })
-      .on("mousemove", moveTip)
-      .on("mouseout", function () {
-        hideTip();
-        arcSel.classed("dimmed", false).classed("highlighted", false);
-        nodeSel.classed("dimmed", false);
-        labelSel.classed("dimmed", false);
-      });
+  // ── Draw nodes ────────────────────────────────────────────────────────────
+  const nodeData = NAMES.map(function(nm, i) { return { name: nm, deg: DEG[i], rank: i }; });
 
-  // ---- labels ----
-  // Thin labels when nodes are dense: show every k-th or degree >= threshold
-  let labelStep = 1;
-  if (N > 80)  labelStep = 4;
-  else if (N > 40) labelStep = 2;
+  const nodeCircles = g.selectAll("circle.node")
+    .data(nodeData)
+    .enter()
+    .append("circle")
+    .attr("class", "node")
+    .attr("cx", function(d) { return xOf(d.rank); })
+    .attr("cy", baseY)
+    .attr("r",  function(d) { return rScale(d.deg); })
+    .attr("fill",   function(d) { return colScale(d.deg); })
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.2)
+    .attr("cursor", "pointer")
+    .on("mouseover", function(event, d) {
+      highlightNode(d.rank);
+      showTip(event,
+        "<strong>" + d.name + "</strong>" +
+        "<br/>Degree: " + d.deg
+      );
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function() {
+      resetHighlight();
+      hideTip();
+    });
 
-  const degThreshold = (N > 60) ? Math.ceil(maxDeg * 0.15) : 0;
+  // ── Draw labels ───────────────────────────────────────────────────────────
+  g.selectAll("text.label")
+    .data(nodeData)
+    .enter()
+    .filter(function(d) { return d.rank % labelStep === 0; })
+    .append("text")
+    .attr("class", "label")
+    .attr("x", function(d) { return xOf(d.rank); })
+    .attr("y", baseY + 4)
+    .attr("font-size", FONT_SIZE + "px")
+    .attr("fill", "#444")
+    .attr("text-anchor", "end")
+    .attr("transform", function(d) {
+      var x = xOf(d.rank);
+      return "rotate(-90," + x + "," + (baseY + 4) + ")";
+    })
+    .text(function(d) { return d.name; });
 
-  const labelSel = svg.append("g")
-    .attr("class", "labels")
-    .selectAll("text")
-    .data(NAMES)
-    .join("text")
-      .attr("class", "node-label")
-      .attr("x", function (_, i) { return xPos(i); })
-      .attr("y", BASE_Y + 4)
-      .attr("transform", function (_, i) {
-        const x = xPos(i);
-        return "rotate(90," + x + "," + (BASE_Y + 4) + ")";
-      })
-      .attr("text-anchor", "start")
-      .attr("display", function (_, i) {
-        if (DEG[i] >= degThreshold && i % labelStep === 0) return null;
-        if (DEG[i] > degThreshold) return null;
-        return "none";
-      })
-      .text(function (d) { return d; });
-
-  // ---- BBox refit ----
-  // After all marks are drawn, refit the SVG to its actual content
+  // ── BBox refit ────────────────────────────────────────────────────────────
+  // After all marks are drawn, expand the SVG to fit its actual content.
   try {
-    const bbox = svg.node().getBBox();
-    const pad  = 10;
-    svg
-      .attr("viewBox",
-        (bbox.x - pad) + " " + (bbox.y - pad) + " " +
-        (bbox.width + 2 * pad) + " " + (bbox.height + 2 * pad)
-      )
-      .attr("width",  bbox.width  + 2 * pad)
-      .attr("height", bbox.height + 2 * pad);
-  } catch (e) {
-    // getBBox may fail in non-browser environments; ignore
-  }
+    var bb = svg.node().getBBox();
+    var pad = 10;
+    var vx = bb.x - pad;
+    var vy = bb.y - pad;
+    var vw = bb.width  + pad * 2;
+    var vh = bb.height + pad * 2;
+    svg.attr("viewBox", vx + " " + vy + " " + vw + " " + vh)
+       .attr("width",  vw)
+       .attr("height", vh);
+  } catch(e) { /* getBBox may fail in some non-browser environments */ }
 
 })();
 </script>
 </body>
 </html>""")
 
-    return "".join(parts)
+    return "".join(html_parts)
 
 
-# --------------------------------------------------------------------------- #
-# CLI                                                                          #
-# --------------------------------------------------------------------------- #
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Arc diagram renderer")
+# ---------------------------------------------------------------------------
+# No-data fallback
+# ---------------------------------------------------------------------------
+
+def _no_data_html(escaped_title):
+    return (
+        "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"/>"
+        "<title>" + escaped_title + "</title></head><body style=\"font-family:sans-serif;"
+        "padding:2em;color:#555\">"
+        "<h2>" + escaped_title + "</h2>"
+        "<p>No data to display.</p></body></html>"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def _load_rows(data_obj, mapping):
+    """Accept either a JSON array or the grouped Mondial DB form."""
+    if isinstance(data_obj, list):
+        return data_obj
+    if isinstance(data_obj, dict) and "tables" in data_obj:
+        table = mapping.get("table")
+        if not table:
+            raise ValueError("mapping must include a 'table' field when data is in grouped form")
+        tables = data_obj["tables"]
+        if table not in tables:
+            raise ValueError("Table '{}' not found in data. Available: {}".format(
+                table, list(tables.keys())))
+        return tables[table]
+    raise ValueError("Unrecognised data format: expected a JSON array or {\"tables\": {...}}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Arc Diagram renderer (reflexive_many_many)")
     parser.add_argument("--mapping", required=True, help="Path to mapping JSON file")
     parser.add_argument("--data",    required=True, help="Path to data JSON file")
-    parser.add_argument("--out",     required=True, help="Path to output HTML file")
+    parser.add_argument("--out",     required=True, help="Path for output HTML file")
     args = parser.parse_args()
 
     mapping_path = pathlib.Path(args.mapping)
     data_path    = pathlib.Path(args.data)
     out_path     = pathlib.Path(args.out)
 
-    with mapping_path.open(encoding="utf-8") as f:
-        mapping = json.load(f)
+    with mapping_path.open("r", encoding="utf-8") as fh:
+        mapping = json.load(fh)
 
-    # Accept Stage-1/2 result objects
+    with data_path.open("r", encoding="utf-8") as fh:
+        data_obj = json.load(fh)
+
+    # Accept mapping wrapped in a stage-1/2 result object
     if "chart_mapping" in mapping:
         mapping = mapping["chart_mapping"]
     elif "selected_visualisation" in mapping:
-        sv = mapping["selected_visualisation"]
-        mapping = sv.get("encoding", sv)
+        mapping = mapping["selected_visualisation"].get("encoding", mapping)
 
-    with data_path.open(encoding="utf-8") as f:
-        raw_data = json.load(f)
+    rows = _load_rows(data_obj, mapping)
 
-    if isinstance(raw_data, dict) and "tables" in raw_data:
-        table_name = mapping["table"]
-        rows = raw_data["tables"][table_name]
-    elif isinstance(raw_data, list):
-        rows = raw_data
-    else:
-        raise ValueError(
-            "Data file must be a JSON array or a grouped Mondial DB "
-            "({'tables': {...}})"
+    # Pattern guard
+    pattern = mapping.get("pattern", "")
+    if pattern and "many_many" in pattern and "reflexive" not in pattern:
+        print(
+            "ERROR: arc_diagram renderer only supports reflexive_many_many_relationship.\n"
+            "The supplied mapping has pattern='{}'. Use a different renderer.".format(pattern),
+            file=sys.stderr,
         )
+        sys.exit(1)
 
-    html_out = render(mapping, rows)
-    out_path.write_text(html_out, encoding="utf-8")
+    html_doc = render(mapping, rows)
+
+    out_path.write_text(html_doc, encoding="utf-8")
     print("Written:", out_path)
 
 
 if __name__ == "__main__":
     main()
+

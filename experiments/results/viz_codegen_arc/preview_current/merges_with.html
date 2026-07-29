@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sea merges_with arc diagram (edge count)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #f7f7f9;
+    color: #222;
+    padding: 24px 16px 40px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 11px;
+    color: #777;
+    margin-bottom: 20px;
+  }
+  #chart-wrap {
+    text-align: center;
+  }
+  svg {
+    display: block;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+    overflow: visible;
+  }
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: rgba(20,20,40,0.88);
+    color: #f0f0f0;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 7px 11px;
+    border-radius: 5px;
+    white-space: pre-line;
+    max-width: 260px;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .no-data {
+    text-align: center;
+    font-size: 15px;
+    color: #888;
+    margin-top: 60px;
+  }
+</style>
+</head>
+<body>
+<h1>Sea merges_with arc diagram (edge count)</h1>
+<p class="subtitle">Arc thickness → edge count · Node size · colour → degree (number of connections)</p>
+<div id="chart-wrap"></div>
+<div id="tooltip"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  const names  = ["Yellow Sea", "Sea of Japan", "East China Sea", "Seto Inland Sea", "Sea of Okhotsk", "Gulf of Thailand", "Pacific Ocean", "Gulf of California", "San Francisco Bay", "Sulu Sea", "Solomon Sea", "South China Sea", "Coral Sea", "Sulawesi Sea", "Malakka Strait", "Tasman Sea", "Java Sea", "Arafura Sea", "Banda Sea", "Savu Sea", "Timor Sea", "Bering Sea", "Indian Ocean", "Andaman Sea", "Gulf of Bengal", "Gulf of Aden", "Arabian Sea", "Gulf of Oman", "Red Sea", "Chukchi Sea", "Persian Gulf", "East Sibirian Sea", "Laptev Sea", "Kara Sea", "Arctic Ocean", "Hudson Bay", "Labrador Sea", "Baffin Bay", "Barents Sea", "White Sea", "Greenland Sea", "Irish Sea", "Norwegian Sea", "Atlantic Ocean", "Caribbean Sea", "The Channel", "Gulf of Mexico", "North Sea", "Mediterranean Sea", "Lago de Maracaibo", "Skagerrak", "Kattegat", "Baltic Sea", "Marmara Sea", "Black Sea", "Sea of Azov"];
+  const degs   = [2, 5, 4, 2, 2, 1, 15, 1, 1, 3, 2, 6, 4, 4, 2, 3, 5, 3, 7, 4, 4, 2, 11, 3, 2, 3, 3, 2, 1, 3, 1, 3, 3, 3, 8, 3, 4, 2, 4, 1, 3, 1, 4, 10, 3, 2, 2, 4, 2, 1, 2, 2, 1, 2, 2, 1];
+  const links  = [{"i": 22, "j": 43, "w": 1.0}, {"i": 6, "j": 22, "w": 1.0}, {"i": 6, "j": 21, "w": 1.0}, {"i": 6, "j": 18, "w": 1.0}, {"i": 6, "j": 15, "w": 1.0}, {"i": 2, "j": 11, "w": 1.0}, {"i": 14, "j": 23, "w": 1.0}, {"i": 21, "j": 29, "w": 1.0}, {"i": 36, "j": 43, "w": 1.0}, {"i": 6, "j": 13, "w": 1.0}, {"i": 15, "j": 22, "w": 1.0}, {"i": 34, "j": 40, "w": 1.0}, {"i": 5, "j": 11, "w": 1.0}, {"i": 16, "j": 22, "w": 1.0}, {"i": 6, "j": 12, "w": 1.0}, {"i": 43, "j": 48, "w": 1.0}, {"i": 48, "j": 53, "w": 1.0}, {"i": 42, "j": 47, "w": 1.0}, {"i": 29, "j": 34, "w": 1.0}, {"i": 33, "j": 38, "w": 1.0}, {"i": 44, "j": 49, "w": 1.0}, {"i": 1, "j": 6, "w": 1.0}, {"i": 6, "j": 11, "w": 1.0}, {"i": 11, "j": 16, "w": 1.0}, {"i": 13, "j": 18, "w": 1.0}, {"i": 12, "j": 17, "w": 1.0}, {"i": 43, "j": 47, "w": 1.0}, {"i": 34, "j": 38, "w": 1.0}, {"i": 38, "j": 42, "w": 1.0}, {"i": 6, "j": 10, "w": 1.0}, {"i": 2, "j": 6, "w": 1.0}, {"i": 22, "j": 26, "w": 1.0}, {"i": 18, "j": 22, "w": 1.0}, {"i": 9, "j": 13, "w": 1.0}, {"i": 40, "j": 43, "w": 1.0}, {"i": 43, "j": 46, "w": 1.0}, {"i": 47, "j": 50, "w": 1.0}, {"i": 31, "j": 34, "w": 1.0}, {"i": 3, "j": 6, "w": 1.0}, {"i": 6, "j": 9, "w": 1.0}, {"i": 1, "j": 4, "w": 1.0}, {"i": 19, "j": 22, "w": 1.0}, {"i": 27, "j": 30, "w": 1.0}, {"i": 22, "j": 25, "w": 1.0}, {"i": 25, "j": 28, "w": 1.0}, {"i": 11, "j": 14, "w": 1.0}, {"i": 13, "j": 16, "w": 1.0}, {"i": 16, "j": 19, "w": 1.0}, {"i": 17, "j": 20, "w": 1.0}, {"i": 12, "j": 15, "w": 1.0}, {"i": 43, "j": 45, "w": 1.0}, {"i": 41, "j": 43, "w": 1.0}, {"i": 45, "j": 47, "w": 1.0}, {"i": 40, "j": 42, "w": 1.0}, {"i": 32, "j": 34, "w": 1.0}, {"i": 34, "j": 36, "w": 1.0}, {"i": 29, "j": 31, "w": 1.0}, {"i": 35, "j": 37, "w": 1.0}, {"i": 44, "j": 46, "w": 1.0}, {"i": 6, "j": 8, "w": 1.0}, {"i": 4, "j": 6, "w": 1.0}, {"i": 1, "j": 3, "w": 1.0}, {"i": 0, "j": 2, "w": 1.0}, {"i": 9, "j": 11, "w": 1.0}, {"i": 20, "j": 22, "w": 1.0}, {"i": 22, "j": 24, "w": 1.0}, {"i": 16, "j": 18, "w": 1.0}, {"i": 18, "j": 20, "w": 1.0}, {"i": 10, "j": 12, "w": 1.0}, {"i": 42, "j": 43, "w": 1.0}, {"i": 43, "j": 44, "w": 1.0}, {"i": 53, "j": 54, "w": 1.0}, {"i": 54, "j": 55, "w": 1.0}, {"i": 50, "j": 51, "w": 1.0}, {"i": 51, "j": 52, "w": 1.0}, {"i": 33, "j": 34, "w": 1.0}, {"i": 34, "j": 35, "w": 1.0}, {"i": 38, "j": 39, "w": 1.0}, {"i": 32, "j": 33, "w": 1.0}, {"i": 31, "j": 32, "w": 1.0}, {"i": 35, "j": 36, "w": 1.0}, {"i": 36, "j": 37, "w": 1.0}, {"i": 6, "j": 7, "w": 1.0}, {"i": 0, "j": 1, "w": 1.0}, {"i": 1, "j": 2, "w": 1.0}, {"i": 26, "j": 27, "w": 1.0}, {"i": 25, "j": 26, "w": 1.0}, {"i": 22, "j": 23, "w": 1.0}, {"i": 23, "j": 24, "w": 1.0}, {"i": 18, "j": 19, "w": 1.0}, {"i": 19, "j": 20, "w": 1.0}, {"i": 17, "j": 18, "w": 1.0}];
+  const srcCol = "sea1";
+  const tgtCol = "sea2";
+  const valCol = "count";
+
+  const n = names.length;
+
+  if (n === 0 || links.length === 0) {
+    document.getElementById("chart-wrap").innerHTML =
+      '<p class="no-data">No data to display.</p>';
+    return;
+  }
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const NODE_SPACING = 28;          // px between adjacent nodes
+  const LEFT_PAD     = 60;
+  const RIGHT_PAD    = 60;
+  const TOP_PAD      = 18;
+  const BOTTOM_PAD   = 24;
+  const FONT_SIZE    = 9;
+  const LABEL_CHARS  = Math.max(...names.map(d => d.length));
+  const LABEL_SPACE  = Math.min(LABEL_CHARS * FONT_SIZE * 0.62 + 10, 160);
+
+  const axisWidth = (n - 1) * NODE_SPACING;
+
+  // ── Scales ────────────────────────────────────────────────────────────────
+  const xScale = d3.scalePoint()
+    .domain(d3.range(n))
+    .range([0, axisWidth]);
+
+  // Arc heights
+  const spans = links.map(l => xScale(l.j) - xScale(l.i));
+  const maxSpan = d3.max(spans) || 1;
+
+  // Cap: use 95th-percentile span * 1.4 as the height cap
+  const sorted_spans = spans.slice().sort((a,b) => a - b);
+  const p95idx = Math.floor(sorted_spans.length * 0.95);
+  const p95span = sorted_spans[Math.min(p95idx, sorted_spans.length - 1)] || maxSpan;
+  const heightCap = Math.min(maxSpan / 2, Math.max(p95span * 1.4, 60));
+
+  const maxR = heightCap;
+
+  const baseY = maxR + TOP_PAD;
+  const svgH  = baseY + LABEL_SPACE + BOTTOM_PAD;
+  const svgW  = axisWidth + LEFT_PAD + RIGHT_PAD;
+
+  // ── SVG ───────────────────────────────────────────────────────────────────
+  const svg = d3.select("#chart-wrap").append("svg")
+    .attr("width",  svgW)
+    .attr("height", svgH);
+
+  const g = svg.append("g")
+    .attr("transform", "translate(" + LEFT_PAD + "," + 0 + ")");
+
+  // ── Colour / size scales ──────────────────────────────────────────────────
+  const maxDeg = d3.max(degs) || 1;
+  const minDeg = d3.min(degs) || 0;
+
+  const nodeR = d3.scaleSqrt()
+    .domain([0, maxDeg])
+    .range([2.5, 9]);
+
+  const nodeColor = d3.scaleSequential()
+    .domain([0, maxDeg])
+    .interpolator(d3.interpolateViridis);
+
+  // Arc stroke width
+  const maxW = d3.max(links, l => l.w) || 1;
+  const minW = d3.min(links, l => l.w) || 0;
+  const arcStroke = d3.scaleSqrt()
+    .domain([minW, maxW])
+    .range([0.8, 5]);
+
+  // Arc colour: single-hue sequential (steel blue family).
+  // Clamp to the DARKER half of the ramp: interpolateBlues starts near-white,
+  // and that pale low end at the low stroke opacity made light arcs almost
+  // invisible. Mapping w into [0.5, 1.0] of the ramp keeps every arc legible.
+  const arcColor = d3.scaleSequential()
+    .domain([minW, maxW])
+    .interpolator(t => d3.interpolateBlues(0.5 + 0.5 * t));
+
+  // ── Baseline ──────────────────────────────────────────────────────────────
+  g.append("line")
+    .attr("x1", 0).attr("y1", baseY)
+    .attr("x2", axisWidth).attr("y2", baseY)
+    .attr("stroke", "#ccc")
+    .attr("stroke-width", 1);
+
+  // ── Arcs ──────────────────────────────────────────────────────────────────
+  const arcPaths = g.selectAll(".arc")
+    .data(links)
+    .join("path")
+    .attr("class", "arc")
+    .attr("fill", "none")
+    .attr("stroke-linecap", "round")
+    .attr("opacity", 0.55)
+    .attr("stroke", d => {
+      const c = d3.color(arcColor(d.w));
+      // Clamp to a calm blue range: don't go too light
+      return c ? c.formatHex() : "#5b8db8";
+    })
+    .attr("stroke-width", d => arcStroke(d.w))
+    .attr("d", d => {
+      const x1 = xScale(d.i);
+      const x2 = xScale(d.j);
+      const span = x2 - x1;
+      const rx = span / 2;
+      const ry = Math.min(span / 2, heightCap);
+      return "M " + x1 + "," + baseY +
+             " A " + rx + "," + ry + " 0 0,1 " + x2 + "," + baseY;
+    });
+
+  // ── Nodes ─────────────────────────────────────────────────────────────────
+  const nodeG = g.selectAll(".node")
+    .data(names)
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", (d, i) => "translate(" + xScale(i) + "," + baseY + ")");
+
+  nodeG.append("circle")
+    .attr("r", (d, i) => nodeR(degs[i]))
+    .attr("fill", (d, i) => nodeColor(degs[i]))
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.2)
+    .attr("opacity", 0.9);
+
+  // Decide which labels to show (thin if dense)
+  const showEvery = n > 80 ? 5 : n > 40 ? 3 : n > 20 ? 2 : 1;
+
+  nodeG.append("text")
+    .attr("transform", "rotate(90) translate(8,0)")
+    .attr("text-anchor", "start")
+    .attr("font-size", FONT_SIZE + "px")
+    .attr("fill", "#444")
+    .attr("font-family", "inherit")
+    .text((d, i) => (i % showEvery === 0) ? d : "");
+
+  // ── Tooltip ───────────────────────────────────────────────────────────────
+  const tooltip = d3.select("#tooltip");
+
+  function showTip(event, html) {
+    tooltip
+      .style("display", "block")
+      .html(html);
+    moveTip(event);
+  }
+  function moveTip(event) {
+    const tw = tooltip.node().offsetWidth;
+    const th = tooltip.node().offsetHeight;
+    let tx = event.clientX + 14;
+    let ty = event.clientY - 10;
+    if (tx + tw > window.innerWidth - 8)  tx = event.clientX - tw - 14;
+    if (ty + th > window.innerHeight - 8) ty = event.clientY - th - 10;
+    tooltip.style("left", tx + "px").style("top", ty + "px");
+  }
+  function hideTip() {
+    tooltip.style("display", "none");
+  }
+
+  // ── Interactivity: arcs ───────────────────────────────────────────────────
+  arcPaths
+    .on("mouseover", function(event, d) {
+      const nameI = names[d.i];
+      const nameJ = names[d.j];
+      const valLabel = valCol === "count" ? "count" : valCol;
+      const wStr = Number.isInteger(d.w) ? d.w : d.w.toFixed(2);
+      showTip(event,
+        "<strong>" + nameI + "</strong> ↔ <strong>" + nameJ + "</strong><br/>" +
+        valLabel + ": <strong>" + wStr + "</strong>"
+      );
+      // Highlight this arc, dim others
+      arcPaths.attr("opacity", l => (l === d) ? 0.92 : 0.10);
+      d3.select(this).attr("stroke-width", arcStroke(d.w) + 1.5);
+      // Highlight incident nodes
+      nodeG.select("circle")
+        .attr("opacity", (nm, i) => (i === d.i || i === d.j) ? 1.0 : 0.25);
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function(event, d) {
+      hideTip();
+      arcPaths.attr("opacity", 0.55)
+              .attr("stroke-width", l => arcStroke(l.w));
+      nodeG.select("circle").attr("opacity", 0.9);
+    });
+
+  // ── Interactivity: nodes ──────────────────────────────────────────────────
+  nodeG
+    .on("mouseover", function(event, d) {
+      const i = names.indexOf(d);
+      const deg = degs[i];
+      showTip(event,
+        "<strong>" + d + "</strong><br/>" +
+        "degree: <strong>" + deg + "</strong>"
+      );
+      // Incident arcs
+      const incidentSet = new Set();
+      const neighbourSet = new Set();
+      links.forEach(l => {
+        if (l.i === i || l.j === i) {
+          incidentSet.add(l);
+          neighbourSet.add(l.i === i ? l.j : l.i);
+        }
+      });
+      arcPaths.attr("opacity", l => incidentSet.has(l) ? 0.88 : 0.07)
+              .attr("stroke-width", l => incidentSet.has(l)
+                ? arcStroke(l.w) + 1 : arcStroke(l.w));
+      nodeG.select("circle")
+        .attr("opacity", (nm, ni) =>
+          ni === i ? 1.0 : neighbourSet.has(ni) ? 0.85 : 0.18);
+    })
+    .on("mousemove", moveTip)
+    .on("mouseout", function() {
+      hideTip();
+      arcPaths.attr("opacity", 0.55)
+              .attr("stroke-width", l => arcStroke(l.w));
+      nodeG.select("circle").attr("opacity", 0.9);
+    });
+
+  // ── BBox refit ────────────────────────────────────────────────────────────
+  try {
+    const bb = svg.node().getBBox();
+    const pad = 12;
+    svg.attr("viewBox",
+      (bb.x - pad) + " " + (bb.y - pad) + " " +
+      (bb.width + 2*pad) + " " + (bb.height + 2*pad))
+      .attr("width",  bb.width  + 2*pad)
+      .attr("height", bb.height + 2*pad);
+  } catch(e) { /* getBBox not available in some headless envs */ }
+
+})();
+</script>
+</body>
+</html>
