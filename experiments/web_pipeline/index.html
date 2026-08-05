@@ -29,7 +29,9 @@
   #viz { height:72vh; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fbfbfc; position:relative; }
   #vizHolder { background:#fff; }
   iframe#frame { border:0; background:#fff; display:block; }
-  .wip { height:100%; display:flex; align-items:center; justify-content:center; text-align:center; color:#999; font-size:18px; padding:24px; }
+  .wip { height:100%; display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:center; text-align:center; color:#999; font-size:18px; padding:24px; }
+  .spinner { width:34px; height:34px; border:3px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
   .vizhead { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
   .vizhead h2 { margin:0; }
   .vtools { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -146,6 +148,19 @@
             <div class="fname">Measures</div>
             <div id="measures"></div>
             <button id="addMeasure" class="ghost" style="margin-top:4px;padding:3px 8px;">+ measure</button>
+          </div>
+          <div class="fitem">
+            <div class="fname">Having <span class="fdim">(optional)</span></div>
+            <select id="hvCol" style="width:auto;"><option value="">—</option></select>
+            <select id="hvOp" style="width:auto;">
+              <option value="gt">&gt;</option><option value="ge">&ge;</option>
+              <option value="lt">&lt;</option><option value="le">&le;</option>
+              <option value="eq">=</option>
+            </select>
+            <input id="hvVal" type="number" style="width:70px;">
+            <label style="display:block;margin-top:6px;font-weight:400;font-size:12px;">
+              <input type="checkbox" id="keepRows"> filter entities by this condition
+            </label>
           </div>
           <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
         </div>
@@ -333,6 +348,7 @@ function showAggregate() {
   $("groupby").innerHTML = cols.map(c =>
     `<label><input type="checkbox" class="gb" value="${c}"> ${c}</label>`).join("");
   $("measures").innerHTML = ""; $("measures").appendChild(measureRow());
+  $("hvVal").value = ""; $("hvOp").value = "gt"; $("keepRows").checked = false;
   updateAggSummary();
 }
 
@@ -350,6 +366,59 @@ function refreshAggColumns() {
   updateAggSummary();
 }
 
+// Aliases of the currently-defined measures, matching aggregate_rows._measure_alias
+// (explicit `as`, else "count" for count, else "<fn>_<col>"). Used for the Having column.
+function measureAliases() {
+  return [...document.querySelectorAll('#measures .mrow')].map(r => {
+    const fn = r.querySelector('.mFn').value;
+    const col = r.querySelector('.mCol').value;
+    const as = r.querySelector('.mAs').value.trim();
+    if (fn !== "count" && !col) return null;
+    return as || (fn === "count" ? "count" : fn + "_" + col);
+  }).filter(Boolean);
+}
+
+// Having can only target a group-by column or a measure alias (raw rows are gone).
+function refreshHavingCols() {
+  const gb = [...document.querySelectorAll('#groupby .gb:checked')].map(i=>i.value);
+  const opts = ["", ...gb, ...measureAliases()];
+  const cur = $("hvCol").value;
+  $("hvCol").innerHTML = opts.map(o => `<option value="${o}">${o || "—"}</option>`).join("");
+  $("hvCol").value = opts.includes(cur) ? cur : "";
+}
+
+function collectHaving() {
+  const col = $("hvCol").value, val = $("hvVal").value;
+  if (!col || val === "") return [];
+  return [{ column: col, op: $("hvOp").value, value: Number(val) }];
+}
+
+// When "keep matching rows" is ticked, the group-by + measure + having is expressed as a
+// group_having FILTER (keeps rows, preserves the pattern) instead of a collapsing
+// aggregate. Resolves each having's measure alias back to its fn+column, which the
+// self-contained filter needs.
+function collectGroupFilter() {
+  if (!$("keepRows").checked) return null;
+  const group_by = [...document.querySelectorAll('#groupby .gb:checked')].map(i => i.value);
+  const byAlias = {};
+  document.querySelectorAll('#measures .mrow').forEach(r => {
+    const fn = r.querySelector('.mFn').value;
+    const col = r.querySelector('.mCol').value;
+    const as = r.querySelector('.mAs').value.trim();
+    if (fn !== "count" && !col) return;
+    byAlias[as || (fn === "count" ? "count" : fn + "_" + col)] = { fn, column: fn === "count" ? undefined : col };
+  });
+  const having = collectHaving().map(h => {
+    const m = byAlias[h.column];
+    if (!m) return null;
+    const cond = { fn: m.fn, op: h.op, value: h.value };
+    if (m.column !== undefined) cond.column = m.column;
+    return cond;
+  }).filter(Boolean);
+  if (!group_by.length || !having.length) return null;
+  return { op: "group_having", group_by, having };
+}
+
 function collectAggregate() {
   const group_by = [...document.querySelectorAll('#groupby .gb:checked')].map(i=>i.value);
   const measures = [...document.querySelectorAll('#measures .mrow')].map(r => {
@@ -364,15 +433,31 @@ function collectAggregate() {
   const resample = [];
   const rc = $("rsCol").value, rb = $("rsBucket").value, ra = $("rsAs").value.trim();
   if (rc && rb) resample.push({ column: rc, bucket: Number(rb), as: ra || (rc + "_bucket") });
-  return { resample, group_by, measures };
+  const agg = { resample, group_by, measures };
+  const having = collectHaving();
+  if (having.length) agg.having = having;
+  return agg;
 }
 
 function updateAggSummary() {
+  refreshHavingCols();
+  const OPS = { gt: ">", ge: "≥", lt: "<", le: "≤", eq: "=" };
+  const having = collectHaving();
+  // With a Having condition set, the block filters the relationship: raw by default,
+  // narrowed only when "filter entities by this condition" is ticked.
+  if (having.length) {
+    const h = having[0];
+    const cond = `${h.column} ${OPS[h.op] || h.op} ${h.value}`;
+    $("aggSummary").textContent = $("keepRows").checked
+      ? `showing only entities where ${cond}`
+      : `showing the original relationship (tick to filter by ${cond})`;
+    return;
+  }
+  // No Having: the block aggregates (collapses) into groups.
   const a = collectAggregate();
-  if (!a.group_by) { $("aggSummary").textContent = ""; return; }
-  const ms = (a.measures||[]).map(m => m.fn === "count" ? "count" : `${m.fn}(${m.column})`).join(", ");
-  const by = a.group_by.length ? " by " + a.group_by.join(", ") : " (overall)";
-  $("aggSummary").textContent = (ms || "—") + by + " — chart describes groups, not raw rows";
+  if (!a.group_by || !a.group_by.length) { $("aggSummary").textContent = ""; return; }
+  const ms = (a.measures || []).map(m => m.fn === "count" ? "count" : `${m.fn}(${m.column})`).join(", ");
+  $("aggSummary").textContent = (ms || "—") + " by " + a.group_by.join(", ") + " — chart describes groups, not raw rows";
 }
 
 const vstate = { scale: 1, html: null, chart: null };
@@ -397,6 +482,11 @@ function applyZoom() {
 }
 
 function setZoom(s) { vstate.scale = Math.min(4, Math.max(0.25, s)); applyZoom(); }
+
+function showLoading(msg) {
+  $("viz").innerHTML = '<div class="wip"><div class="spinner"></div><div>' + (msg || "rendering…") + '</div></div>';
+  setToolsEnabled(false);
+}
 
 function renderViz(step3) {
   if (step3 && step3.available) {
@@ -462,10 +552,13 @@ function drawCharts(step2) {
     const chart = p.dataset.chart;
     const mapping = byChart[chart] || (step2.selected||{}).mapping;
     $("mapping").textContent = JSON.stringify(mapping, null, 2);
-    const table = $("table").value;
+    // Use the mapping's own table (correct for every chart, incl. the natural-language path
+    // where the manual table dropdown was never set); fall back to the last run, then the UI.
+    const table = (mapping && mapping.table) || (last && last.table) || $("table").value;
     const filters = (last && last.filters) || collectFilters();
     const aggregate = (last && last.aggregate) || collectAggregate();
     const joins = (last && last.joins) || collectJoins();
+    showLoading("rendering " + chart + "…");
     renderViz(await api("/api/render", { chart, mapping, table, filters, aggregate, joins }));
   });
 }
@@ -483,9 +576,14 @@ $("addMeasure").onclick = () => { $("measures").appendChild(measureRow()); updat
 $("rsCol").onchange = refreshAggColumns;
 $("rsAs").oninput = refreshAggColumns;
 $("rsBucket").oninput = updateAggSummary;
+// Group-by is a regenerated checkbox list; a delegated change listener on the container
+// keeps the summary and the Having column list in sync when a box is toggled.
+$("groupby").addEventListener("change", updateAggSummary);
+$("hvCol").onchange = $("hvOp").onchange = $("hvVal").oninput = updateAggSummary;
+$("keepRows").onchange = updateAggSummary;
 
 async function runSelection(sel) {
-  $("viz").innerHTML = '<div class="wip">running…</div>';
+  showLoading("running the pipeline…");
   const j = await api("/api/run", {
     table: sel.table, columns: sel.columns || [],
     filters: sel.filters || [], aggregate: sel.aggregate || {}, joins: sel.joins || [],
@@ -499,13 +597,95 @@ async function runSelection(sel) {
 }
 
 $("run").onclick = async () => {
+  // A Having condition turns the Aggregate block into a relationship filter: show the raw
+  // relationship by default, and only narrow it (via a group_having filter, pattern kept)
+  // when "filter entities by this condition" is ticked. With no Having, the block collapses
+  // rows into groups as before.
+  const hasHaving = collectHaving().length > 0;
+  const gf = collectGroupFilter();
   const sel = { table: $("table").value, columns: selectedColumns(),
-    filters: collectFilters(), aggregate: collectAggregate(), joins: collectJoins() };
+    filters: collectFilters(), aggregate: hasHaving ? {} : collectAggregate(), joins: collectJoins() };
+  if (gf) sel.filters = sel.filters.concat([gf]);
   if (!sel.columns.length) { alert("pick at least one column"); return; }
   runSelection(sel);
 };
 
-// Natural-language -> selection (Bailian). Parse, show for confirmation, then run.
+// --- Natural-language confirmation: describe a parsed selection back to the user in plain
+// English so they can confirm or edit it before it runs. -------------------------------
+function opWord(op) {
+  return { gt: "more than", ge: "at least", lt: "fewer than", le: "at most", eq: "exactly" }[op] || op;
+}
+
+function describeFilter(f) {
+  if (f.op === "group_having") {
+    const conds = (f.having || []).map(h => {
+      const what = h.fn === "count_distinct" ? "distinct " + (h.column || "values")
+                 : h.fn === "count" ? "rows"
+                 : h.fn + "(" + (h.column || "") + ")";
+      return opWord(h.op) + " " + h.value + " " + what;
+    }).join(" and ");
+    return "keep only each " + (f.group_by || []).join(", ") + " that has " + conds;
+  }
+  if (f.op === "range") return f.column + " between " + (f.min ?? "…") + " and " + (f.max ?? "…");
+  if (f.op === "in") return f.column + " is one of {" + (f.values || []).join(", ") + "}";
+  if (f.op === "eq") return f.column + " = " + f.value;
+  if (f.op === "not_null") return f.column + " is present";
+  if (["gt", "ge", "lt", "le"].includes(f.op)) return f.column + " " + opWord(f.op) + " " + f.value;
+  return f.column + " " + f.op + " " + f.value;
+}
+
+function describeSelection(sel) {
+  if (!sel || !sel.table) return "—";
+  let head = "Visualise <b>" + sel.table + "</b>";
+  if (sel.columns && sel.columns.length) head += " (columns: " + sel.columns.join(", ") + ")";
+  const bits = [];
+  (sel.joins || []).forEach(j => bits.push("bringing in " + j.bring + (j.as ? " as " + j.as : "")));
+  (sel.filters || []).forEach(f => bits.push(describeFilter(f)));
+  const agg = sel.aggregate || {};
+  if ((agg.group_by && agg.group_by.length) || (agg.measures && agg.measures.length)) {
+    const ms = (agg.measures || []).map(m => m.fn === "count" ? "count" : m.fn + "(" + m.column + ")").join(", ");
+    bits.push(("computing " + ms + " by " + (agg.group_by || []).join(", ")).trim());
+    (agg.having || []).forEach(h => bits.push("keeping groups where " + h.column + " " + opWord(h.op) + " " + h.value));
+  }
+  return head + (bits.length ? ", " + bits.join("; ") : "") + ".";
+}
+
+function showNlConfirm(sel) {
+  $("nlOut").innerHTML =
+    `<div style="font-size:12px;color:#333;margin-bottom:4px;">I understood your request as:</div>
+     <div id="nlSummary" style="font-size:13px;background:#f6f8fa;border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;"></div>
+     <details style="margin-bottom:8px;"><summary style="cursor:pointer;font-size:12px;color:#555;">Not quite right? Edit the details</summary>
+       <textarea id="nlEdit" rows="10" style="width:100%;margin-top:6px;font-family:monospace;font-size:12px;box-sizing:border-box;"></textarea>
+       <div id="nlEditErr" style="font-size:12px;color:#b00;min-height:14px;"></div>
+     </details>
+     <div style="display:flex;gap:8px;">
+       <button id="nlRun" style="flex:1;">Confirm &amp; visualise</button>
+       <button id="nlReset" class="ghost" style="flex:0 0 auto;">Reset</button>
+     </div>`;
+  const original = JSON.stringify(sel, null, 2);
+  $("nlEdit").value = original;
+  const refresh = () => {
+    let cur = null;
+    try { cur = JSON.parse($("nlEdit").value); $("nlEditErr").textContent = ""; }
+    catch (e) { $("nlEditErr").textContent = "invalid JSON — fix it to run"; }
+    $("nlSummary").innerHTML = cur ? describeSelection(cur) : "…";
+    return cur;
+  };
+  refresh();
+  $("nlEdit").oninput = refresh;
+  $("nlReset").onclick = () => { $("nlEdit").value = original; refresh(); };
+  $("nlRun").onclick = () => {
+    const cur = refresh();
+    if (!cur) return;
+    if (!cur.table || !(cur.columns && cur.columns.length)) {
+      $("nlEditErr").textContent = "need a table and at least one column"; return;
+    }
+    runSelection(cur);
+  };
+}
+
+// Natural-language -> selection (Bailian). Parse, show a plain-English confirmation that the
+// user can edit, then run.
 $("nlParse").onclick = async () => {
   const text = $("nlText").value.trim();
   if (!text) return;
@@ -515,11 +695,7 @@ $("nlParse").onclick = async () => {
     $("nlOut").innerHTML = `<span style="color:#b00">${(j && j.error) || "could not resolve"}</span>`;
     return;
   }
-  const sel = j.selection;
-  $("nlOut").innerHTML =
-    `<pre style="white-space:pre-wrap;margin:0 0 6px;">${JSON.stringify(sel, null, 2)}</pre>` +
-    `<button id="nlRun" style="width:100%;">Run this selection</button>`;
-  $("nlRun").onclick = () => runSelection(sel);
+  showNlConfirm(j.selection);
 };
 
 // (Re)load the table list + selection UI from whatever data source is active.

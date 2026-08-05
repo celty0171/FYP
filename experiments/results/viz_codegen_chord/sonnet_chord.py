@@ -220,6 +220,68 @@ def spectral_circular_order(n, weight_matrix):
     return refined
 
 
+def _bipartite_group_order(src_list, tgt_list, pair_w, sweeps=12):
+    """Order the two contiguous entity arcs of a bipartite chord to minimise ribbon
+    crossings. The two groups are like the two layers of a Sugiyama drawing, but wrapped
+    onto a circle: the target arc runs the *opposite* rotational direction to the source
+    arc, so a naive two-layer barycentre (which assumes parallel layers) can make things
+    worse. We therefore generate candidate arrangements from an iterated barycentre with
+    both **normal** and **reversed** coupling, always include the identity order, and return
+    whichever has the fewest *actual* circular crossings — so the result never regresses."""
+    s_nb = {s: [] for s in src_list}
+    t_nb = {t: [] for t in tgt_list}
+    for (s, t), w in pair_w.items():
+        if s in s_nb and t in t_nb and w > 0:
+            s_nb[s].append((t, w))
+            t_nb[t].append((s, w))
+    n_s = len(src_list)
+    edges = [(s, t) for (s, t), w in pair_w.items() if w > 0 and s in s_nb and t in t_nb]
+    if not edges:
+        return src_list, tgt_list
+
+    def cross(sr, tg):
+        si = {s: i for i, s in enumerate(sr)}
+        ti = {t: i for i, t in enumerate(tg)}
+        pos = [(si[s], n_s + ti[t]) for (s, t) in edges]
+        if len(pos) > 4000:
+            return None
+        c = 0
+        for i in range(len(pos)):
+            a, b = pos[i]
+            lo1, hi1 = (a, b) if a < b else (b, a)
+            for j in range(i + 1, len(pos)):
+                e, d = pos[j]
+                if a == e or b == d:
+                    continue
+                lo2, hi2 = (e, d) if e < d else (d, e)
+                if lo1 < lo2 < hi1 < hi2 or lo2 < lo1 < hi2 < hi1:
+                    c += 1
+        return c
+
+    def order_by(nodes, nb, rank):
+        return sorted(nodes, key=lambda x: (
+            (sum(rank[y] * w for y, w in nb[x]) / sum(w for _, w in nb[x]))
+            if nb[x] else 0.0, x))
+
+    candidates = [(list(src_list), list(tgt_list))]  # identity — never regress below this
+    for reverse in (False, True):
+        tg, sr = sorted(tgt_list), list(src_list)
+        trank = {t: (len(tg) - 1 - i if reverse else i) for i, t in enumerate(tg)}
+        for _ in range(sweeps):
+            sr = order_by(sr, s_nb, trank)
+            srank = {s: (len(sr) - 1 - i if reverse else i) for i, s in enumerate(sr)}
+            tg = order_by(tg, t_nb, srank)
+            trank = {t: (len(tg) - 1 - i if reverse else i) for i, t in enumerate(tg)}
+            candidates.append((list(sr), list(tg)))
+
+    scored = [(cross(sr, tg), sr, tg) for sr, tg in candidates]
+    scored = [x for x in scored if x[0] is not None]
+    if not scored:
+        return src_list, tgt_list
+    _, bs, bt = min(scored, key=lambda x: x[0])
+    return bs, bt
+
+
 # ---------------------------------------------------------------------------
 # Core render function
 # ---------------------------------------------------------------------------
@@ -260,9 +322,28 @@ def render(mapping: dict, rows: list) -> str:
         # group: all 0 for reflexive
         node_group = [0] * n
     else:
-        # many_many: sources first, then targets (disjoint)
+        # many_many: sources first, then targets (disjoint), each as a contiguous arc.
         src_list = sorted(all_sources)
         tgt_only = sorted(all_targets - all_sources)
+        # Reorder within each arc to minimise cross-group ribbon crossings.
+        src_set, tgt_set = set(src_list), set(tgt_only)
+        pair_w = {}
+        for row in rows:
+            s = row.get(src_col)
+            t = row.get(tgt_col)
+            if s is None or t is None:
+                continue
+            s, t = str(s), str(t)
+            if s not in src_set or t not in tgt_set:
+                continue
+            try:
+                w = float(row.get(wid_col)) if row.get(wid_col) is not None else 0.0
+            except (ValueError, TypeError):
+                w = 0.0
+            if w > 0:
+                pair_w[(s, t)] = pair_w.get((s, t), 0.0) + w
+        if pair_w:
+            src_list, tgt_only = _bipartite_group_order(src_list, tgt_only, pair_w)
         all_nodes_list = src_list + tgt_only
         n = len(all_nodes_list)
         node_index = {name: i for i, name in enumerate(all_nodes_list)}
@@ -280,8 +361,12 @@ def render(mapping: dict, rows: list) -> str:
             "</body></html>"
         )
 
+    color_col = mapping.get("color")            # paper: optional a2 colour of the connection
+    color_type = mapping.get("color_type")
+
     # Build weight matrix (sparse dict-of-dict for ordering, then dense for D3)
     weight_matrix = {}  # {i: {j: w}}
+    color_pairs = {}    # {(i,j): (sum,count)} for scalar, or {(i,j): first_value} for discrete
     for row in rows:
         s = row.get(src_col)
         t = row.get(tgt_col)
@@ -298,6 +383,18 @@ def render(mapping: dict, rows: list) -> str:
             continue
         weight_matrix.setdefault(i, {})[j] = weight_matrix.get(i, {}).get(j, 0.0) + w
         weight_matrix.setdefault(j, {})[i] = weight_matrix.get(j, {}).get(i, 0.0) + w
+        if color_col is not None:
+            cv = row.get(color_col)
+            for key in ((i, j), (j, i)):  # symmetric, matching the weight matrix
+                if color_type == "scalar":
+                    try:
+                        fv = float(cv)
+                        acc = color_pairs.get(key, (0.0, 0))
+                        color_pairs[key] = (acc[0] + fv, acc[1] + 1)
+                    except (TypeError, ValueError):
+                        pass
+                elif key not in color_pairs and cv is not None:
+                    color_pairs[key] = str(cv)
 
     # Apply spectral ordering for reflexive; keep group order for many_many
     if is_reflexive and n > 2:
@@ -316,12 +413,22 @@ def render(mapping: dict, rows: list) -> str:
                 nj = old_to_new[j]
                 new_wm.setdefault(ni, {})[nj] = new_wm.get(ni, {}).get(nj, 0.0) + w
         weight_matrix = new_wm
+        if color_col is not None:
+            color_pairs = {(old_to_new[i], old_to_new[j]): v for (i, j), v in color_pairs.items()}
 
     # Build dense N×N matrix
     matrix = [[0.0] * n for _ in range(n)]
     for i, nbrs in weight_matrix.items():
         for j, w in nbrs.items():
             matrix[i][j] = w
+
+    # Optional dense colour matrix (value per pair, or null); indexed like `matrix`.
+    color_matrix = None
+    if color_col is not None:
+        color_matrix = [[None] * n for _ in range(n)]
+        for (i, j), v in color_pairs.items():
+            if 0 <= i < n and 0 <= j < n:
+                color_matrix[i][j] = (v[0] / v[1]) if (color_type == "scalar" and isinstance(v, tuple) and v[1]) else html.escape(str(v))
 
     # Escape names for safe HTML/JS embedding
     escaped_names = [html.escape(name) for name in all_nodes_list]
@@ -332,6 +439,7 @@ def render(mapping: dict, rows: list) -> str:
 
     names_json = safe_json(escaped_names)
     matrix_json = safe_json(matrix)
+    color_matrix_json = safe_json(color_matrix)  # null when no colour column
     node_group_json = safe_json(node_group)
     title_json = safe_json(html.escape(title))
 
@@ -436,6 +544,9 @@ def render(mapping: dict, rows: list) -> str:
   const srcLabel = """ + src_label_json + """;
   const tgtLabel = """ + tgt_label_json + """;
   const widthCol = """ + width_col_json + """;
+  const colorMatrix = """ + color_matrix_json + """;
+  const COLOR_NAME = """ + safe_json(html.escape(str(color_col)) if color_col is not None else None) + """;
+  const COLOR_TYPE = """ + safe_json(color_type) + """;
 
   document.getElementById('chart-title').textContent = TITLE;
 
@@ -472,6 +583,26 @@ def render(mapping: dict, rows: list) -> str:
       else return orangeScale(tgtIdx++);
     });
     colourFn = (i) => nodeColours[i];
+  }
+
+  // Optional ribbon colour by a relationship attribute (paper Section-3): scalar -> spectrum,
+  // discrete -> ordinal key; otherwise ribbons take their source node's colour (default below).
+  const ribbonColorScalar = COLOR_NAME && COLOR_TYPE === "scalar";
+  let ribbonColorSeq = null, ribbonColorOrd = null;
+  if (COLOR_NAME && colorMatrix) {
+    const vals = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      if (colorMatrix[i][j] !== null && colorMatrix[i][j] !== undefined) vals.push(colorMatrix[i][j]);
+    }
+    if (ribbonColorScalar) ribbonColorSeq = d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(vals, v => +v));
+    else ribbonColorOrd = d3.scaleOrdinal(Array.from(new Set(vals)), d3.schemeTableau10);
+  }
+  function ribbonFill(d) {
+    if (COLOR_NAME && colorMatrix) {
+      const v = colorMatrix[d.source.index][d.target.index];
+      if (v !== null && v !== undefined) return ribbonColorScalar ? ribbonColorSeq(+v) : ribbonColorOrd(v);
+    }
+    return colourFn(d.source.index);
   }
 
   // Chord layout
@@ -526,8 +657,8 @@ def render(mapping: dict, rows: list) -> str:
     .data(chords)
     .join('path')
     .attr('d', ribbon)
-    .attr('fill', d => colourFn(d.source.index))
-    .attr('stroke', d => d3.rgb(colourFn(d.source.index)).darker())
+    .attr('fill', d => ribbonFill(d))
+    .attr('stroke', d => d3.rgb(ribbonFill(d)).darker())
     .attr('stroke-width', 0.5)
     .on('mouseover', function(event, d) {
       const si = d.source.index;

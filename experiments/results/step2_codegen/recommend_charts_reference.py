@@ -160,6 +160,33 @@ def recommend(schema: dict[str, Any], table_name: str, selected_columns: list[st
             "needs scalar a1 (best with k2 complete across k1)",
             {"table": table, "ring": k1, "spoke": k2, "value": a1} if (k1 and k2 and a1) else None)
 
+    # Optional colour channel (paper Section 3): a spare DISCRETE attribute -> colour key,
+    # else a spare SCALAR/temporal attribute -> colour spectrum. Schema-derivable, so applied
+    # here too (the row-dependent cardinality caps / spider>=3 gate live in gpt_recommend_charts).
+    def pick_color(used):
+        for d in discrete_attrs:
+            if d not in used:
+                return (d, "discrete")
+        for s in scalar_attrs + temporal_attrs:
+            if s not in used:
+                return (s, "scalar")
+        return None
+
+    _colour_charts = {"scatter diagram", "bubble chart", "word cloud", "tree map",
+                      "circle packing", "Sankey diagram", "chord diagram"}
+    for c in candidates:
+        if not (c["eligible"] and c["mapping"]):
+            continue
+        used = {str(v).lower() for v in c["mapping"].values() if v}
+        if c["chart"] == "hierarchy tree":
+            pc = next(((d, "discrete") for d in discrete_attrs if d not in used), None)  # discrete lines only
+        elif c["chart"] in _colour_charts:
+            pc = pick_color(used)
+        else:
+            pc = None
+        if pc:
+            c["mapping"]["color"], c["mapping"]["color_type"] = pc
+
     recommended = [c["chart"] for c in candidates if c["eligible"] is True]
     # selected = the eligible chart whose mapping uses the most of the selection.
     eligible_full = [c for c in candidates if c["eligible"] is True]

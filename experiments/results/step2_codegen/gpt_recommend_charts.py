@@ -124,6 +124,49 @@ def all_where(cols, pred):
     return [c for c in cols if pred(c)]
 
 
+def pick_color(cols, used_names):
+    """Choose an optional colour dimension per the paper's Section-3 rule: prefer a spare
+    DISCRETE attribute (rendered as a colour key), else a spare SCALAR/temporal attribute
+    (rendered as a colour spectrum). Excludes keys, foreign keys and already-used columns.
+    Returns (column_name, color_type) with color_type in {"discrete","scalar"}, or None."""
+    used = {norm_name(u) for u in used_names if u}
+
+    def avail(c):
+        return (not c["is_pk"]) and (not c["is_fk"]) and c["name_norm"] not in used
+
+    disc = first(cols, lambda c: c["dim"] == "discrete" and avail(c))
+    if disc:
+        return disc["name"], "discrete"
+    scal = first(cols, lambda c: c["dim"] in ("scalar", "temporal") and avail(c))
+    if scal:
+        return scal["name"], "scalar"
+    return None
+
+
+def distinct_count(rows, col):
+    """Number of distinct non-null values of `col` across `rows`, or None if no rows."""
+    if not rows:
+        return None
+    cn = norm_name(col)
+    seen = set()
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        rr = {norm_name(k): v for k, v in r.items()}
+        v = rr.get(cn)
+        if v is not None:
+            seen.add(v)
+    return len(seen)
+
+
+def cardinality_note(rows, col, cap):
+    """Soft warning (paper's cardinalities are subjective) when |col| exceeds `cap`."""
+    n = distinct_count(rows, col)
+    if n is not None and n > cap:
+        return "Over the paper's suggested |k| <= %d (found %d); consider filtering." % (cap, n)
+    return None
+
+
 def weak_completeness(rows, k1, k2):
     if rows is None:
         return None
@@ -201,29 +244,23 @@ def relationship_signals(rows, source, target, is_reflexive):
 
 
 def rank_relationship_charts(sig, has_scalar, has_categorical, is_reflexive):
-    """Ordered list of recommended charts for a relationship, per proposal v2 §4.
+    """Ordered list of recommended charts for a relationship.
 
-    node-link (Sankey/chord) only while sparse & small & has_scalar; otherwise the
-    matrix leads. arc diagram is reflexive-only. Charts not in the returned list are
+    The node-link view is pattern-specific: a Sankey for a many-many relationship and a
+    chord for a reflexive one (chord is dropped for many-many, Sankey for reflexive). When
+    the relation has a scalar width the node-link view leads (Sankey for many-many, chord
+    for reflexive), with the matrix heatmap and force graph offered as alternatives; when
+    there is no scalar width the node-link view is not renderable, so the matrix (edge
+    count) leads. arc diagram is reflexive-only. Charts not in the returned list are
     reported as not-recommended (eligible False) by the caller.
     """
-    dense = sig is not None and sig["density"] >= DENSE
-    large = sig is not None and sig["N"] >= LARGE_N
-    node_link = (["chord diagram", "Sankey diagram"] if is_reflexive
-                 else ["Sankey diagram", "chord diagram"]) if has_scalar else []
+    node_link = (["chord diagram"] if is_reflexive else ["Sankey diagram"]) if has_scalar else []
     arc = ["arc diagram"] if is_reflexive else []
 
-    if has_scalar and not (dense or large):
-        # sparse & small & scalar -> node-link reads best; force + arc as extra views.
-        return node_link + ["force graph"] + arc
-    if dense or large:
-        # dense OR large -> matrix leads (node-link would be a hairball), but still
-        # offer node-link ranked after force whenever it is renderable (has a scalar).
-        return ["matrix heatmap", "force graph"] + node_link + arc
-    if not has_scalar and has_categorical:
-        # no scalar width but a categorical edge attribute -> matrix (count/category) then force.
-        return ["matrix heatmap", "force graph"] + arc
-    # no scalar, no categorical -> count matrix then force (then arc for reflexive).
+    if has_scalar:
+        # node-link leads (Sankey for many-many, chord for reflexive); matrix + force next.
+        return node_link + ["matrix heatmap", "force graph"] + arc
+    # no scalar width -> node-link is not renderable, so the matrix (count) leads.
     return ["matrix heatmap", "force graph"] + arc
 
 
@@ -274,18 +311,19 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
 
     if pattern in ("basic_entity", "basic_entity_inherited_key"):
         key = first(cols, lambda c: c["is_pk"])
-        color = discrete_attrs[0]["name"] if discrete_attrs else None
 
         if key and len(scalar_attrs) >= 1:
             add("bar chart", True, "Has primary key and at least one scalar attribute.",
-                {"table": table_out_name, "key": key["name"], "measure": scalar_attrs[0]["name"]})
+                {"table": table_out_name, "key": key["name"], "measure": scalar_attrs[0]["name"]},
+                note=cardinality_note(rows, key["name"], 100))  # paper: |k| 1..100 (subjective)
         else:
             add("bar chart", False, "Needs primary key plus at least one scalar attribute.", None)
 
         if key and len(scalar_attrs) >= 2:
             m = {"table": table_out_name, "key": key["name"], "x": scalar_attrs[0]["name"], "y": scalar_attrs[1]["name"]}
-            if color:
-                m["color"] = color
+            col = pick_color(cols, [key["name"], scalar_attrs[0]["name"], scalar_attrs[1]["name"]])
+            if col:
+                m["color"], m["color_type"] = col
             add("scatter diagram", True, "Has primary key and at least two scalar attributes.", m)
         else:
             add("scatter diagram", False, "Needs primary key plus at least two scalar attributes.", None)
@@ -298,8 +336,9 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
                 "y": scalar_attrs[1]["name"],
                 "size": scalar_attrs[2]["name"]
             }
-            if color:
-                m["color"] = color
+            col = pick_color(cols, [key["name"], scalar_attrs[0]["name"], scalar_attrs[1]["name"], scalar_attrs[2]["name"]])
+            if col:
+                m["color"], m["color_type"] = col
             add("bubble chart", True, "Has primary key and at least three scalar attributes.", m)
         else:
             add("bubble chart", False, "Needs primary key plus at least three scalar attributes.", None)
@@ -324,11 +363,15 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
             add("choropleth map", False, "Needs key plus scalar measure; geography remains unprovable.", None)
 
         if key and len(scalar_attrs) >= 1:
+            m = {"table": table_out_name, "text": key["name"], "size": scalar_attrs[0]["name"]}
+            col = pick_color(cols, [key["name"], scalar_attrs[0]["name"]])  # paper: optional a2 colour
+            if col:
+                m["color"], m["color_type"] = col
             add(
                 "word cloud",
                 "conditional",
                 "Requires lexical key (not provable from schema); scalar size is present.",
-                {"table": table_out_name, "text": key["name"], "size": scalar_attrs[0]["name"]},
+                m,
                 note="Lexical property must be externally confirmed."
             )
         else:
@@ -342,6 +385,9 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
 
         if parent and child and scalar:
             m = {"table": table_out_name, "parent": parent["name"], "child": child["name"], "measure": scalar["name"]}
+            col = pick_color(cols, [parent["name"], child["name"], scalar["name"]])  # paper: optional a2 colour
+            if col:
+                m["color"], m["color_type"] = col
             add("tree map", True, "Has parent FK, child key, and scalar measure.", m)
             add("circle packing", True, "Has parent FK, child key, and scalar measure.", deepcopy(m))
         else:
@@ -350,8 +396,9 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
 
         if parent and child:
             m = {"table": table_out_name, "parent": parent["name"], "child": child["name"]}
-            if dcol:
+            if dcol:  # paper: optional discrete a1 colours the linking lines
                 m["color"] = dcol["name"]
+                m["color_type"] = "discrete"
             add("hierarchy tree", True, "Has parent FK and child key.", m)
         else:
             add("hierarchy tree", False, "Needs parent FK (non-PK) and child PK.", None)
@@ -372,8 +419,13 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
 
             def node_link_map():
                 # Sankey/chord keep the legacy scalar `width` field.
-                return {"table": table_out_name, "source": source, "target": target,
-                        "width": scalar["name"], "pattern": pattern}
+                m = {"table": table_out_name, "source": source, "target": target,
+                     "width": scalar["name"], "pattern": pattern}
+                # Paper: optional a2 colour of the connection (a second relationship attribute).
+                col = pick_color(cols, [source, target, scalar["name"]])
+                if col:
+                    m["color"], m["color_type"] = col
+                return m
 
             def graph_map(with_category=False):
                 # matrix/force/arc use `value` = scalar column name or the literal "count".
@@ -388,22 +440,15 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
                 sig_str = " (density=%.3f, N=%d)" % (sig["density"], sig["N"])
 
             ranked = rank_relationship_charts(sig, has_scalar, has_categorical, is_reflexive)
-            dense_or_large = (sig is not None and (sig["density"] >= DENSE or sig["N"] >= LARGE_N))
 
-            # Node-link (Sankey/chord) is the clearest view when the relation is sparse & small;
-            # when it is dense/large it is still offered (has a scalar width) but ranked below the
-            # matrix, so word the reason to match which case fired.
-            if dense_or_large:
-                sankey_reason = ("Renderable (has a scalar width); offered as an alternative view"
-                                 " — the relation is dense/large" + sig_str + ", so the matrix is ranked first.")
-                chord_reason = sankey_reason
-            else:
-                sankey_reason = "Sparse, small relation with a scalar width" + sig_str + ": a left-to-right flow reads clearly."
-                chord_reason = "Sparse, small relation with a scalar width" + sig_str + ": ribbons around a circle read clearly."
+            # Node-link view (Sankey for many-many, chord for reflexive) leads whenever it is
+            # renderable (has a scalar width); the matrix/force are alternatives.
+            sankey_reason = "Node-link flow with a scalar width" + sig_str + ": a left-to-right flow reads clearly."
+            chord_reason = "Node-link view with a scalar width" + sig_str + ": ribbons around a circle read clearly."
 
             reasons = {
-                "matrix heatmap": ("Dense/large or attribute-free relation" + sig_str
-                                   + ": matrix shows every pair without crossings"
+                "matrix heatmap": ("Adjacency matrix" + sig_str
+                                   + ": shows every pair without crossings"
                                    + ("" if has_scalar else "; cell value = edge count") + "."),
                 "force graph": "Node-link topology view (clusters, hubs, bridges)"
                                + ("" if has_scalar else "; links weighted by edge count") + ".",
@@ -417,10 +462,15 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
                 elif chart in ("force graph", "arc diagram"):
                     add(chart, True, reasons[chart], graph_map())
                 else:  # Sankey / chord
-                    add(chart, True, reasons[chart], node_link_map())
+                    # Paper: Sankey |E1| 1..20 (subjective) -> soft warning on the source side.
+                    sk_note = cardinality_note(rows, source, 20) if chart == "Sankey diagram" else None
+                    add(chart, True, reasons[chart], node_link_map(), note=sk_note)
 
             # Charts the selector did not recommend for these signals -> eligible False.
-            possible = ["matrix heatmap", "force graph", "Sankey diagram", "chord diagram"]
+            # The node-link chart is pattern-specific: Sankey for many-many, chord for
+            # reflexive (chord is not offered for many-many, nor Sankey for reflexive).
+            node_link_chart = "chord diagram" if is_reflexive else "Sankey diagram"
+            possible = ["matrix heatmap", "force graph", node_link_chart]
             if is_reflexive:
                 possible.append("arc diagram")
             for chart in possible:
@@ -428,17 +478,14 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
                     continue
                 if chart in ("Sankey diagram", "chord diagram") and not has_scalar:
                     reason = "Needs a scalar relationship attribute (width); none selected."
-                elif chart in ("Sankey diagram", "chord diagram"):
-                    reason = "Dense/large relation" + sig_str + ": node-link becomes a hairball; matrix preferred."
-                elif chart == "matrix heatmap":
-                    reason = "Sparse, small relation with a scalar width" + sig_str + ": node-link preferred; matrix still renderable."
                 else:
                     reason = "Not recommended for these signals" + sig_str + "."
                 add(chart, False, reason, None)
             if not is_reflexive:
                 add("arc diagram", False, "Arc diagram is reflexive-only; this is a many-many relationship.", None)
         else:
-            for chart in ("matrix heatmap", "force graph", "Sankey diagram", "chord diagram"):
+            node_link_chart = "chord diagram" if is_reflexive else "Sankey diagram"
+            for chart in ("matrix heatmap", "force graph", node_link_chart):
                 add(chart, False, "Needs the two primary-key foreign keys of the relationship.", None)
             if is_reflexive:
                 add("arc diagram", False, "Needs the two primary-key foreign keys of the relationship.", None)
@@ -453,11 +500,14 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
             if rest:
                 a2 = rest[0]
 
+        # Paper: |k1| 1..20 for line/stacked/grouped (subjective) -> soft warning.
+        k1_note = cardinality_note(rows, k1["name"], 20) if k1 else None
+
         if k1 and k2 and a1 and (k2["dim"] in ("scalar", "temporal")):
             m = {"table": table_out_name, "series": k1["name"], "x": k2["name"], "y": a1["name"]}
             if a2:
                 m["y2"] = a2["name"]
-            add("line chart", True, "Needs ordered k2 (scalar/temporal) and scalar a1.", m)
+            add("line chart", True, "Needs ordered k2 (scalar/temporal) and scalar a1.", m, note=k1_note)
         else:
             add("line chart", False, "Needs k1 (PK-FK), ordered k2 (PK non-FK), and scalar a1.", None)
 
@@ -477,7 +527,8 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
                     "stacked bar chart",
                     True,
                     f"Completeness satisfied: density={comp['density']:.4f} >= {NEAR_COMPLETE:.2f}.",
-                    mapping_sb
+                    mapping_sb,
+                    note=k1_note
                 )
             else:
                 add(
@@ -490,12 +541,15 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
             add("stacked bar chart", False, "Needs k1 (PK-FK), k2 (PK non-FK), and scalar a1.", None)
 
         if k1 and k2 and a1:
+            g_note = "Side-by-side comparison view."
+            if k1_note:
+                g_note += " " + k1_note
             add(
                 "grouped bar chart",
                 True,
                 "Needs scalar a1; not completeness-gated.",
                 {"table": table_out_name, "group": k1["name"], "segment": k2["name"], "value": a1["name"]},
-                note="Side-by-side comparison view."
+                note=g_note
             )
         else:
             add("grouped bar chart", False, "Needs k1, k2, and scalar a1.", None)
@@ -503,13 +557,21 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
         if k1 and k2 and a1:
             comp = weak_completeness(rows, k1["name"], k2["name"]) if rows is not None else None
             mapping_sp = {"table": table_out_name, "ring": k1["name"], "spoke": k2["name"], "value": a1["name"]}
-            if comp is None:
+            nk1 = distinct_count(rows, k1["name"])  # paper: spider |k1| 3..10 — enforce the lower bound
+            if nk1 is not None and nk1 < 3:
+                add(
+                    "spider chart",
+                    False,
+                    "Spider needs >= 3 rings (distinct k1); found %d." % nk1,
+                    None
+                )
+            elif comp is None:
                 add(
                     "spider chart",
                     "conditional",
                     "Completeness unverified (no data supplied).",
                     mapping_sp,
-                    note=f"Requires near-complete k1×k2 coverage: density >= {NEAR_COMPLETE:.2f}."
+                    note=f"Requires near-complete k1×k2 coverage: density >= {NEAR_COMPLETE:.2f}; needs >= 3 rings."
                 )
             elif comp["complete"]:
                 add(

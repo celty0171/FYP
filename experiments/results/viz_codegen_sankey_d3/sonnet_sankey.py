@@ -4,6 +4,64 @@ import html
 import pathlib
 
 
+def _fenwick_crossings(pairs, t_size):
+    """Two-layer crossing count in O(E log|T|): sort links by (source_rank, target_rank)
+    and count target-rank inversions with a Fenwick/BIT (links sharing a source sit in
+    ascending target order, so they are never counted)."""
+    pairs = sorted(pairs)
+    tree = [0] * (t_size + 2)
+    cross = 0
+    seen = 0
+    for _, t in pairs:
+        i = t + 1
+        le = 0
+        while i > 0:
+            le += tree[i]
+            i -= i & -i
+        cross += seen - le
+        i = t + 1
+        while i <= t_size + 1:
+            tree[i] += 1
+            i += i & -i
+        seen += 1
+    return cross
+
+
+def _order_bipartite(all_sources, all_targets, link_map, sweeps=16):
+    """Order the two Sankey layers to minimise link crossings via the classic iterated
+    two-layer barycentre sweep (a single forward pass under-orders a dense graph). Each
+    half-sweep places every source at the weighted-mean rank of its targets and vice
+    versa; we try two deterministic seeds and keep the fewest-crossings arrangement."""
+    s_nb = {s: [] for s in all_sources}
+    t_nb = {t: [] for t in all_targets}
+    for (s, t), w in link_map.items():
+        if w > 0:
+            s_nb[s].append((t, w))
+            t_nb[t].append((s, w))
+
+    def order_by(nodes, nb, rank_other):
+        return sorted(nodes, key=lambda x: (
+            (sum(rank_other[y] * w for y, w in nb[x]) / sum(w for _, w in nb[x]))
+            if nb[x] else 0.0, x))
+
+    links = [(s, t) for (s, t), w in link_map.items() if w > 0]
+    seeds = [sorted(all_targets),
+             sorted(all_targets, key=lambda t: (-sum(w for _, w in t_nb[t]), t))]
+    best, best_cost = None, None
+    for seed in seeds:
+        tgts, srcs = list(seed), list(all_sources)
+        trank = {t: i for i, t in enumerate(tgts)}
+        for _ in range(sweeps):
+            srcs = order_by(srcs, s_nb, trank)
+            srank = {s: i for i, s in enumerate(srcs)}
+            tgts = order_by(tgts, t_nb, srank)
+            trank = {t: i for i, t in enumerate(tgts)}
+            c = _fenwick_crossings([(srank[s], trank[t]) for (s, t) in links], len(tgts))
+            if best_cost is None or c < best_cost:
+                best_cost, best = c, (list(srcs), list(tgts))
+    return best if best else (sorted(all_sources), sorted(all_targets))
+
+
 def render(mapping: dict, rows: list[dict]) -> str:
     source_col = mapping["source"]
     target_col = mapping["target"]
@@ -14,7 +72,10 @@ def render(mapping: dict, rows: list[dict]) -> str:
     # ------------------------------------------------------------------ #
     # 1. Aggregate links: sum width for duplicate (source, target) pairs  #
     # ------------------------------------------------------------------ #
+    color_col = mapping.get("color")            # paper: optional a2 colour of the connection
+    color_type = mapping.get("color_type")
     link_map = {}
+    link_color = {}                             # per (src,tgt): scalar sum/count -> mean, or first discrete
     for row in rows:
         src_val = str(row[source_col]) if row.get(source_col) is not None else ""
         tgt_val = str(row[target_col]) if row.get(target_col) is not None else ""
@@ -24,6 +85,17 @@ def render(mapping: dict, rows: list[dict]) -> str:
             w = 0.0
         key = (src_val, tgt_val)
         link_map[key] = link_map.get(key, 0.0) + w
+        if color_col is not None:
+            cv = row.get(color_col)
+            if color_type == "scalar":
+                try:
+                    fv = float(cv)
+                    s, n = link_color.get(key, (0.0, 0))
+                    link_color[key] = (s + fv, n + 1)
+                except (TypeError, ValueError):
+                    pass
+            elif key not in link_color and cv is not None:
+                link_color[key] = str(cv)
 
     # Remove zero-weight links
     link_map = {k: v for k, v in link_map.items() if v > 0}
@@ -33,87 +105,12 @@ def render(mapping: dict, rows: list[dict]) -> str:
     all_targets = sorted({k[1] for k in link_map})
 
     # ------------------------------------------------------------------ #
-    # 2. Ordering: minimise link crossings                                #
+    # 2. Ordering: minimise link crossings (iterated two-layer barycentre) #
+    #    A single forward pass under-orders a dense graph; sweep both      #
+    #    layers to convergence and keep the fewest-crossings arrangement.  #
     # ------------------------------------------------------------------ #
-
-    # Step A — order targets by affinity (greedy nearest-neighbour chaining)
-    # Build affinity matrix for targets
-    n_tgt = len(all_targets)
-    tgt_idx = {t: i for i, t in enumerate(all_targets)}
-
-    if n_tgt > 1:
-        affinity = [[0.0] * n_tgt for _ in range(n_tgt)]
-        for src in all_sources:
-            tgt_weights = {}
-            for tgt in all_targets:
-                w = link_map.get((src, tgt), 0.0)
-                if w > 0:
-                    tgt_weights[tgt] = w
-            tgt_list = list(tgt_weights.keys())
-            for i in range(len(tgt_list)):
-                for j in range(i + 1, len(tgt_list)):
-                    ti = tgt_idx[tgt_list[i]]
-                    tj = tgt_idx[tgt_list[j]]
-                    a = min(tgt_weights[tgt_list[i]], tgt_weights[tgt_list[j]])
-                    affinity[ti][tj] += a
-                    affinity[tj][ti] += a
-
-        # Greedy nearest-neighbour chaining
-        tgt_incoming = {}
-        for tgt in all_targets:
-            tgt_incoming[tgt] = sum(link_map.get((src, tgt), 0.0) for src in all_sources)
-
-        visited = [False] * n_tgt
-        # Start with the target with highest incoming weight
-        start = max(range(n_tgt), key=lambda i: tgt_incoming[all_targets[i]])
-        ordered_tgt_indices = [start]
-        visited[start] = True
-
-        while len(ordered_tgt_indices) < n_tgt:
-            last = ordered_tgt_indices[-1]
-            best_score = -1
-            best_j = -1
-            for j in range(n_tgt):
-                if not visited[j]:
-                    score = affinity[last][j]
-                    if score > best_score or (
-                        score == best_score and (
-                            best_j == -1 or
-                            tgt_incoming[all_targets[j]] > tgt_incoming[all_targets[best_j]] or
-                            (tgt_incoming[all_targets[j]] == tgt_incoming[all_targets[best_j]] and
-                             all_targets[j] < all_targets[best_j])
-                        )
-                    ):
-                        best_score = score
-                        best_j = j
-            visited[best_j] = True
-            ordered_tgt_indices.append(best_j)
-
-        ordered_targets = [all_targets[i] for i in ordered_tgt_indices]
-    else:
-        ordered_targets = list(all_targets)
-
+    ordered_sources, ordered_targets = _order_bipartite(all_sources, all_targets, link_map)
     tgt_rank = {t: i for i, t in enumerate(ordered_targets)}
-
-    # Step B — order sources by barycentre
-    src_bary = {}
-    src_total = {}
-    for src in all_sources:
-        total_w = 0.0
-        weighted_rank = 0.0
-        for tgt in all_targets:
-            w = link_map.get((src, tgt), 0.0)
-            if w > 0:
-                weighted_rank += w * tgt_rank[tgt]
-                total_w += w
-        src_total[src] = total_w
-        src_bary[src] = weighted_rank / total_w if total_w > 0 else 0.0
-
-    ordered_sources = sorted(
-        all_sources,
-        key=lambda s: (src_bary[s], -src_total[s], s)
-    )
-
     src_rank = {s: i for i, s in enumerate(ordered_sources)}
 
     # ------------------------------------------------------------------ #
@@ -138,7 +135,7 @@ def render(mapping: dict, rows: list[dict]) -> str:
     # Step C — build links ordered by target rank then source rank
     raw_links = []
     for (src, tgt), w in link_map.items():
-        raw_links.append({
+        link = {
             "source": "src:" + src,
             "target": "tgt:" + tgt,
             "value": w,
@@ -146,7 +143,11 @@ def render(mapping: dict, rows: list[dict]) -> str:
             "targetLabel": html.escape(tgt),
             "targetOrder": tgt_rank.get(tgt, 0),
             "sourceOrder": src_rank.get(src, 0)
-        })
+        }
+        if color_col is not None and (src, tgt) in link_color:
+            cv = link_color[(src, tgt)]
+            link["color"] = (cv[0] / cv[1]) if (color_type == "scalar" and isinstance(cv, tuple) and cv[1]) else html.escape(str(cv))
+        raw_links.append(link)
 
     raw_links.sort(key=lambda l: (l["targetOrder"], l["sourceOrder"]))
 
@@ -297,6 +298,8 @@ def render(mapping: dict, rows: list[dict]) -> str:
   const RAW_NODES = """ + nodes_json + """;
   const RAW_LINKS = """ + links_json + """;
   const WIDTH_COL  = """ + json.dumps(width_col_escaped) + """;
+  const COLOR_NAME = """ + json.dumps(color_col) + """;
+  const COLOR_TYPE = """ + json.dumps(color_type) + """;
   const SVG_W      = """ + str(svg_width) + """;
   const SVG_H      = """ + str(svg_height) + """;
 
@@ -314,8 +317,19 @@ def render(mapping: dict, rows: list[dict]) -> str:
     .domain(targetLabels)
     .range(d3.schemeTableau10.concat(d3.schemePastel1));
 
+  // Optional colour of the connection by a relationship attribute (paper Section-3):
+  // scalar -> spectrum, discrete -> ordinal key; otherwise colour by target node.
+  const linkColorScalar = COLOR_NAME && COLOR_TYPE === "scalar";
+  const linkColorSeq = linkColorScalar
+    ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(RAW_LINKS, l => +l.color)) : null;
+  const linkColorOrd = (COLOR_NAME && !linkColorScalar)
+    ? d3.scaleOrdinal(Array.from(new Set(RAW_LINKS.map(l => l.color))), d3.schemeTableau10) : null;
+
   function linkColour(d) {
-    // colour by target label
+    if (COLOR_NAME && d.color !== undefined && d.color !== null) {
+      return linkColorScalar ? linkColorSeq(+d.color) : linkColorOrd(d.color);
+    }
+    // default: colour by target label
     const tLabel = d.targetLabel || (d.target && d.target.label) || "";
     return colourScale(tLabel);
   }

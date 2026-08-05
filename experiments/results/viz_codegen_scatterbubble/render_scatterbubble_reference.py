@@ -27,8 +27,12 @@ const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.t
 const x = d3.scaleLinear().domain(d3.extent(data, d => d.x)).nice().range([0, innerW]);
 const y = d3.scaleLinear().domain(d3.extent(data, d => d.y)).nice().range([innerH, 0]);
 const rScale = sizeName ? d3.scaleSqrt().domain([0, d3.max(data, d => d.size) || 1]).range([3, 22]) : null;
-const colorVals = colorName ? Array.from(new Set(data.map(d => d.color))) : [];
-const color = colorName ? d3.scaleOrdinal(colorVals, d3.schemeCategory10) : null;
+// Colour per the paper's Section-3 rule: scalar -> spectrum, discrete -> ordinal key.
+const colorScalar = colorName && colorType === "scalar";
+const colorVals = (colorName && !colorScalar) ? Array.from(new Set(data.map(d => d.color))) : [];
+const colorSeq = colorScalar ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(data, d => +d.color)) : null;
+const colorOrd = (colorName && !colorScalar) ? d3.scaleOrdinal(colorVals, d3.schemeCategory10) : null;
+const colorOf = d => colorScalar ? colorSeq(+d.color) : (colorOrd ? colorOrd(d.color) : "#4a78b5");
 
 g.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(8));
 g.append("g").call(d3.axisLeft(y).ticks(8));
@@ -44,7 +48,7 @@ const dot = g.append("g").selectAll("circle").data(drawData).join("circle")
   .attr("cx", d => x(d.x))
   .attr("cy", d => y(d.y))
   .attr("r", d => rScale ? rScale(d.size) : 4)
-  .attr("fill", d => color ? color(d.color) : "#4a78b5")
+  .attr("fill", d => colorName ? colorOf(d) : "#4a78b5")
   .attr("fill-opacity", 0.7)
   .attr("stroke", "#fff");
 
@@ -142,7 +146,8 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         HEAD.replace("__T__", title).replace("__SUB__", subtitle)
         + "const data = " + json.dumps(points) + ";\n"
         + "const xName = " + json.dumps(x_col) + ", yName = " + json.dumps(y_col) + ";\n"
-        + "const sizeName = " + json.dumps(size_col) + ", colorName = " + json.dumps(color_col) + ";\n"
+        + "const sizeName = " + json.dumps(size_col) + ", colorName = " + json.dumps(color_col)
+        + ", colorType = " + json.dumps(mapping.get("color_type")) + ";\n"
         + "const width = " + str(width) + ", height = " + str(height) + ";\n"
         + JS_BODY
         + "</script>\n</body>\n</html>\n"

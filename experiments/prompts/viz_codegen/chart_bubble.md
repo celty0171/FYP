@@ -11,14 +11,14 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection with three scalar attributes, not one specific table:
 
 ```json
-{ "table": "<entity table>", "key": "<entity key column>", "x": "<scalar attribute a1>", "y": "<scalar attribute a2>", "size": "<scalar attribute a3>", "color": "<optional attribute a4>" }
+{ "table": "<entity table>", "key": "<entity key column>", "x": "<scalar attribute a1>", "y": "<scalar attribute a2>", "size": "<scalar attribute a3>", "color": "<optional attribute a4>", "color_type": "discrete | scalar" }
 ```
 
 Never hard-code these names; always read them from the mapping at run time.
 
 - `key` (`k`) identifies each instance (used in the tooltip).
 - `x` (`a1`) and `y` (`a2`) are the scalar coordinates; `size` (`a3`) sets each bubble's **area** (numeric, `>= 0`).
-- `color` (`a4`) is **optional** — when present, colour bubbles by it.
+- `color` (`a4`) is **optional** — when present, colour bubbles by it following the paper's Section-3 rule, keyed off the companion **`color_type`**: `"discrete"` → an **ordinal colour key**; `"scalar"` → a **sequential colour spectrum** over the numeric range (e.g. `d3.scaleSequential(d3.interpolateViridis)`).
 - Optional `title`.
 
 ## Required data transformation
@@ -29,7 +29,7 @@ One bubble **per entity instance**: `{label: key, x: a1, y: a2, size: a3, color?
 
 - `d3.scaleLinear()` for both axes (`d3.extent(...).nice()`), each with an axis title naming its column.
 - **`d3.scaleSqrt()`** for the radius so bubble **area** (not radius) is proportional to `size` (domain `[0, max size]`, a sensible pixel range, e.g. `[3, 22]`).
-- One `<circle>` per instance at `(x(d.x), y(d.y))` with `r = rScale(d.size)`; if `color` is mapped, use an ordinal colour scale; partial fill-opacity so overlapping bubbles stay visible. Draw larger bubbles first (smaller on top) so small bubbles are not hidden.
+- One `<circle>` per instance at `(x(d.x), y(d.y))` with `r = rScale(d.size)`; if `color` is mapped, branch on `color_type` (discrete → ordinal key; scalar → sequential spectrum) and add a small legend/colour bar; partial fill-opacity so overlapping bubbles stay visible. Draw larger bubbles first (smaller on top) so small bubbles are not hidden.
 
 ## Interaction (per the base contract)
 

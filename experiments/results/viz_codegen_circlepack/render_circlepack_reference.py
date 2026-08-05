@@ -29,6 +29,13 @@ d3.pack().size([innerW, innerH]).padding(3)(root);
 
 const parents = root.children || [];
 const color = d3.scaleOrdinal(parents.map(d => d.data.name), d3.quantize(d3.interpolateRainbow, Math.max(2, parents.length)));
+// Optional colour by a leaf attribute (paper Section-3): scalar -> spectrum, discrete -> key;
+// otherwise the default is to colour each child by its parent.
+const colorScalar = colorName && colorType === "scalar";
+const leafColorVals = colorName ? root.leaves().map(d => d.data.color) : [];
+const colorSeq = colorScalar ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(leafColorVals, v => +v)) : null;
+const colorOrd = (colorName && !colorScalar) ? d3.scaleOrdinal(Array.from(new Set(leafColorVals)), d3.schemeCategory10) : null;
+const leafFill = d => colorName ? (colorScalar ? colorSeq(+d.data.color) : colorOrd(d.data.color)) : color(d.parent.data.name);
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
@@ -42,7 +49,7 @@ g.append("g").selectAll("circle.parent").data(parents).join("circle")
 const leaf = g.append("g").selectAll("circle.leaf").data(root.leaves()).join("circle")
   .attr("class", "leaf")
   .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", d => d.r)
-  .attr("fill", d => color(d.parent.data.name))
+  .attr("fill", d => leafFill(d))
   .attr("fill-opacity", 0.85)
   .attr("stroke", "#fff");
 
@@ -122,6 +129,7 @@ def _encoding(mapping: dict[str, Any]) -> dict[str, str]:
 def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     enc = _encoding(mapping)
     p_col, c_col, m_col = enc["parent"], enc["child"], enc["measure"]
+    color_col = mapping.get("color")  # paper: optional a2 colour of the child circles
 
     # Two-level hierarchy: parent -> children; drop rows with a null parent or non-numeric measure.
     groups: dict[str, list[dict[str, Any]]] = {}
@@ -139,7 +147,10 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         if p not in groups:
             groups[p] = []
             order.append(p)
-        groups[p].append({"name": html.escape(str(r.get(c_col))), "value": v})
+        leaf = {"name": html.escape(str(r.get(c_col))), "value": v}
+        if color_col is not None:
+            leaf["color"] = html.escape(str(r.get(color_col)))
+        groups[p].append(leaf)
 
     children = [{"name": html.escape(p), "children": groups[p]} for p in order]
     data = {"name": "root", "children": children}
@@ -156,6 +167,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         HEAD.replace("__T__", title).replace("__SUB__", subtitle)
         + "const data = " + json.dumps(data) + ";\n"
         + "const parentName = " + json.dumps(p_col) + ", measureName = " + json.dumps(m_col) + ";\n"
+        + "const colorName = " + json.dumps(color_col) + ", colorType = " + json.dumps(mapping.get("color_type")) + ";\n"
         + "const width = " + str(width) + ", height = " + str(height) + ";\n"
         + JS_BODY
         + "</script>\n</body>\n</html>\n"

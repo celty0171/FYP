@@ -11,14 +11,14 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection with two scalar attributes, not one specific table:
 
 ```json
-{ "table": "<entity table>", "key": "<entity key column>", "x": "<scalar attribute a1>", "y": "<scalar attribute a2>", "color": "<optional attribute a3>" }
+{ "table": "<entity table>", "key": "<entity key column>", "x": "<scalar attribute a1>", "y": "<scalar attribute a2>", "color": "<optional attribute a3>", "color_type": "discrete | scalar" }
 ```
 
 Never hard-code these names; always read them from the mapping at run time.
 
 - `key` (`k`) identifies each instance (used in the tooltip).
 - `x` (`a1`) and `y` (`a2`) are the two **scalar** attributes giving each point's coordinates (numeric).
-- `color` (`a3`) is **optional** — when present, colour points by it (ordinal for a discrete attribute).
+- `color` (`a3`) is **optional** — when present, colour points by it following the paper's Section-3 rule, keyed off the companion **`color_type`**: `"discrete"` → an **ordinal colour key** (`d3.scaleOrdinal(..., d3.schemeCategory10)`); `"scalar"` → a **sequential colour spectrum** over the numeric range (e.g. `d3.scaleSequential(d3.interpolateViridis)`). Absent `color` → a single fill.
 - Optional `title`.
 
 ## Required data transformation
@@ -28,7 +28,7 @@ One point **per entity instance**: `{label: key, x: a1, y: a2, color?: a3}`. Dro
 ## D3 v7 construction
 
 - `d3.scaleLinear()` for both axes (`d3.extent(...).nice()`); x-axis bottom, y-axis left, each with an axis title naming its column.
-- One `<circle>` per instance at `(x(d.x), y(d.y))` with a small fixed radius; if `color` is mapped, use `d3.scaleOrdinal(..., d3.schemeCategory10)`; otherwise a single fill.
+- One `<circle>` per instance at `(x(d.x), y(d.y))` with a small fixed radius; if `color` is mapped, branch on `color_type` (discrete → ordinal key; scalar → sequential spectrum) and add a small legend/colour bar; otherwise a single fill.
 - Use partial fill-opacity so overlapping points remain visible.
 
 ## Interaction (per the base contract)

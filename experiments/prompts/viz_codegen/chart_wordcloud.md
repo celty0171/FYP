@@ -11,8 +11,10 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection whose key is lexical, not one specific table:
 
 ```json
-{ "table": "<entity table>", "text": "<lexical key column>", "size": "<scalar attribute>" }
+{ "table": "<entity table>", "text": "<lexical key column>", "size": "<scalar attribute>", "color": "<optional attribute a2>", "color_type": "discrete | scalar" }
 ```
+
+The optional `color` (`a2`, paper Section 3) colours each word via the companion **`color_type`**: `"discrete"` → an **ordinal colour key**; `"scalar"` → a **sequential colour spectrum** over the numeric range. Absent `color` → the default per-word palette (unchanged).
 
 Never hard-code these names; always read them from the mapping at run time.
 
@@ -37,7 +39,7 @@ Build `[{text, value}]` from the rows, dropping non-numeric `size`. Map `value` 
 ## D3 v7 construction
 
 - `d3.layout.cloud().size([w, h]).words(words).padding(2).rotate(0).font("Arial").fontSize(d => d.size).on("end", draw)` then `.start()`.
-- In `draw`, append one `<text>` per laid-out word at `(d.x, d.y)` with `font-size: d.size`, coloured by an ordinal scale. The layout is **asynchronous** (positions are computed then `on("end")` fires) — draw inside the callback. Words that do not fit are dropped by the layout; that is expected.
+- In `draw`, append one `<text>` per laid-out word at `(d.x, d.y)` with `font-size: d.size`. Colour: if `color` is mapped, branch on `color_type` (discrete → ordinal key; scalar → sequential spectrum); otherwise a default ordinal palette. The layout is **asynchronous** (positions are computed then `on("end")` fires) — draw inside the callback. Words that do not fit are dropped by the layout; that is expected.
 
 ## Interaction (per the base contract)
 

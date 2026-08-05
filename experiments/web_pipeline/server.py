@@ -219,6 +219,82 @@ def _select_rows(mapping: dict[str, Any], data: dict[str, Any] | None) -> list[d
     return []
 
 
+# Mapping roles whose value is an entity *identifier* shown as a label — safe to swap a
+# code for a readable name. Includes `region`: the choropleth renderer joins each map
+# feature by its country *name* (d.properties.name), so the region key must be the name,
+# not the code, or every feature misses and renders blank. Excludes measure/temporal roles.
+LABEL_ROLES = ("key", "source", "target", "parent", "child", "region",
+               "series", "group", "segment", "ring", "spoke", "node")
+
+
+def _single_pk(table: str | None) -> str | None:
+    pk = (SCHEMA.get("tables", {}).get(table) or {}).get("primary_key") or []
+    return pk[0] if len(pk) == 1 else None
+
+
+def _label_col(table: str | None) -> str | None:
+    """The human-readable label column of an entity table, if distinct from its key.
+    Convention: a `name` column, unless `name` is itself the key (already readable)."""
+    tdef = SCHEMA.get("tables", {}).get(table) or {}
+    names = [c.get("name") for c in tdef.get("columns", [])]
+    if "name" not in names:
+        return None
+    if (tdef.get("primary_key") or []) == ["name"]:
+        return None
+    return "name"
+
+
+def _fk_ref(tdef: dict[str, Any], col: str):
+    for fk in tdef.get("foreign_keys", []) or []:
+        fcols = fk.get("columns") or []
+        if fcols and fcols[0] == col:
+            ref = fk.get("references_table")
+            ref_pk = (fk.get("references_columns") or [None])[0] or _single_pk(ref)
+            return ref, ref_pk
+    return None, None
+
+
+def apply_display_labels(mapping: dict[str, Any], rows: list[dict[str, Any]]):
+    """Display-only: swap entity codes for their readable `name` in the chart's label
+    columns, keeping every internal key intact. A cross-table code (a foreign key, e.g.
+    `encompasses.country`) is looked up in the referenced entity; a base entity's own key
+    (e.g. `country.code`) takes the `name` from its own row. Never mutates the inputs, and
+    a safe no-op for derived/aggregated tables (absent from the schema) or readable keys."""
+    table = (mapping or {}).get("table")
+    tdef = SCHEMA.get("tables", {}).get(table)
+    if not tdef or not rows:
+        return rows
+    cols = {mapping[r] for r in LABEL_ROLES if isinstance(mapping.get(r), str)}
+    relabel: dict[str, dict] = {}   # col -> {code: name} for a foreign-key column
+    same_row: dict[str, str] = {}   # col -> label column in the same row
+    for col in cols:
+        ref, ref_pk = _fk_ref(tdef, col)
+        if ref and ref_pk and _label_col(ref):
+            lab = _label_col(ref)
+            m = {r.get(ref_pk): r.get(lab) for r in (TABLES.get(ref) or [])
+                 if isinstance(r, dict) and r.get(ref_pk) is not None}
+            if m:
+                relabel[col] = m
+        elif col == _single_pk(table) and _label_col(table):
+            same_row[col] = _label_col(table)
+    if not relabel and not same_row:
+        return rows
+    out = []
+    for r in rows:
+        if not isinstance(r, dict):
+            out.append(r)
+            continue
+        nr = dict(r)
+        for col, m in relabel.items():
+            if nr.get(col) in m and m[nr[col]] is not None:
+                nr[col] = m[nr[col]]
+        for col, lab in same_row.items():
+            if nr.get(lab) is not None:
+                nr[col] = nr[lab]
+        out.append(nr)
+    return out
+
+
 def render_chart(chart: str | None, mapping: dict[str, Any],
                  data: dict[str, Any] | None = None) -> dict[str, Any]:
     """Render a chart from its Step-2 mapping, or report it's not built yet."""
@@ -230,6 +306,7 @@ def render_chart(chart: str | None, mapping: dict[str, Any],
         rows = _select_rows(mapping, data)
         if not rows:
             return {"chart": chart, "available": False, "html": "no rows match the current filter"}
+        rows = apply_display_labels(mapping, rows)  # show readable names, keep internal keys
         html = _inline_d3(mod.render(mapping, rows))
         return {"chart": chart, "available": True, "html": html}
     except Exception as exc:  # keep the UI alive on a bad mapping
@@ -307,7 +384,7 @@ def run_pipeline(table: str, columns: list[str],
         dschema, dtable, dcols, arows = AGG.prepare(SCHEMA, table, rows, aggregate)
         if not arows:
             return _empty_run(table, columns, filters, aggregate, joins, base_pattern, "",
-                              "aggregation produced no groups")
+                              "aggregation produced no groups (or none matched the having condition)")
         s1 = STEP1.classify_selection(dschema, dtable, dcols)
         pattern = s1["predicted_pattern"]
         s2 = STEP2.recommend(dschema, dtable, dcols, pattern, rows=arows)

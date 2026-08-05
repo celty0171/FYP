@@ -3,6 +3,74 @@
 Research note. Records algorithmic options for the shared clutter problem observed in the
 node-link relationship renderers built under `results/viz_codegen_*`.
 
+## Metrics & aesthetics (2026-07-29)
+
+Overlap/aesthetic quality is now **measured**, grounded in the graph-drawing literature:
+- **Purchase** — edge **crossings** are the single most important readability factor; crossing
+  **angle** next. ([tc-vac](https://www.ieeesmc.org/wp-content/uploads/2015/09/tc-vac-paper.pdf))
+- **Dunne & Shneiderman** — a `[0,1]` readability suite (node occlusion, crossings, crossing
+  angle, …), 1 = best; targets e.g. 0 % node occlusion, <5 % crossings.
+  ([HCIL TR 2009-13](http://www.cs.umd.edu/hcil/trs/2009-13/2009-13.pdf))
+- **Holten & van Wijk** — force-directed **edge bundling** for clutter (we take the lighter
+  *curved links* route). ([FDEB](https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8659.2009.01450.x))
+
+**Harness** — `experiments/metrics/` (std-lib): `scorecard.py` renders each chart, extracts the
+emitted layout (order-based crossings for arc/chord/sankey; a deterministic Python `spring_layout`
+for the force graph's geometric metrics) and prints raw + `[0,1]` scores with `--baseline` /
+`--compare` for before/after deltas. Run:
+`python experiments/metrics/scorecard.py --report metrics_report.md`.
+
+**Baseline & first deltas** (Mondial relations):
+
+| chart / relation | crossings (before → after) | crossing_score |
+|---|---|---|
+| arc / borders | 964 | 0.981 |
+| chord / borders | 2396 | 0.954 |
+| **chord / encompasses (bipartite)** | **11763** | **0.539** ← worst; bipartite arc not reordered |
+| **sankey / borders** | **10348 → 3102** | 0.801 → **0.940** (iterated two-layer barycentre promoted) |
+| sankey / encompasses | 96 → 89 | 0.997 |
+| force / borders | 1487 | 0.971 (node occlusion 0 — collision works) |
+
+**Improvements applied:** sankey now uses iterated two-layer barycentre (measured −70 % crossings
+on borders); force links are **gently curved** (raises crossing angle; positions/occlusion
+unchanged). **Open, measured targets:** chord bipartite reordering (encompasses 0.539) and arc
+two-sided arcs.
+
+## 本次改动总结（中文，2026-07-29）
+
+针对 arc / sankey / chord / force 四种关系图「overlap 过多、不够美观」的问题，本轮做了**可量化评估**
+和**基于评估的改进**，全部有学术文献支撑（Purchase：交叉数是最重要的可读性因素；Dunne & Shneiderman：
+`[0,1]` 可读性评分；Holten & van Wijk：边捆绑/曲线降杂乱）。
+
+**① 新增评价指标框架** `experiments/metrics/`（纯标准库）：
+- `layout_metrics.py`：**渲染每种图 → 抽取它实际输出的布局** → 计算交叉数 + Dunne 归一化 `[0,1]` 评分
+  （arc/chord/sankey 的交叉是节点顺序的精确函数；force 是几何布局）。
+- `spring_layout.py`：确定性的 Python 力导向布局，复刻渲染器参数，用于 force 图的几何指标
+  （节点遮挡 node occlusion、交叉数、交叉角）。
+- `scorecard.py`：命令行工具，跑四种图 × Mondial 关系，打印「原始值 + `[0,1]` 评分」表；支持
+  `--baseline` 存快照、`--compare` 看前后差值、`--report` 出 markdown。
+  运行：`python experiments/metrics/scorecard.py --report metrics_report.md`。
+
+**② 基线一跑就定位了真正的问题**（这正是指标框架的价值）：
+- **chord / encompasses（二部图）交叉 11763、评分 0.539 —— 最差**（两组实体弧没做交叉最小化重排）；
+- **sankey / borders 交叉 10348、评分 0.801**（线上版仍是**单趟**排序，v2 从没被提升）；
+- arc / borders 964、0.981，force 节点遮挡为 0（碰撞力有效）—— 已经不错。
+
+**③ 基于指标的改进（已做，且量化验证）**：
+- **Sankey**：把已测试的 **迭代双层 barycenter** 排序提升到线上渲染器 → borders 交叉
+  **10348 → 3102（↓70%）、评分 0.801 → 0.940**（用 `--compare` 实测）。
+- **Force**：直线连边改为**轻微曲线**（quadratic 弧，下垂约 15–20%）—— 拉大交叉角、把近乎平行的重叠
+  边分开；节点位置/遮挡不变（所以基于位置的指标不反映曲线收益，属纯视觉改进，已如实注明）。
+- **Arc**：改为**双侧弧**——按绘制顺序（长弧优先）交替把弧画在基线**上方/下方**，标签移到下侧弧之下；
+  每侧密度减半（对侧的弧永不重叠）。交叉数不变（顺序未动），属视觉密度改进，指标不反映——已如实注明。
+- **Chord（二部图）**：对两条实体弧做**组内迭代双层 barycenter 重排**。关键坑：圆上目标弧的旋转方向与
+  源弧**相反**，朴素 barycenter 反而更糟——故同时尝试**反向耦合**、并以恒等（字母）序为下界，按**实际
+  圆周交叉数**取最优。`encompasses` 交叉 **11763 → 89（↓99%）、评分 0.539 → 0.997**（最差图变近乎完美）。
+- 同步更新了 `prompts/viz_codegen/chart_force.md`、`chart_arc.md`、`chart_chord.md`。渲染均保持**确定性**。
+
+**四种图现已全部改进并量化验证**：sankey 交叉 −70%、chord（二部）−99%、arc 双侧密度减半、force 曲线连边。
+后续可选：force 的边捆绑（FDEB，本轮用曲线代替）。
+
 ## The problem
 
 The Step-3 renderers for **sankey**, **chord**, **arc** and **force** all produce visually

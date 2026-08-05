@@ -334,11 +334,23 @@ for (let i = 0; i < 120; i++) sim.tick();
 sim.restart();
 
 // ── Draw links ────────────────────────────────────────────────────────────
+// Gentle curved links: a quadratic arc separates near-parallel edges, which raises
+// crossing angles and reduces the "solid mass" look of overlapping straight lines.
+function linkPath(d) {
+  const x1 = d.source.x, y1 = d.source.y, x2 = d.target.x, y2 = d.target.y;
+  const dx = x2 - x1, dy = y2 - y1;
+  const dr = Math.hypot(dx, dy) || 1;
+  const curv = 0.18;                 // sag as a fraction of link length
+  const mx = (x1 + x2) / 2 - dy / dr * dr * curv;
+  const my = (y1 + y2) / 2 + dx / dr * dr * curv;
+  return "M" + x1 + "," + y1 + "Q" + mx + "," + my + " " + x2 + "," + y2;
+}
 const linkSel = g.append("g").attr("class", "links")
-  .selectAll("line")
+  .selectAll("path")
   .data(LINKS)
-  .join("line")
+  .join("path")
   .attr("class", "link")
+  .attr("fill", "none")
   .attr("stroke-width", d => linkWScale(d.w));
 
 // ── Draw nodes ────────────────────────────────────────────────────────────
@@ -469,11 +481,7 @@ nodeSel.call(
 
 // ── Tick handler ──────────────────────────────────────────────────────────
 sim.on("tick", function() {
-  linkSel
-    .attr("x1", d => d.source.x)
-    .attr("y1", d => d.source.y)
-    .attr("x2", d => d.target.x)
-    .attr("y2", d => d.target.y);
+  linkSel.attr("d", linkPath);
   nodeSel.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
 });
 

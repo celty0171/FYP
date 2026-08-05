@@ -58,6 +58,41 @@ A project description file has also been added:
 
 - `project description.md`
 
+## Work — 2026-08-05
+
+Front-end usability + query-expressiveness pass on the deterministic pipeline, plus the Step-2
+write-up in the report. No change to Step 1 or the blind/gold separation.
+
+- **Post-aggregate HAVING.** New numeric comparison ops `gt/ge/lt/le` in `filter/apply_filters.py`;
+  `aggregate/aggregate_rows.py::prepare` gained a `having` stage (`resample → aggregate → having`,
+  reusing the filter engine). Lets "how many X per Y > n" queries be expressed. Wired through the NL
+  parser (prompt + `ALLOWED_OPS` + validation) and the manual UI's Aggregate panel.
+- **`group_having` filter — keep the relationship, just narrow it.** A group-membership filter
+  (`filter/apply_filters.py`) that drops rows whose group fails a per-group count **without
+  collapsing** them, so the ER pattern is preserved (e.g. "countries spanning >1 continent" stays
+  `many_many`, rendered as a matrix/chord over the qualifying 5 countries, instead of aggregating
+  into a `basic_entity` count). Exposed in the manual UI via a "filter entities by this condition"
+  toggle (default = raw relationship; ticked = filtered) and in the NL parser (prompt example +
+  validation). Verified end-to-end on `encompasses`.
+- **NL confirm-and-edit interaction** (`web_pipeline/index.html`). After parsing, the system now
+  restates the selection in plain English and lets the user edit it (live-updating summary,
+  Confirm/Reset) before it runs — the restatement is derived deterministically from the selection,
+  so it always matches what executes.
+- **Step-2 relationship recommendation tweaks** (`results/step2_codegen/gpt_recommend_charts.py`):
+  the node-link view is now pattern-specific — **Sankey only** for many_many (chord dropped),
+  **chord only** for reflexive (Sankey dropped) — and it **leads over the matrix** whenever a scalar
+  width is present (matrix leads only when there is no scalar). Old dense/large downgrade of node-link
+  removed.
+- **Readable labels at render** (`web_pipeline/server.py::apply_display_labels`): display-only swap of
+  entity codes for their `name` (e.g. `R → Russia`) in label roles (key/source/target/parent/child/
+  region/…), keeping internal codes for all logic. This also fixed a **pre-existing choropleth bug**:
+  the renderer joins the basemap by country *name* but Step 2 supplied the *code* as `region`, so every
+  feature missed and rendered blank — relabelling `region` to the name fixes the colouring (residual:
+  a few Mondial names differ from the world-atlas names and stay grey).
+- **Report** (`final_report.tex`): Step 2 rewritten with per-chart/mapping detail, paper-style summary
+  tables (booktabs), and bullet lists; Step 3 aligned. Also adds `experiments/metrics/` (relationship
+  layout-overlap metrics) to the tree.
+
 ## Work — 2026-07-01
 
 Implemented **proposal v2** (`experiments/relationship_viz_proposal_v2_charts_and_selector.md`) §7

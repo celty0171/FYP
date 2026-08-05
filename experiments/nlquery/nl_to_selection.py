@@ -12,8 +12,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-ALLOWED_OPS = {"range", "in", "eq", "not_null"}
+ALLOWED_OPS = {"range", "in", "eq", "not_null", "gt", "ge", "lt", "le", "group_having"}
 ALLOWED_AGG_FNS = {"sum", "mean", "avg", "min", "max", "count", "count_distinct"}
+# Comparison operators usable inside a having / group_having condition.
+CMP_OPS = {"gt", "ge", "lt", "le", "eq"}
 
 _SYSTEM = (
     "You translate a user's natural-language request into a JSON data selection against a "
@@ -25,21 +27,42 @@ _SYSTEM = (
     '  "table": "<base table name>",\n'
     '  "columns": ["<column>", ...],           // columns of the base table to visualise\n'
     '  "joins": [ {"bring": "<other_table>.<column>", "as": "<alias>", "policy": "first"} ],\n'
-    '  "filters": [ {"column": "<col or alias>", "op": "<eq|in|range|not_null>",\n'
-    '                "value": <v>, "values": [<v>...], "min": <n>, "max": <n>} ],\n'
-    '  "aggregate": {"group_by": ["<col>"...], "measures": [{"column":"<col>","fn":"sum","as":"<alias>"}]}\n'
+    '  "filters": [ {"column": "<col or alias>", "op": "<eq|in|range|not_null|gt|ge|lt|le>",\n'
+    '                "value": <v>, "values": [<v>...], "min": <n>, "max": <n>},\n'
+    '               {"op":"group_having","group_by":["<col>"...],\n'
+    '                "having":[{"fn":"count_distinct","column":"<col>","op":"<gt|ge|lt|le|eq>","value":<n>}]} ],\n'
+    '  "aggregate": {"group_by": ["<col>"...], "measures": [{"column":"<col>","fn":"sum","as":"<alias>"}],\n'
+    '                "having": [{"column":"<measure alias or group_by col>","op":"<gt|ge|lt|le|eq>","value":<n>}]}\n'
     "}\n"
-    "Rules: omit joins/filters/aggregate if not needed (use [] or {}). For a filter use "
-    "only one of value / values / (min,max) matching the op (eq->value, in->values, "
-    "range->min&max, not_null->none). To filter by an attribute that lives in another "
-    "table (e.g. a country's continent), add a join to bring that column in, then filter "
-    "on its alias.\n\n"
-    "Example — request: 'borders between South American countries'. The borders table has "
+    "Rules: omit joins/filters/aggregate if not needed (use [] or {}). For a plain filter "
+    "use only one of value / values / (min,max) matching the op (eq->value, in->values, "
+    "range->min&max, not_null->none, gt/ge/lt/le->value). To filter by an attribute that "
+    "lives in another table (e.g. a country's continent), add a join to bring that column "
+    "in, then filter on its alias.\n"
+    "A condition on a COUNT or other per-group aggregate (e.g. 'more than 1 continent', "
+    "'at least 3 airports') CANNOT be a plain filter. Choose by intent:\n"
+    "  (a) The user still wants to SEE the entities/relationship, just restricted to those "
+    "that meet the count — use a group_having FILTER. It keeps the matching rows and does "
+    "NOT change what is being visualised. THIS IS THE DEFAULT for 'show/visualise X that "
+    "have >N ...'.\n"
+    "  (b) The user wants the aggregated NUMBER itself as the chart (e.g. 'how many "
+    "continents each country has', 'total population per continent') — use aggregate."
+    "group_by + measures (+ having).\n"
+    "Use count_distinct to count distinct values, count to count rows.\n\n"
+    "Example 1 — request: 'borders between South American countries'. The borders table has "
     "country1, country2, length but no continent, so join it in via the country/encompasses "
     "relation and filter on it:\n"
     "{\"table\":\"borders\",\"columns\":[\"country1\",\"country2\",\"length\"],"
     "\"joins\":[{\"bring\":\"encompasses.continent\",\"as\":\"continent\",\"policy\":\"first\"}],"
     "\"filters\":[{\"column\":\"continent\",\"op\":\"in\",\"values\":[\"South America\"]}],"
+    "\"aggregate\":{}}\n"
+    "Example 2 — request: 'visualise all countries spanning more than 1 continent'. The user "
+    "wants to see these countries and their continents (a country-continent relationship), "
+    "just narrowed to the qualifying ones. Keep the encompasses relationship and use a "
+    "group_having filter — do NOT aggregate:\n"
+    "{\"table\":\"encompasses\",\"columns\":[\"country\",\"continent\"],\"joins\":[],"
+    "\"filters\":[{\"op\":\"group_having\",\"group_by\":[\"country\"],"
+    "\"having\":[{\"fn\":\"count_distinct\",\"column\":\"continent\",\"op\":\"gt\",\"value\":1}]}],"
     "\"aggregate\":{}}"
 )
 
@@ -106,20 +129,51 @@ def _validate(selection: dict[str, Any], schema: dict[str, Any]) -> str | None:
             return "column '" + str(c) + "' is not in table '" + table + "' (or a join)"
 
     for f in selection.get("filters") or []:
+        op = f.get("op")
+        if op == "group_having":
+            # Group-membership filter: keeps rows whose group passes a per-group count,
+            # without collapsing them (so the pattern is preserved). Validate its own shape.
+            gb = f.get("group_by") or []
+            if not gb:
+                return "group_having needs a non-empty group_by"
+            for c in gb:
+                if c not in known:
+                    return "group_having group_by '" + str(c) + "' is not available"
+            for h in f.get("having") or []:
+                if h.get("fn") not in ALLOWED_AGG_FNS:
+                    return "group_having fn '" + str(h.get("fn")) + "' not in " + str(sorted(ALLOWED_AGG_FNS))
+                if (h.get("fn") or "").lower() != "count" and h.get("column") not in known:
+                    return "group_having column '" + str(h.get("column")) + "' is not available"
+                if h.get("op") not in CMP_OPS:
+                    return "group_having op '" + str(h.get("op")) + "' not in " + str(sorted(CMP_OPS))
+            continue
         if f.get("column") not in known:
             return "filter column '" + str(f.get("column")) + "' is not available"
-        if f.get("op") not in ALLOWED_OPS:
-            return "filter op '" + str(f.get("op")) + "' not in " + str(sorted(ALLOWED_OPS))
+        if op not in ALLOWED_OPS:
+            return "filter op '" + str(op) + "' not in " + str(sorted(ALLOWED_OPS))
 
     agg = selection.get("aggregate") or {}
     for c in agg.get("group_by") or []:
         if c not in known:
             return "aggregate group_by '" + str(c) + "' is not available"
+    measure_aliases = set()
     for m in agg.get("measures") or []:
         if m.get("column") not in known:
             return "aggregate measure column '" + str(m.get("column")) + "' is not available"
         if m.get("fn") not in ALLOWED_AGG_FNS:
             return "aggregate fn '" + str(m.get("fn")) + "' not in " + str(sorted(ALLOWED_AGG_FNS))
+        measure_aliases.add(m.get("as") or ((m.get("fn") or "sum") + "_" + str(m.get("column"))))
+
+    # HAVING runs after aggregation, so its columns are the group-by columns or a
+    # measure alias — never a raw base column that was collapsed away.
+    having_known = set(agg.get("group_by") or []) | measure_aliases
+    for h in agg.get("having") or []:
+        if not (agg.get("group_by") or agg.get("measures")):
+            return "aggregate having needs a group_by/measures aggregate to filter"
+        if h.get("column") not in having_known:
+            return "having column '" + str(h.get("column")) + "' must be a group_by column or measure alias"
+        if h.get("op") not in ALLOWED_OPS:
+            return "having op '" + str(h.get("op")) + "' not in " + str(sorted(ALLOWED_OPS))
     return None
 
 

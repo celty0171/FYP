@@ -24,9 +24,13 @@ const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("t
 const maxV = d3.max(data, d => d.value) || 1;
 const minV = d3.min(data, d => d.value) || 0;
 const fontScale = d3.scaleSqrt().domain([minV, maxV]).range([10, 64]);
-const color = d3.scaleOrdinal(d3.schemeCategory10);
+// Colour: paper Section-3 rule — scalar -> spectrum, discrete -> ordinal key; else per-word default.
+const colorScalar = colorName && colorType === "scalar";
+const colorSeq = colorScalar ? d3.scaleSequential(d3.interpolateViridis).domain(d3.extent(data, d => +d.color)) : null;
+const colorOrd = colorName ? d3.scaleOrdinal(Array.from(new Set(data.map(d => d.color))), d3.schemeCategory10) : d3.scaleOrdinal(d3.schemeCategory10);
+const wordFill = (d, i) => colorName ? (colorScalar ? colorSeq(+d.color) : colorOrd(d.color)) : colorOrd(i % 10);
 
-const words = data.map(d => ({ text: d.text, value: d.value, size: fontScale(d.value) }));
+const words = data.map(d => ({ text: d.text, value: d.value, color: d.color, size: fontScale(d.value) }));
 
 d3.layout.cloud()
   .size([width, height])
@@ -42,7 +46,7 @@ function draw(laid) {
   const text = g.selectAll("text").data(laid).join("text")
     .attr("font-family", "Arial")
     .attr("font-size", d => d.size + "px")
-    .attr("fill", (d, i) => color(i % 10))
+    .attr("fill", (d, i) => wordFill(d, i))
     .attr("text-anchor", "middle")
     .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
     .text(d => d.text);
@@ -98,6 +102,7 @@ def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
 
 def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     text_col, size_col = mapping["text"], mapping["size"]
+    color_col = mapping.get("color")  # paper: optional a2 colour of the words
 
     words: list[dict[str, Any]] = []
     for r in rows:
@@ -107,7 +112,10 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             continue
         if v < 0:
             continue
-        words.append({"text": html.escape(str(r.get(text_col))), "value": v})
+        w = {"text": html.escape(str(r.get(text_col))), "value": v}
+        if color_col is not None:
+            w["color"] = html.escape(str(r.get(color_col)))
+        words.append(w)
 
     title = html.escape(mapping.get("title") or (text_col + " sized by " + size_col + " (word cloud)"))
     subtitle = html.escape("Each " + text_col + " is a word; font size (area) ∝ " + size_col
@@ -118,6 +126,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         HEAD.replace("__T__", title).replace("__SUB__", subtitle)
         + "const data = " + json.dumps(words) + ";\n"
         + "const valueName = " + json.dumps(size_col) + ";\n"
+        + "const colorName = " + json.dumps(color_col) + ", colorType = " + json.dumps(mapping.get("color_type")) + ";\n"
         + "const width = " + str(width) + ", height = " + str(height) + ";\n"
         + JS_BODY
         + "</script>\n</body>\n</html>\n"

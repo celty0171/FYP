@@ -16,7 +16,7 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection, not one specific table:
 
 ```json
-{ "table": "<relationship table>", "source": "<FK column>", "target": "<second FK column>", "width": "<scalar relationship attribute>", "pattern": "<many_many_relationship | reflexive_many_many_relationship>" }
+{ "table": "<relationship table>", "source": "<FK column>", "target": "<second FK column>", "width": "<scalar relationship attribute>", "pattern": "<many_many_relationship | reflexive_many_many_relationship>", "color": "<optional second relationship attribute a2>", "color_type": "discrete | scalar" }
 ```
 
 Never hard-code these names; always read them from the mapping at run time.
@@ -54,7 +54,7 @@ Drive d3-sankey with the result: attach the computed integer `order` to every no
 ## Visual design
 
 - Use enough vertical height for the number of source nodes — do not compress a large Sankey into a short canvas; use generous `nodePadding` and a moderate `nodeWidth`.
-- Colour links by their **target group** so overlapping links stay distinguishable; use partial link opacity so dense bundles remain readable.
+- Colour links: the paper allows an **optional** second relationship attribute `color` to colour each flow — when mapped, branch on `color_type` (discrete → ordinal key; scalar → sequential spectrum over the per-link value, aggregating duplicate source→target rows) with a legend; otherwise colour links by their **target group**. Use partial link opacity so dense bundles remain readable.
 - Draw links in **ascending weight order** (thin minor links on top) so a thin secondary link is not buried under a thick bundle. Do not hide links by reordering nodes.
 - Place labels so they do not sit on dense bundles; on hovering a node, fade the links not connected to it so any single source's links (including its unavoidable cross-group link) can be traced.
 - Add a subtitle stating what link width represents.

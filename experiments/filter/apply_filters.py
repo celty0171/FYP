@@ -22,6 +22,8 @@ Operators (all conjunctive — a row must satisfy every filter):
   in     discrete         value is in `values`
   eq     any              sugar for `in` with one value
   not_null any            drop rows whose column is null/absent
+  gt/ge/lt/le  numeric    value >, >=, <, <= `value` (used e.g. for HAVING on an
+                          aggregated measure such as count_distinct > 1)
 
 Run offline::
 
@@ -90,6 +92,98 @@ def _match_range(value, spec) -> bool:
     return True
 
 
+def _match_cmp(op, value, target) -> bool:
+    """Numeric comparison for the gt/ge/lt/le operators; False if either side is
+    non-numeric (so a bad spec drops rows rather than matching everything)."""
+    x = _to_number(value)
+    t = _to_number(target)
+    if x is None or t is None:
+        return False
+    if op == "gt":
+        return x > t
+    if op == "ge":
+        return x >= t
+    if op == "lt":
+        return x < t
+    if op == "le":
+        return x <= t
+    return False
+
+
+def _cmp(op, value, target) -> bool:
+    """Numeric comparison for gt/ge/lt/le/eq; False if either side is non-numeric."""
+    x = _to_number(value)
+    t = _to_number(target)
+    if x is None or t is None:
+        return False
+    return {"gt": x > t, "ge": x >= t, "lt": x < t, "le": x <= t, "eq": x == t}.get(op, False)
+
+
+def _group_reduce(fn, column, group_rows):
+    """Aggregate one group's rows for a group_having condition. Mirrors the reducers in
+    aggregate/aggregate_rows.py, kept local so the filter stage has no import coupling."""
+    fn = (fn or "count").lower()
+    if fn == "count":
+        return len(group_rows)
+    vals = []
+    for r in group_rows:
+        found, v = _row_get(r, column)
+        if found:
+            vals.append(v)
+    if fn == "count_distinct":
+        return len({v for v in vals if v is not None})
+    nums = [n for n in (_to_number(v) for v in vals) if n is not None]
+    if not nums:
+        return None
+    if fn == "sum":
+        return sum(nums)
+    if fn in ("mean", "avg"):
+        return sum(nums) / len(nums)
+    if fn == "min":
+        return min(nums)
+    if fn == "max":
+        return max(nums)
+    return None
+
+
+def _apply_group_having(rows, spec):
+    """Keep the ROWS whose group satisfies a per-group aggregate condition (SQL:
+    ``WHERE key IN (SELECT key ... GROUP BY key HAVING <cond>)``).
+
+    Unlike aggregate.having this does NOT collapse rows — it only removes rows whose
+    group fails the condition, so the selection's visualisation schema pattern (e.g.
+    many-many) is preserved and only the data is narrowed. Spec::
+
+        { "op": "group_having", "group_by": ["country"],
+          "having": [ {"fn": "count_distinct", "column": "continent",
+                       "op": "gt", "value": 1} ] }
+    """
+    group_by = spec.get("group_by") or []
+    having = spec.get("having") or []
+    if not group_by or not having:
+        return rows
+
+    def key_of(r):
+        return tuple(_row_get(r, g)[1] for g in group_by)
+
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        if isinstance(r, dict):
+            groups.setdefault(key_of(r), []).append(r)
+
+    passing = set()
+    for key, grp in groups.items():
+        ok = True
+        for h in having:
+            val = _group_reduce(h.get("fn"), h.get("column"), grp)
+            if val is None or not _cmp((h.get("op") or "").lower(), val, h.get("value")):
+                ok = False
+                break
+        if ok:
+            passing.add(key)
+    return [r for r in rows if isinstance(r, dict) and key_of(r) in passing]
+
+
 def _match_in(value, values) -> bool:
     if not isinstance(values, list):
         return False
@@ -119,6 +213,8 @@ def _row_matches(row: dict, spec: dict) -> bool:
     if op == "eq":
         target = spec.get("value")
         return _match_in(value, [target])
+    if op in ("gt", "ge", "lt", "le"):
+        return _match_cmp(op, value, spec.get("value"))
     # Unknown operator -> ignore this filter (forward-compatible), so it matches.
     return True
 
@@ -127,19 +223,26 @@ def apply(rows, filters):
     """Return the subset of `rows` satisfying every filter (conjunctive).
 
     An empty/absent `filters` list is the identity. Never mutates input rows and
-    preserves their order.
+    preserves their order. Two filter kinds are supported: ordinary row predicates
+    (range/in/eq/not_null/gt/ge/lt/le) and ``group_having`` group-membership filters,
+    which keep only rows whose group passes a per-group aggregate condition without
+    collapsing the rows (so the visualisation schema pattern is preserved).
     """
     if not filters:
         return list(rows) if rows is not None else []
     active = [f for f in filters if isinstance(f, dict)]
     if not active:
         return list(rows)
+    row_filters = [f for f in active if (f.get("op") or "").strip().lower() != "group_having"]
+    group_filters = [f for f in active if (f.get("op") or "").strip().lower() == "group_having"]
     out = []
     for r in rows or []:
         if not isinstance(r, dict):
             continue
-        if all(_row_matches(r, f) for f in active):
+        if all(_row_matches(r, f) for f in row_filters):
             out.append(r)
+    for gf in group_filters:
+        out = _apply_group_having(out, gf)
     return out
 
 

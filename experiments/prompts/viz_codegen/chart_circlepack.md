@@ -11,8 +11,10 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection, not one specific table:
 
 ```json
-{ "table": "<child table>", "parent": "<parent FK column on the child table>", "child": "<child key column>", "measure": "<scalar child attribute>" }
+{ "table": "<child table>", "parent": "<parent FK column on the child table>", "child": "<child key column>", "measure": "<scalar child attribute>", "color": "<optional attribute a2>", "color_type": "discrete | scalar" }
 ```
+
+The optional `color` (`a2`, paper Section 3) colours the child circles via the companion **`color_type`**: `"discrete"` → an **ordinal colour key**; `"scalar"` → a **sequential colour spectrum** over the numeric range. Absent `color` → the default (colour leaves by parent, unchanged).
 
 Never hard-code these names; always read them from the mapping at run time.
 
@@ -29,7 +31,7 @@ Build a **two-level hierarchy**: a synthetic root → one node per distinct `par
 
 - `d3.hierarchy(rootObject).sum(d => d.value || 0).sort((a, b) => b.value - a.value)`.
 - `d3.pack().size([innerW, innerH]).padding(3)` applied to the root, which assigns `x`, `y`, `r` to every node.
-- One `<circle>` per node: draw the parent circles (depth 1) as containers and the child circles (leaves) inside them; **colour leaves by their parent** so each parent's children share a hue. Add parent labels near each parent circle, child labels only when the circle is large enough to fit text, and full detail in a tooltip.
+- One `<circle>` per node: draw the parent circles (depth 1) as containers and the child circles (leaves) inside them; if `color` is mapped, colour leaves by it (discrete → ordinal key; scalar → sequential spectrum) with a small legend; otherwise **colour leaves by their parent** so each parent's children share a hue. Add parent labels near each parent circle, child labels only when the circle is large enough to fit text, and full detail in a tooltip.
 - `d3.hierarchy` / `d3.pack` are in the D3 v7 bundle — no extra plugin.
 
 ## Interaction (per the base contract)

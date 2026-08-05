@@ -1,0 +1,970 @@
+\chapter{Introduction}
+
+\section{Project Motivation}
+
+Data visualisation is an important technique for helping users understand complex datasets and discover meaningful patterns. However, many current data visualisation tools operate at a relatively low level of abstraction. In particular, users are often required to select tables, columns, transformations, and visual encodings directly from tabular data representations. This can be difficult for users who understand the real-world concepts in a domain, but are less familiar with the underlying database structure \cite{brientowards}.
+
+A key limitation of this table-centred approach is that it often ignores the conceptual model of the data. Conceptual models, such as Entity-Relationship (ER) schemas, describe data in terms of entities, relationships, attributes, and cardinality constraints \cite{brientowards}. These structures can provide important guidance for visualisation selection. For example, a many-many relationship represents an association where one instance of an entity can be related to multiple instances of another entity, and vice versa. In the Mondial database, the relationship between countries and continents is an example: one continent contains many countries, while some countries may be associated with more than one continent. Such structures are often more suitable for network-based visualisations \cite{brientowards}, because the visualisation needs to show links between two sets of related entities. Therefore, reasoning over conceptual schema structures can help bridge the gap between how users understand data and how visualisation tools represent it internally.
+
+Previous work by McBrien and Poulovassilis proposed the use of visualisation schema patterns to connect conceptual data structures with suitable visualisations. This approach has also been implemented and explored in earlier systems such as Bull's schema-driven visualisation tool \cite{bull2023visualisation} and Hannan's VizER system \cite{hannan2024vizer}. However, existing approaches mainly rely on manually designed rules or explicit pattern-matching procedures. With recent advances in Large Language Models (LLMs), there is an opportunity to investigate whether LLMs can perform this type of schema-level reasoning automatically.
+
+This project explores the use of LLMs to reason over relational schemas, identify conceptual visualisation schema patterns, and select appropriate visualisations. Rather than requiring users to manually inspect tables and columns, the long-term goal is to support a more intuitive workflow in which a user can express a visualisation request in natural language, and the system can retrieve the relevant data, identify the underlying schema pattern, recommend a suitable visualisation, and generate an executable visualisation specification.
+
+The project uses the Mondial database \cite{mondial} as its primary experimental environment. Mondial is a large geographical database containing entities such as countries, cities, provinces, rivers, lakes, and religions, together with rich relationship and cardinality information. Its well-documented schema and diverse conceptual structures make it a suitable benchmark for evaluating schema-level reasoning, visualisation schema pattern identification, and automated visualisation recommendation.
+
+
+\section{Project Objectives}
+
+The main objective of this project is to investigate whether Large Language Models can be used to support conceptual-model-based data visualisation. Using the Mondial database as a case study, the project focuses on whether LLMs can reason about relational schema information, including primary keys, foreign keys, and cardinality-related structures, and use this reasoning to identify appropriate visualisation schema patterns.
+
+
+The project has four main objectives:
+
+\begin{itemize}
+    \item To represent the Mondial database schema in a machine-readable format that can be provided to an LLM as context.
+
+    \item To evaluate whether LLMs can reason over selected tables and attributes and correctly classify them into visualisation schema patterns, including Basic Entity, Weak Entity, One-Many Relationship, Many-Many Relationship, and Reflexive Relationship.
+
+    \item To investigate whether LLMs can recommend suitable visualisations based on the identified schema patterns and generate structured outputs that can be used by a visualisation library.
+
+    \item To extend the current schema pattern identification approach towards an end-to-end natural-language-to-visualisation pipeline, including natural language query interpretation, data retrieval, visualisation recommendation, and visualisation specification generation.
+\end{itemize}
+
+The initial stage of the project focuses on prompt-based schema reasoning over the Mondial database. Later stages will investigate visualisation generation and interaction. The project will also consider whether prompt engineering is sufficient for this task or whether training or fine-tuning a custom model is required.
+
+The expected final output is a prototype system that demonstrates how LLM-based agents can assist data visualisation by using conceptual schema information rather than relying only on low-level tabular data. The success of the project will be evaluated through the accuracy of schema pattern identification, the appropriateness of visualisation recommendations, and the ability of the system to generate executable visualisations from user requests.
+
+% \chapter{Background}
+\chapter{Literature Review}
+\section{Data Visualisation}
+\subsection{The Grammar of Graphics}
+
+Traditional visualisation systems are commonly organised around predefined chart types such as bar charts, pie charts, and line charts. In these systems, visualisation design is typically treated as the selection of a fixed chart template. However, this chart-centred approach limits flexibility and makes it difficult to represent more complex relationships within data. From a practical perspective, chart-based systems can only provide a limited number of predefined visualisations, making it difficult to support the diversity of real-world data analysis tasks \cite{wilkinson2005grammar}. In addition, treating each chart as an independent object often leads to unnecessarily complex system design, since similar graphical operations cannot be efficiently reused across different chart types \cite{wilkinson2005grammar}. Extending such systems with new visualisations therefore requires additional specialised code, reducing both flexibility and scalability. 
+
+To address this limitation, Wilkinson introduced \textit{The Grammar of Graphics} \cite{wilkinson2005grammar}, which provides a formal and systematic framework for constructing visualisations through compositional rules rather than predefined chart categories. The concept of ``grammar'' was influenced by Chomsky's transformational grammar theory \cite{chomsky2002syntactic}, where grammar is defined as a formal system of rules capable of generating valid expressions in a language. Chomsky \cite{chomsky2014aspects} argued that diverse natural language expressions can be explained through an underlying deep grammatical structure, and Wilkinson extended this idea to statistical graphics. Under this framework, visualisations are interpreted as combinations of reusable graphical components and transformations instead of isolated chart types. This perspective enables diverse visualisations to be generated systematically from reusable primitives, while also revealing structural relationships between different visual forms. 
+
+Wilkinson further organises visualisation generation into a sequence of interconnected and ordered components, beginning with the data source. The diagram~\ref{fig:fromdatatochart} illustrates how a chart is constructed within Wilkinson’s framework. Each stage of the process is explained below:
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{flowchart.png}
+\caption{Data-flow diagram of chart construction in Wilkinson’s framework. Source: \cite{wilkinson2005grammar}.}
+\label{fig:fromdatatochart}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Variables:} Variables are the data attributes selected from the original data source and a set of variables are called a \textbf{Varset} \cite{wilkinson2005grammar}. They determine what information will be represented, such as numerical measurements, categories, or labels. For example, variables such as population, income, or country name may be extracted from a dataset for further visual encoding. Transformations are included in this step to make meaningful statistical operations and enable the creation of new variables, aggregates, and other forms of summaries.
+
+    \item \textbf{Algebra:} Algebra defines the operations that allow us to combine variables and specify dimensions of graphs \cite{wilkinson2005grammar}. Wilkinson proposed three basic operators that are necessary and sufficient for statistical graphics: cross, blend, and nest, which can be implemented in SQL through operations such as \texttt{INNER JOIN}, nested queries, and \texttt{UNION ALL}, respectively. Based on these fundamental operators, more complex operations can then be constructed, such as exponentiation and dot-cross. This determines the logical structure of the graphic before visual representation takes place.
+
+    \item \textbf{Scales:} Scales maps a set of variables into visual measurement spaces \cite{wilkinson2005grammar}. It determines how numerical or categorical variables are translated into positions, sizes, colours, shapes, or other visual properties within a graphic. Wilkinson also introduces scale transformations, such as logarithmic and power transformations, which modify the representation of data while preserving important relationships. These transformations are not merely aesthetic adjustments, but analytical tools that help reveal patterns, compress extreme values, or improve interpretability.
+    
+    \item \textbf{Statistics:} Statistics are responsible for transforming raw data into more meaningful representational forms before graphical rendering \cite{wilkinson2005grammar}. These statistical methods, including bin, summary, region, smooth, and link, help reveal patterns, trends, and structures that may not be immediately visible in the raw dataset \cite{wilkinson2005grammar}. By integrating statistical computation into the visualisation grammar, graphics can represent both raw observations and derived summaries in a consistent and systematic manner.
+
+    \item \textbf{Geometry:} Geometry defines the geometric objects used to represent data in a visualisation \cite{wilkinson2005grammar}. Wilkinson groups these objects into three categories: functions, partitions, and networks. Functions include points, lines, areas, intervals, and paths. Partitions divide data into regions using polygons and contours, and networks represent relationships through connected edges. By building graphics from a small set of geometric primitives rather than predefined chart types, its provides a flexible framework for creating diverse visualisations. Wilkinson also introduces collision modifiers, such as stacking, dodging, and jittering, to reduce overlap between graphical elements.
+
+    \item \textbf{Coordinates:} Coordinates define the spatial framework in which geometric objects are displayed \cite{wilkinson2005grammar}. Wilkinson separates coordinate systems from geometric objects, allowing the same geometry to be represented in different ways through transformations of the underlying space. By treating coordinates as an independent component of the visualisation grammar, the same data and geometry can produce different visual representations without altering their underlying structure.
+
+    \item \textbf{Aesthetics:} Aesthetics define the visual attributes used to perceive and distinguish geometric objects \cite{wilkinson2005grammar}. Wilkinson describes how data can be mapped to visual channels such as size, shape, colour, texture, and transparency, enabling graphical elements to convey additional information beyond their geometric position. By separating aesthetics from geometry, the Grammar of Graphics allows the same geometric structure to be represented through different visual encodings.
+
+\end{itemize}
+
+Another important aspect of the Grammar of Graphics is its declarative specification paradigm. Unlike imperative libraries such as Matplotlib, where users explicitly define drawing procedures step by step, declarative approaches describe the relationships between data and visual representations while leaving rendering details to the underlying system \cite{heer2010declarative}. Wilkinson formalised this idea through six specification statements: DATA, TRANS, SCALE, COORD, ELEMENT, and GUIDE. This framework has had a significant influence on modern visualisation systems, including ggplot2 \cite{wickham2011ggplot2, wickham2016ggplot2} and Vega-Lite \cite{satyanarayan2016vega}, which enable users to specify what should be visualised rather than how it should be rendered.
+
+The Grammar of Graphics has become one of the theoretical foundations of modern visualisation specification languages and automatic visualisation systems. Many widely used visualisation frameworks are built upon its compositional and declarative design principles \cite{heer2010declarative}. By representing visualisations as structured combinations of reusable components, the framework enables computational reasoning over visualisation design and supports flexible visualisation generation beyond predefined chart templates.
+
+This perspective is particularly important for this schema-based and LLM-driven visualisation project, where the objective is not only to select chart types, but also to reason over data structures, schema patterns, and visualisation composition. In this project, the Grammar of Graphics forms an important conceptual foundation for constructing visualisations and for exploring whether Large Language Models can perform schema-level reasoning to automatically generate appropriate visualisations.
+
+\subsection{Visualisation Specification Languages}
+Visualisation specification languages provide a structured and declarative approach to visualisation design. Instead of explicitly defining rendering procedures, users specify the relationships between data and visual encodings, while the underlying system determines how the visualisation is executed. By separating specification from execution, declarative languages simplify visualisation development while enabling system-level optimisation and cross-platform deployment \cite{heer2010declarative}. Most modern visualisation specification languages are influenced by Wilkinson’s Grammar of Graphics \cite{wilkinson2005grammar} or extensions of its underlying principles.
+
+One of the earliest direct implementations of the Grammar of Graphics was GPL, used in IBM SPSS Statistics \cite{ibm2023gpl}. GPL introduced a formal grammar-based framework for specifying graphics through structured statements defining data sources, scales, guides, and graphical elements. However, GPL is considered relatively low-level and requires detailed specification from the user, resulting in a steep learning curve \cite{hannan2024vizer}.
+
+To simplify the construction of statistical graphics, Wickham introduced ggplot2 and the concept of the layered grammar of graphics, an extension and reorganisation of Wilkinson’s Grammar of Graphics \cite{wickham2011ggplot2,wickham2016ggplot2}. Rather than introducing new graphical components, the layered grammar reorganises Wilkinson's framework around the concept of layers, where data, mappings, statistical transformations, and geometric objects are combined into self-contained visual units \cite{wickham2010layered}.  This layer-based structure simplifies the construction and modification of graphics while retaining the flexibility of grammar-based visualisation design. Nevertheless, ggplot2 is primarily designed for static statistical graphics and remains tightly coupled to the R programming language.
+
+While grammar-based approaches focus on declarative visual specifications, D3 adopts a lower-level data-driven approach to visualisation design \cite{bostock2011d3}. Rather than introducing a new graphical grammar, D3 enables developers to directly bind data to native web document elements and manipulate them through JavaScript transformations. By operating directly on the Document Object Model (DOM), D3 provides exceptional flexibility, compatibility with existing web standards, and support for rich interaction and animation\cite{bostock2011d3}. However, this flexibility comes at the cost of increased implementation complexity, as users must explicitly specify visual structures and rendering behaviour. The expressive power of D3 made it highly influential for web-based visualisation, but its relatively low level of abstraction motivated the development of higher-level declarative grammars such as Vega \cite{vega2025} and Vega-Lite \cite{satyanarayan2016vega}.
+
+Vega and Vega-Lite represent two influential declarative visualisation grammars that occupy different positions in the design space of visualisation specification languages. Vega is a low-level visualisation grammar that represents visualisations through structured JSON specifications, providing fine-grained control over data transformations, scales, graphical marks, and interactive behaviours \cite{vega2025}. This flexibility makes Vega suitable for highly customised visualisations and visual analytics systems, but often results in relatively verbose specifications. Vega-Lite was introduced as a higher-level grammar of interactive graphics that prioritises conciseness and rapid authoring \cite{satyanarayan2016vega}. It represents visualisations through compact encoding specifications and view composition operators while relying on rule-based defaults to infer unspecified details. Vega-Lite specifications are automatically compiled into lower-level Vega specifications, sacrificing some expressive power in exchange for substantially simpler and more readable specifications. Consequently, Vega and Vega-Lite illustrate the broader trade-off between expressive flexibility and specification simplicity in visualisation language design.
+
+A different approach to visualisation specification was introduced through Tableau's VizQL \cite{mackinlay2007show}, which integrates data querying and visual specification within a single framework. Rather than requiring users to explicitly define queries or graphical properties, VizQL translates interactive actions, such as dragging fields onto rows, columns, or encoding shelves, into visual queries that simultaneously determine both the underlying database operations and the resulting visual representation. In this way, VizQL serves as a bridge between relational data and visualisation, describing not only how data should be displayed but also how the required data should be retrieved and aggregated. This abstraction significantly lowers the barrier to creating visualisations and laid the foundation for automatic visualisation recommendation systems.
+
+Together, these languages illustrate the diversity of approaches to visualisation specification. GPL and ggplot2 extend the principles of the Grammar of Graphics through declarative grammar-based design, D3 emphasises direct manipulation and flexibility for web-based visualisation, Vega and Vega-Lite explore different trade-offs between expressive power and specification simplicity, while VizQL integrates visualisation specification with database querying. Despite their differences, all of these approaches aim to represent visualisations in a structured form that separates design intent from implementation details. This structured representation provides an important foundation for automated visualisation systems, enabling visualisations to be generated, analysed, and recommended programmatically.
+
+
+
+\section{Conceptual Modelling of Relational Data}
+\subsection{ER Schemas}
+The Entity-Relationship (ER) schema is a conceptual modelling approach used to represent the semantics of an application domain independently of its implementation in a relational database. Rather than describing data in terms of tables and columns, the ER schema captures the conceptual structure of an application domain through entities, relationships, attributes, and cardinality constraints. Entities correspond to classes of real-world objects or concepts, relationships describe associations between entities, attributes provide descriptive information about entities or relationships, and cardinality constraints specify participation restrictions between related entities. These core components can be defined as follows:
+
+\begin{itemize}
+    \item \textbf{Entity:} An entity $E$ represents a set of objects that conceptually belong to the same type of thing. In ER schemas, entities are typically identified from nouns that describe the objects within the application domain \cite{mcbrien_er_modelling}.
+
+    \item \textbf{Relationship:} A relationship $R$ represents a set of tuples of objects, where each tuple corresponds to a conceptual association between entities $E_1$, $E_2$. Relationships are commonly identified from verbs in the application domain \cite{mcbrien_er_modelling}.
+
+    \item \textbf{Attribute:} Attributes describe the properties of entities or relationships \cite{ware2004information}. Attributes may be classified as mandatory, optional, or key attributes. Mandatory attributes are defined for every entity instance, optional attributes may be absent for some instances, and key attributes uniquely identify entities within an entity set \cite{mcbrien_er_modelling}.
+
+    \item \textbf{Cardinality Constraints:} Cardinality constraints specify the minimum and maximum number of times an entity may participate in a relationship. An upper bound constraint defines the maximum number of relationship instances in which an entity can appear, while a lower bound constraint defines the minimum number of required participations \cite{mcbrien_er_modelling}.
+\end{itemize}
+
+In addition to entities, relationships, attributes, and cardinality constraints, ER schemas may also represent subset or ISA (is-a) hierarchies. A subset constraint indicates that the instances of one entity form a subset of another entity. For example, a \textit{manager} entity may be modelled as a specialised subset of the \textit{person} entity. Such hierarchies allow ER schemas to capture inheritance and specialisation relationships within a domain \cite{mcbrien_er_modelling}.
+
+The followwing Figure~\ref{fig:ERmodel} illustrates a simple ER schema involving three entities denoted by rectangles: \textit{person}, \textit{department}, and \textit{manager}. The \textit{person} entity has three attributes: \textit{salary\_number}, \textit{name}, and \textit{bonus}. The underlined attribute \textit{salary\_number} represents the key attribute used to identify each person. The question mark after \textit{bonus} indicates that this is an optional attribute, meaning that a bonus value may not be recorded for every person. Similarly, the \textit{department} entity is identified by the key attribute \textit{dname}, while the \textit{manager} entity has an additional attribute \textit{mobile number}.
+
+The diagram also contains a relationship, \textit{works in}, represented by a diamond between \textit{person} and \textit{department}. The cardinality constraint near \textit{person} is $1:1$, indicating that each person must participate in exactly one \textit{works in} relationship. In other words, every person works in one department. The cardinality constraint near \textit{department} is $0:N$, indicating that a department may have zero, one, or many persons associated with it.
+
+The diagram further includes a hierarchy, represented by the arrow from \textit{manager} to \textit{person}. This indicates that every manager is also a person, but not every person is necessarily a manager. The \textit{manager} entity therefore specialises the \textit{person} entity by adding information that is specific to managers, such as the \textit{mobile number} attribute. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\textwidth]{ER.png}
+    \caption{Example Entity-Relationship Schema. Source: \cite{mcbrien_er_modelling}.}
+    \label{fig:ERmodel}
+\end{figure}
+
+The ability of ER schemas to explicitly represent entities, relationships, attributes, and cardinalities makes them particularly suitable for schema-level reasoning. The concepts introduced above form the basis for the Mondial database, which is used throughout this project as the primary evaluation dataset. Mondial is a large geographical database containing entities such as countries, cities, provinces, rivers, lakes, languages, and religions, together with rich relationship and cardinality information. Its conceptual ER schema provides a realistic benchmark for evaluating schema-level reasoning and visualisation pattern matching.
+
+\subsection{Visualisation Schema Patterns}
+McBrien and Poulovassilis \cite{brientowards} proposed a set of visualisation schema patterns that establish a conceptual mapping between ER schema and visualisations. A visualisation schema pattern describes a recurring conceptual structure within an ER schema and the classes of visualisations that are suitable for representing that structure.
+
+The approach is based on the observation that different ER structures naturally support different forms of visual representation. By matching subgraphs of an ER schema against predefined visualisation patterns, it becomes possible to identify visualisations that are structurally compatible with the underlying data model. This allows visualisation recommendations to be guided by conceptual schema information rather than solely by individual data attributes.
+
+Based on an analysis of common visualisation techniques, five visualisation schema patterns were identified: Basic Entity, Weak Entity, One-Many Relationship, Many-Many Relationship, and Reflexive Relationship \cite{brientowards}. Each pattern corresponds to a particular ER structure and is associated with one or more visualisation types. Figure~\ref{fig:schema_patterns} summarises the five visualisation schema patterns and their associated visualisations.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{schema_patterns.png}
+    \caption{ER Schema Patterns and Recommended Visualisations Adapted from McBrien and Poulovassilis \cite{brientowards}}
+    \label{fig:schema_patterns}
+\end{figure}
+
+These visualisation schema patterns form the conceptual foundation of the schema-driven visualisation recommendation approach adopted in this project. The identification of schema patterns from ER schemas is therefore a key step in the subsequent visualisation selection process.
+
+% \subsection{Reverse engineering ER from relational schemas}
+
+\section{LLMs for Schema Reasoning and Visualisation}
+
+Large Language Models (LLMs) have demonstrated strong capabilities in natural language understanding \cite{brown2020language}, reasoning \cite{wei2022chain}, code generation \cite{chen2021evaluating}, and structured prediction \cite{wang2025gpt}. Recent research suggests that these capabilities can be extended beyond traditional language tasks to support reasoning over structured data \cite{ye2023large}, database schemas \cite{yu2018spider,gao2023text}, and visualisation workflows \cite{dibia2023lida}. This section reviews the key concepts underlying the use of LLMs for schema reasoning and visualisation generation.
+
+\subsection{Prompt Engineering and Structured Output}
+
+Large Language Models (LLMs) can often be adapted to new tasks without additional model training through prompt engineering \cite{brown2020language}. More broadly, prompting has emerged as a new paradigm for natural language processing, often referred to as prompt-based learning \cite{liu2023pre}. Unlike traditional supervised learning, which directly learns a mapping from inputs to task-specific outputs, prompt-based learning reformulates downstream tasks into forms that resemble the language modelling objectives used during pre-training. By transforming an input into a carefully designed prompt, the model can leverage knowledge acquired during large-scale pre-training to perform new tasks with little or no task-specific training \cite{liu2023pre}.
+
+Prompt engineering refers to the process of designing and refining prompts to guide a model towards a desired behaviour. A prompt may contain task instructions, contextual information, examples, constraints, or reasoning guidance that help the model interpret the user's objective and generate appropriate outputs. The quality and structure of prompts can have a significant influence on model performance, as prompts effectively define how a task is presented to the language model \cite{liu2023pre}.
+
+The effectiveness of prompt engineering is closely related to the in-context learning capability of modern LLMs, whereby task-specific behaviour can be induced directly from information contained within the prompt rather than through parameter updates \cite{brown2020language}. Consequently, prompt engineering has become a widely adopted approach for adapting general-purpose language models to specialised tasks, including question answering, information extraction, reasoning, code generation, and data analysis.
+
+Several prompting strategies have been proposed in the literature and are illustrated in Figure~\ref{fig:prompttype}. Zero-shot prompting provides only task instructions and relies entirely on the model's pre-trained knowledge to perform a task without demonstrations \cite{kojima2022large}. Few-shot prompting extends this approach by incorporating a small number of input-output examples within the prompt, enabling the model to infer the desired task format and behaviour through demonstration \cite{brown2020language}. Chain-of-thought (CoT) prompting further improves reasoning performance by encouraging the model to generate intermediate reasoning steps before producing a final answer, making complex reasoning processes more explicit and interpretable \cite{wei2022chain}. These prompting techniques have been shown to substantially improve performance across a wide range of reasoning and problem-solving tasks and have become fundamental components of many contemporary LLM-based systems.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{prompttype.png}
+    \caption{Examples of zero-shot, zero-shot-CoT, few-shot, and few-shot-CoT prompting. Adapted from Kojima et al.~\cite{kojima2022large}.}
+    \label{fig:prompttype}
+\end{figure}
+
+For many applications, prompts are designed not only to guide model behaviour but also to constrain the format of generated outputs. Structured output prompting requires LLMs to produce responses in machine-readable formats such as JSON, SQL, or XML, enabling integration with external software systems and automated processing pipelines \cite{willard2023efficient}. This capability is particularly important in data-driven applications, where model outputs must often be consumed by downstream analytical or visualisation tools.
+
+The ability of prompt engineering to elicit reasoning without additional model training is particularly relevant to this project. Different prompting strategies may significantly influence an LLM's ability to perform complex reasoning tasks and generate structured outputs. Consequently, prompt design forms a key component of the proposed approach and will be evaluated as part of the system development and experimentation.
+
+\subsection{LLMs over Structured and Tabular Data}
+Although large language models were originally developed for natural language processing tasks, they have increasingly been applied to structured and tabular data. A representative research direction is Text-to-SQL parsing, where a natural language question is translated into an executable SQL query over a relational database \cite{qin2022survey}. This task is important because it allows non-technical users to access relational data without manually writing SQL queries.
+
+Text-to-SQL is not only a language generation task, but also a schema reasoning task. In order to generate a correct SQL query, the model must understand both the user's question and the structure of the underlying database schema. This includes identifying relevant tables and columns, linking natural language expressions to schema items, and reasoning over primary keys, foreign keys, column types, and join paths \cite{qin2022survey}. For example, if a question mentions provinces in a country, the model may need to infer that the province table should be joined with the country table through a foreign-key relationship.
+
+Modern Text-to-SQL methods therefore place strong emphasis on schema linking and schema structure modelling \cite{qin2022survey}. Schema linking refers to the process of aligning words or phrases in the natural language question with tables, columns, or values in the database. Schema structure modelling, by contrast, focuses on the internal organisation of the database itself, such as which columns belong to which tables and how tables are connected through primary-key and foreign-key relationships. Recent approaches such as RAT-SQL \cite{wang2020rat}, SADGA \cite{cai2021sadga} and LGESQL \cite{cao2021lgesql} represent the question and database schema as graph structures, where nodes may correspond to question tokens, tables and columns, and edges encode relations such as table-column membership, foreign-key links, and question-schema alignments. This graph-based encoding allows models to reason explicitly over relational structure rather than treating the schema as a flat sequence of text.
+
+Large benchmark datasets have played an important role in evaluating these capabilities. In particular, Spider \cite{yu2018spider} has become a standard cross-domain Text-to-SQL benchmark because it requires models to generalise to unseen databases and reason over complex schemas across different domains. Compared with earlier datasets such as WikiSQL \cite{zhong2017seq2sql}, which mainly contains simpler single-table queries, Spider better reflects the challenge of understanding multi-table relational schemas and generating complex SQL queries.
+
+These developments are relevant to this project because they show that successful language-based interaction with structured data requires more than surface-level text understanding. Models must reason about the conceptual and relational structure behind the data. While Text-to-SQL systems aim to map natural language questions to SQL queries, this project focuses on mapping user intent and relational schema information to appropriate visualisation schema patterns. Therefore, research on schema linking, schema reasoning, and graph-based schema encoding provides an important foundation for using LLMs to support ER-driven visualisation recommendation.
+
+\subsection{LLM-based Visualisation Systems}
+
+Recent advances in Large Language Models (LLMs) have stimulated growing interest in applying language-based reasoning to visualisation tasks. Unlike traditional visualisation systems that often rely on handcrafted rules, specialised recommendation algorithms, or task-specific machine learning models, LLM-based approaches utilise prompt engineering to guide pre-trained models towards generating visualisations, visualisation specifications, or visual analytics insights.
+
+An important precursor to this trend is NL4DV \cite{narechania2020nl4dv}, which translates natural language queries into analytic specifications consisting of relevant data attributes, analytic tasks, and Vega-Lite visualisations. Although developed before the widespread adoption of modern foundation models, NL4DV illustrates the importance of semantic interpretation in connecting user intent with visualisation generation.
+
+Subsequent work explored the direct use of large language models for visualisation generation. Chat2VIS \cite{maddigan2023chat2vis} demonstrates that GPT-3 can generate visualisations directly from free-form natural language queries. By replacing complex natural language processing pipelines with prompt-guided code generation, the system highlights the potential of LLMs as end-to-end interfaces for visualisation authoring.
+
+Similarly, LIDA \cite{dibia2023lida} extends the role of language models beyond visualisation generation to support multiple stages of the visualisation workflow. The framework combines dataset summarisation, visualisation goal exploration, visualisation generation, and infographic creation within a unified LLM-driven pipeline. This work demonstrates how prompt-guided reasoning can support not only chart generation but also higher-level visual analytics tasks.
+
+LLM4Vis \cite{wang2023llm4vis} further investigates the use of prompting for visualisation recommendation. Instead of training task-specific recommendation models, the system converts dataset characteristics into natural language descriptions and employs few-shot prompting to recommend visualisation types and provide textual explanations for its recommendations.
+
+Taken together, these systems demonstrate that prompt-engineered LLMs can effectively support visualisation generation, recommendation, and interaction. However, their reasoning processes remain primarily grounded in natural language descriptions, dataset summaries, and column-level data characteristics. Relatively little attention has been given to whether LLMs can reason directly over conceptual database schemas and their structural semantics.
+
+\section{Related Work}
+
+\subsection{Automated Visualisation Recommendation}
+
+Automated visualisation recommendation seeks to assist users in selecting effective visual representations by automatically recommending chart types, visual encodings, or complete visualisation specifications. Research in this area has evolved from rule-based approaches towards machine learning and knowledge-driven recommendation techniques.
+
+One of the earliest systems was Mackinlay’s APT \cite{mackinlay1986automating}, which formalised graphical design knowledge and selected visual encodings according to perceptual effectiveness criteria. This work established the idea that visualisation design principles could be represented explicitly and applied automatically.
+
+Later systems such as Tableau Show Me \cite{mackinlay2007show}, Voyager \cite{wongsuphasawat2015voyager}, and Voyager 2 \cite{wongsuphasawat2017voyager} extended this rule-based paradigm by recommending visualisations based on attribute characteristics, partial visualisation specifications, and design constraints. These systems support exploratory data analysis by helping users navigate large visualisation design spaces and identify potentially useful visual representations.
+
+Other approaches focus on identifying informative or interesting views within a dataset. SeeDB \cite{vartak2015seedb}, for example, recommends visualisations by identifying deviations between target and reference data distributions, automatically surfacing views that are likely to reveal meaningful patterns.
+
+More recently, machine learning approaches have sought to reduce reliance on handcrafted rules. VizML \cite{hu2019vizml} formulates visualisation recommendation as a collection of prediction tasks, using statistical properties extracted from tabular datasets to infer chart types and visual encodings. KG4Vis \cite{li2021kg4vis} incorporates visualisation design knowledge through a knowledge graph representation, improving both recommendation quality and interpretability.
+
+% Despite substantial differences in implementation, these systems share a common assumption: visualisation recommendations should be derived primarily from tabular data and attribute-level features. Consequently, recommendation decisions are typically based on data types, value distributions, correlations, cardinalities, and attribute names, with limited consideration of the conceptual structure of the underlying data model.
+
+% \subsection{Conceptual Modelling-based Visualisation}
+
+% While most visualisation recommendation systems operate on tabular data representations, an alternative line of research investigates how conceptual models can guide visualisation design. This approach argues that users are often more familiar with the conceptual structure of their data than with its relational representation and therefore may benefit from visualisation recommendations derived from conceptual schemas rather than database tables.
+
+% McBrien and Poulovassilis first introduced this idea in their work on conceptual modelling-based visualisation \cite{mcbrien2018er}. Rather than selecting visualisations directly from relational tables, they proposed identifying recurring conceptual structures, referred to as visualisation schema patterns, within Entity-Relationship (ER) schemas. Each schema pattern is associated with a set of suitable visualisation types, allowing visualisation selection to be performed at the conceptual level rather than the relational level.
+
+% This approach was further developed in a subsequent technical report \cite{mcbrien2018technical}, which expanded the definition of visualisation schema patterns and explored how conceptual structures could be systematically mapped to visual representations. The authors demonstrated that entities, relationships, cardinality constraints, and weak entity structures could provide useful information for visualisation selection.
+
+% Later work extended the approach to linked data environments. McBrien and Poulovassilis \cite{mcbrien2019linkeddata} showed that similar conceptual modelling principles could be applied to linked data schemas, enabling visualisation recommendations based on semantic relationships between classes and properties.
+
+% Several student projects subsequently implemented prototype systems based on these ideas. Bull \cite{bull2023thesis} developed a schema-driven visualisation system capable of identifying visualisation schema patterns from database schemas and recommending corresponding visualisations. More recently, Hannan's VizER system \cite{hannan2024vizer} expanded the implementation and provided an interactive framework for conceptual modelling-based visualisation recommendation.
+
+% Collectively, these works establish the feasibility of using conceptual schemas as the basis for visualisation selection. However, pattern identification and visualisation selection remain largely dependent on manually designed rules and pattern-matching procedures. Consequently, the scalability and flexibility of these approaches may be limited when applied to complex schemas or previously unseen schema structures.
+
+\subsection{Research Gap}
+
+Automated visualisation recommendation systems have developed increasingly sophisticated methods for selecting visualisations from tabular data, progressing from rule-based systems to machine learning and, more recently, LLM-based approaches. However, these systems typically reason about attributes, values, and statistical properties rather than conceptual schema structures.
+
+Conversely, conceptual modelling-based visualisation research has demonstrated that entities, relationships, weak entities, and cardinality constraints can provide valuable guidance for visualisation selection \cite{brientowards}. Nevertheless, existing implementations rely primarily on manually constructed rules and explicit pattern-matching procedures to identify visualisation schema patterns \cite{bull2023visualisation, hannan2024vizer}.
+
+At the same time, recent advances in large language models have demonstrated strong capabilities in structured data understanding, schema reasoning, and prompt-guided decision making. Yet relatively little research has investigated whether these capabilities can be applied to conceptual schema analysis and visualisation schema pattern identification.
+
+Therefore, this project investigates whether prompt-engineered LLMs can reason directly over conceptual schemas, identify visualisation schema patterns, and recommend appropriate visualisations based on conceptual relationships. By combining conceptual modelling with modern language models, the project aims to bridge the gap between schema-level semantics and automated visualisation design.
+
+% \chapter{PROJECT X}
+\chapter{Technical Achievements}
+
+% \section{Methodology}
+% \subsection{Mondial Dataset}
+
+% This project uses the Mondial database as the primary benchmark dataset.
+% Mondial is a large integrated geographical database containing information
+% about countries, cities, rivers, lakes, mountains, organisations, languages,
+% religions and other geographical entities.
+% \begin{figure}[h] 
+%     \centering 
+%     \includegraphics[width=\textwidth]{mondial_ER.png} 
+%     \caption{Data-flow diagram of chart construction in Wilkinson's framework.} \label{fig:mondial-er} 
+% \end{figure}
+% Figure~\ref{fig:mondial-er} presents the conceptual ER schema of Mondial.
+
+Several key components of the proposed system have been developed and evaluated during the first stage of the project. The work completed so far focuses on enabling LLMs to identify schema patterns from relational schema information.
+
+\section{Mondial Schema Representation}
+
+The experiments conducted in this project are based on the Mondial database. In order to support automated schema reasoning, structural information was extracted from the database and transformed into a machine-readable representation. For each table, the extracted metadata includes:
+
+\begin{itemize}
+\item table names;
+\item column names;
+\item data types;
+\item primary keys;
+\item foreign-key relationships.
+\end{itemize}
+
+The extracted schema information was represented in JSON format and provided as context to the LLM. This representation preserves the structural relationships between tables while remaining independent of any particular database implementation. By explicitly providing key constraints and relationships, the model is able to reason about conceptual structures that are not directly visible from the selected tables and attributes alone.
+
+\section{Schema Pattern Identification Framework}
+
+The primary technical objective completed during this stage was the development of a schema pattern identification framework.
+
+Given a set of selected tables and attributes, the system aims to determine which schema pattern best describes the selected data. The classification task is based on the five schema patterns identified in previous work:
+
+\begin{itemize}
+\item Basic Entity;
+\item Weak Entity;
+\item One-Many Relationship;
+\item Many-Many Relationship;
+\item Reflexive Relationship.
+\end{itemize}
+
+The framework uses prompt engineering techniques to guide the reasoning process of the LLM. For each test case, the model is provided with:
+
+\begin{itemize}
+\item the Mondial schema information (served as context information);
+\item definitions about five schema patterns (served as context information)
+\item selected table names;
+\item selected attribute names.
+\end{itemize}
+
+The model is then required to classify the input into one of the five schema patterns. Unlike conventional Text-to-SQL systems, which use schema information to generate executable database queries, the proposed framework uses relational schema information to infer higher-level conceptual modelling structures. The objective is not to generate SQL queries, but rather to bridge the gap between relational database representations and conceptual visualisation schema patterns.
+
+\section{Experimental Evaluation}
+
+An initial evaluation was conducted using nine test cases derived from previous student projects based on the Mondial database. Each test case consists of a set of selected tables and attributes together with a ground-truth visualisation schema pattern. The objective was to determine whether the LLM could correctly infer the conceptual schema pattern from relational schema information alone.
+
+\begin{table}[htbp]
+\centering
+\label{tab:schema_pattern_test_cases}
+
+\small
+
+\begin{tabularx}{\textwidth}{|l|X|X|X|c|}
+\hline
+\textbf{Chosen Table}
+&
+\textbf{Chosen Columns}
+&
+\textbf{Groundtruth}
+&
+\textbf{Identified Pattern}
+&
+\textbf{PASS/FAIL?}
+\\
+\hline
+
+Country &
+code, population &
+Basic &
+Basic &
+PASS \\
+\hline
+
+Lake &
+name, depth, elevation, dam\_height &
+Basic &
+Basic &
+PASS \\
+\hline
+
+Organisation &
+abbreviation, established &
+Basic &
+Basic &
+PASS \\
+\hline
+
+Economy &
+country, gdp, unemployment &
+Basic with inherited key &
+Basic with inherited key &
+PASS \\
+\hline
+
+Country Population &
+country, year, population &
+Weak &
+Weak &
+PASS \\
+\hline
+
+Ethnic Group &
+country, name, percentage &
+Weak &
+Weak &
+PASS \\
+\hline
+
+Airport &
+iata\_code, island, elevation &
+One-Many &
+One-Many &
+PASS \\
+\hline
+
+Encompasses &
+country, continent, percentage &
+Many-Many &
+Many-Many &
+PASS \\
+\hline
+
+Borders &
+country1, country2, length &
+Reflexive Many-Many &
+Reflexive Many-Many &
+PASS \\
+\hline
+
+\end{tabularx}
+\caption{Test Cases for Schema Pattern Identification}
+\end{table}
+
+Table~\ref{tab:schema_pattern_test_cases} summarises the evaluation results. The experiments demonstrate that the proposed approach correctly identified the schema pattern for all test cases. These results provide initial evidence that LLMs can successfully reason over relational schema structures and infer schema patterns.
+
+
+
+% \chapter{Evaluation}
+
+\chapter{Project Plan}
+
+The remaining stages of the project will focus on extending the current schema pattern identification prototype into a complete natural-language-to-visualisation system.
+
+\begin{figure}[h]
+\centering
+
+\begin{tikzpicture}[
+    node distance=0.9cm,
+    every node/.style={
+        rectangle,
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=6cm,
+        minimum height=0.8cm
+    },
+    arrow/.style={->, thick}
+]
+
+\node (query) {User Query};
+
+\node (text2sql) [below=of query]
+{LLM\\(Text-to-SQL)};
+
+\node (sql) [below=of text2sql]
+{SQL Query};
+
+\node (selection) [below=of sql]
+{Selected Tables + Attributes};
+
+\node (pattern) [below=of selection]
+{Schema Pattern Identification};
+
+\node (conceptual) [below=of pattern]
+{Conceptual Visualisation Schema Pattern};
+
+\node (recommendation) [below=of conceptual]
+{Visualisation Recommendation};
+
+\node (specification) [below=of recommendation]
+{Visualisation Specification Generation};
+
+\node (visualisation) [below=of specification]
+{Final Charts};
+
+\draw[arrow] (query) -- (text2sql);
+\draw[arrow] (text2sql) -- (sql);
+\draw[arrow] (sql) -- (selection);
+\draw[arrow] (selection) -- (pattern);
+\draw[arrow] (pattern) -- (conceptual);
+\draw[arrow] (conceptual) -- (recommendation);
+\draw[arrow] (recommendation) -- (specification);
+\draw[arrow] (specification) -- (visualisation);
+
+\end{tikzpicture}
+
+\caption{Planned project pipeline.}
+\label{fig:planned_pipeline}
+
+\end{figure}
+
+
+Figure~\ref{fig:planned_pipeline} illustrates the planned system architecture. The schema pattern identification component has already been implemented and evaluated, while the remaining stages will focus on SQL generation, visualisation recommendation, and automatic visualisation generation.
+
+\section{Natural Language Query Interpretation}
+
+The next stage of the project will investigate how LLMs can transform natural language visualisation requests into executable SQL queries over the Mondial database.
+
+Rather than requiring users to manually specify tables and columns, the system will aim to automatically generate SQL queries from natural language requests. The generated SQL queries will then be analysed to identify the selected tables and attributes, which serve as inputs to the schema pattern identification framework developed in the first stage of the project.
+
+This approach enables the existing schema pattern identification component to be integrated into a complete natural-language-to-visualisation pipeline.
+
+\section{Visualisation Recommendation}
+
+Once the selected tables and attributes have been extracted from the generated SQL query, the schema pattern identification framework developed in the first stage of the project will be applied to determine the corresponding schema pattern.
+
+The project will then investigate whether LLMs can recommend appropriate chart types based on identified schema patterns. Previous work has proposed associations between schema patterns and suitable visualisations; however, it remains unclear whether an LLM can reliably perform this mapping automatically.
+
+Experiments will therefore be conducted to evaluate the extent to which LLM-generated recommendations align with visualisation schema patterns identified in prior research.
+
+The outcome of this stage will be a mapping from conceptual schema patterns to suitable visualisation recommendations, forming the basis for automatic chart selection.
+
+\section{Data Retrieval and Visualisation Generation}
+
+After a suitable visualisation has been selected, the corresponding SQL query will be executed to retrieve the required data from the Mondial database.
+
+The retrieved data and recommended chart type will then be translated into an executable visualisation specification. At this stage, the specific visualisation specification language has not yet been finalised and will be selected following further investigation of available frameworks and their suitability for automatic visualisation generation.
+
+The ultimate objective is to construct an end-to-end pipeline that transforms a natural language query into a visualisation through SQL generation, schema pattern identification, visualisation recommendation, data retrieval, and automatic visualisation specification generation.
+
+\section{Evaluation}
+
+Evaluation will initially focus exclusively on the Mondial database, which serves as the primary experimental environment for this project. Additional databases may be considered only if the proposed approach demonstrates reliable performance on Mondial. The evaluation will consider:
+
+\begin{itemize}
+\item schema pattern identification accuracy;
+\item correctness of generated SQL queries;
+\item visualisation recommendation accuracy;
+\item correctness of generated visualisation specifications;
+\item end-to-end task completion success rate.
+\end{itemize}
+
+Where possible, results will be compared against manually constructed ground-truth solutions and previous systems developed using the same conceptual modelling framework.
+
+\section{Timeline}
+Table \ref{tab:timeline} presents the timeline of this project. Please note that during the project's execution, the tasks may be adjusted and plan may be modified according to the actual situation.
+\begin{table}[htbp]
+\centering
+\small
+\label{tab:timeline}
+
+\begin{tabularx}{\textwidth}{|p{2.7cm}|X|}
+\hline
+\textbf{Period} &
+\textbf{Planned Activities}
+\\
+\hline
+
+May &
+Completed schema pattern identification experiments using  prompt engineering on Mondial test cases derived from previous student reports.
+\\
+\hline
+
+June -- Mid-June&
+Investigate visualisation recommendation based on identified schema patterns and evaluate the effectiveness of LLM-based chart selection. 
+\\
+\hline
+
+Mid-June--July &
+Test and compare the visualization results of different visualization specification languages, and select the best one.
+\\
+\hline
+
+July -- Mid-July &
+Develop a Text-to-SQL module capable of translating natural language visualisation requests into executable SQL queries.
+\\
+\hline
+
+Mid-July--August &
+Implement automatic data retrieval and visualisation specification generation to construct an end-to-end visualisation pipeline.
+\\
+\hline
+
+August -- Mid-August &
+Conduct end-to-end system evaluation on Mondial test cases and compare results against ground-truth solutions.
+\\
+\hline
+
+Mid-August -- September&
+Complete dissertation writing, system documentation, and final project submission.
+\\
+\hline
+
+\end{tabularx}
+\caption{Planned timeline for this project.}
+\end{table}
+
+\section{Definition of Success}
+
+The project will be considered successful if the final system can automatically transform natural language visualisation requests into meaningful visualisations through a pipeline consisting of SQL generation, conceptual schema pattern identification, visualisation recommendation, and automatic visualisation specification generation.
+
+In particular, success will be measured by the system's ability to generate correct SQL queries, identify appropriate conceptual visualisation schema patterns, recommend suitable chart types, and produce executable visualisation specifications without requiring users to manually inspect relational tables.
+
+A further indicator of success would be demonstrating that conceptual-model-based reasoning can support more appropriate visualisation recommendations than approaches that rely solely on relational schema information or tabular data structures.
+
+
+\chapter{Approach}
+\label{ch:approach}
+
+This chapter describes the design of the end-to-end system that transforms a user's data selection into an executable visualisation. It first sets out the application design, its requirements and target audience (Section~\ref{sec:app-design}), and gives a high-level view of the architecture (Section~\ref{sec:architecture}). It then introduces the ``LLM-as-compiler'' paradigm that underpins the whole pipeline (Section~\ref{sec:llm-compiler}), describes each of the three pipeline steps (Sections~\ref{sec:step1}--\ref{sec:step3}) and the natural-language front end that sits in front of them (Section~\ref{sec:nl-front-end}), and closes with the user journey and high-level design (Section~\ref{sec:user-journey}).
+
+\section{Application Design}
+\label{sec:app-design}
+
+The system takes a user's selection of data, a base table together with several selected columns, and produces an executable, web-based visualisation appropriate to the conceptual structure of that selection. It does so in three stages, mirroring the visualisation schema pattern approach that motivates the project: (1) identify the visualisation schema pattern of the selection; (2) recommend a chart type and produce an explicit mapping from schema fields to visual roles; and (3) generate a runnable visualisation from that mapping and the underlying data.
+
+\subsection{Design Requirements}
+\label{sec:design-requirements}
+
+Three requirements drive the design. First, the system should be \emph{reproducible}: a given selection should always yield the same pattern, the same recommendation, and the same visualisation, so that results can be trusted and compared across runs. Second, it should be \emph{honest to evaluate}: the model must never have sight of the ground-truth answers it is being scored against. Third, it should be \emph{extensible}: new charts and new patterns should be addable without disturbing the components that already work. As the following sections show, these three requirements motivated the central design decision of the project, treating the language model as a compiler that authors a program once, rather than as an executor invoked afresh on every case.
+
+\subsection{Target Audience}
+\label{sec:target-audience}
+
+The system is aimed at two overlapping groups. The first is domain experts and non-technical users who understand the conceptual model of their data, the entities and the relationships between them, far better than its tabular, relational representation, and who are consequently poorly served by tools that reason only over columns and rows. By recommending visualisations from the conceptual structure of a selection, the system meets these users where their understanding already lies. The second is researchers and developers who need an \emph{auditable} and \emph{extensible} pipeline: because each pipeline step is a small, readable, deterministic program rather than an opaque per-case model call, its behaviour can be inspected, tested, and extended with confidence.
+
+\section{High-Level Architecture}
+\label{sec:architecture}
+
+\emph{This section is to be completed. It will present a high-level architecture diagram of the pipeline, showing the compile-time authoring of the three deterministic programs and their run-time execution (Step~1 pattern identification $\rightarrow$ Step~2 chart recommendation and mapping $\rightarrow$ Step~3 visualisation generation), together with the optional natural-language front end and data-source layer that sit in front of them.}
+
+% \begin{figure}[h]
+%   \centering
+%   \includegraphics[width=\textwidth]{figures/architecture.pdf}
+%   \caption{High-level architecture of the end-to-end pipeline.}
+%   \label{fig:architecture}
+% \end{figure}
+
+\section{The LLM-as-Compiler Paradigm}
+\label{sec:llm-compiler}
+
+An earlier version of the project prompted the model to answer each case at run time. This exposed two well-known limitations of Large Language Models. First, their outputs are \emph{non-deterministic}: the same prompt can yield different answers on different runs, which conflicts with the reproducibility requirement. Second, their \emph{context window} is bounded, so inlining a full dataset into a prompt forces the data to compete for tokens with both the model's reasoning and its output, and can cause truncation.
+
+The project therefore adopted a different paradigm, at the direction of the supervisor: instead of asking the model to \emph{answer} each case, the model is asked, once, at ``compile time'', to \emph{author a deterministic Python program} that implements a pipeline step. That program is then reviewed, tested, and executed reproducibly, reading its data from disk at run time and never through the prompt. Because the program is a small, readable artefact, this also makes the system auditable in a way that opaque per-case responses are not, and the approach is a natural fit for the code-generation capability of modern models \cite{chen2021evaluating}.
+
+This shift dissolves two independent failure axes that afflicted the run-time approach. The \emph{context-budget} axis disappears, because data is read from disk at run time rather than inlined in the prompt; and the \emph{library-version} axis is pinned once per program, rather than being re-risked on every invocation. All three pipeline steps are realised in this way, as standard-library programs whose input and output contracts line up end-to-end, so that the output of one step feeds directly into the next with no intervening glue code.
+
+\section{Step 1 --- Pattern Identification}
+\label{sec:step1}
+
+Step~1 classifies a selection into one of six visualisation schema patterns: \texttt{basic\_entity}, \texttt{basic\_entity\_inherited\_key}, \texttt{weak\_entity}, \texttt{one\_many\_relationship}, \texttt{many\_many\_relationship}, and \texttt{reflexive\_many\_many\_relationship}. This refines the five-pattern taxonomy of McBrien and Poulovassilis \cite{brientowards} by separating a basic entity whose primary key is inherited from a parent (an is-a specialisation) from an ordinary basic entity, because the two are visually distinct and structurally easy to confuse.
+
+Classification reasons purely from the primary-key (PK) and foreign-key (FK) structure of a selection, never from the natural-language meaning of table or column names. Crucially, only the \emph{selected} columns count: a foreign key is relevant only when its column is one of the selected columns, and a primary-key column counts only when it is selected. The minimum meaningful selection is a primary key together with at least one further attribute, so that there is something to plot. The six patterns are identified as follows, with examples drawn from the Mondial database used throughout this project.
+
+\paragraph{Basic entity.} A basic entity does not depend on any other entity: none of the selected columns is a foreign key, so the selection is simply a primary key and one or more attributes. For example, selecting \texttt{code} and \texttt{population} from the \texttt{country} table, or \texttt{name}, \texttt{elevation} and \texttt{depth} from \texttt{lake}, yields a basic entity, because neither table's selected key columns link to another table.
+
+\paragraph{Basic entity with inherited key.} McBrien and Poulovassilis \cite{brientowards} note that the whole primary key of an entity may be inherited as a foreign key from a single parent, modelling an is-a specialisation. This is identified when \emph{every} primary-key column is itself a foreign key to one parent, leaving no local key column of its own; the single-column case counts too. Selecting \texttt{country}, \texttt{gdp} and \texttt{unemployment} from the \texttt{economy} table is an example: \texttt{country} is the entire primary key and is inherited from the \texttt{country} entity, so \texttt{economy} specialises \texttt{country}. This is deliberately distinguished from a weak entity (where only \emph{part} of the key is a foreign key) and from a many-to-many relationship (where the key is composed of \emph{two} foreign keys to different parents).
+
+\paragraph{Weak entity.} A weak entity depends on a parent entity and has a compound primary key in which a proper subset of the key is a foreign key to a single parent, while at least one remaining primary-key column is local to the child. Selecting \texttt{country}, \texttt{year} and \texttt{population} from \texttt{country\_population} is an example: \texttt{country} is a foreign key to the \texttt{country} table, and \texttt{year} is local to the child, so the two together form the compound key. The \texttt{ethnic\_group} table (key \texttt{country} plus \texttt{name}) behaves the same way.
+
+\paragraph{One-many relationship.} A one-to-many relationship is identified when the selection contains a foreign key to a single parent that is \emph{not} part of the table's own primary key, and so acts purely as a link. Selecting \texttt{iata\_code}, \texttt{island} and \texttt{elevation} from the \texttt{airport} table is an example: \texttt{island} is a foreign key outside the primary key \texttt{iata\_code}, capturing that an island may have many airports but an airport lies on one island. Note the boundary with the weak entity: the deciding factor is whether the parent foreign key is inside or outside the primary key.
+
+\paragraph{Many-many relationship.} A many-to-many relationship is represented by a relationship table whose primary key is composed of two foreign keys to two \emph{separate} parent tables, along with any attributes describing the relationship. Selecting \texttt{country}, \texttt{continent} and \texttt{percentage} from the \texttt{encompasses} table is an example: the key is the pair (\texttt{country}, \texttt{continent}), each a foreign key to a different parent, and \texttt{percentage} describes how much of a country lies in a continent.
+
+\paragraph{Reflexive many-many relationship.} A reflexive many-to-many is the special case in which both foreign keys of the relationship table reference the \emph{same} parent, modelling a relationship of an entity with itself. Selecting \texttt{country1}, \texttt{country2} and \texttt{length} from the \texttt{borders} table is an example: both key columns are foreign keys to the \texttt{country} table (aliased to avoid ambiguity), and \texttt{length} describes the shared border.
+
+Because several of these patterns share structural features, the classifier applies them as an ordered set of rules, taking the first that matches, which resolves the boundaries above deterministically:
+
+\begin{quote}
+\begin{enumerate}
+    \item If the primary key has two or more columns and every one is a foreign key, it is \texttt{many\_many\_relationship} when they reference different parents, or \texttt{reflexive\_many\_many\_relationship} when they reference the same parent.
+    \item Else if every primary-key column is a foreign key to a single parent (no local key column), it is \texttt{basic\_entity\_inherited\_key}.
+    \item Else if the compound primary key mixes foreign-key columns with local columns, it is \texttt{weak\_entity}.
+    \item Else if a selected foreign key lies outside the primary key, it is \texttt{one\_many\_relationship}.
+    \item Else it is \texttt{basic\_entity}.
+\end{enumerate}
+\end{quote}
+
+Following the LLM-as-compiler paradigm, the prompt does not ask the model to apply these rules to each case; it asks the model to \emph{emit a Python classifier} exposing a fixed \texttt{classify\_selection} function together with a command-line contract, so that the same program can then be run over any set of blind cases. The rules above are handed to the model essentially verbatim, together with the strict scope constraint (only selected columns count) and the decision order, so that the reasoning is pinned in the prompt and then compiled once into code rather than re-derived on every case; a condensed excerpt of this prompt is given in Appendix~\ref{app:step1-prompt}. A deterministic rule baseline, written by hand from the same evidence, provides the reference against which the generated classifier is compared.
+
+\section{Step 2 --- Chart Recommendation and Mapping}
+\label{sec:step2}
+
+Step~2 turns an identified pattern into a concrete chart choice and an explicit mapping. The generated program types each selected attribute from its SQL type, checks each candidate chart's mandatory requirements against the pattern rules, and emits a mapping whose field names match \emph{exactly} what the Step~3 renderers expect, for example \texttt{source}, \texttt{target}, \texttt{value}, \texttt{category}, or the \texttt{x}, \texttt{y}, and \texttt{size} roles. This tight field-name contract is what allows a Step~2 mapping to feed straight into a Step~3 renderer with no adaptation.
+
+Choosing a chart happens in two rounds. The first round is Step~1's identification of the pattern, which fixes the \emph{group} of candidate charts. The second round narrows that group by typing every selected column. Following McBrien and Poulovassilis \cite{brientowards}, each column is classified into a \emph{dimension} by its SQL type. A \emph{scalar} dimension has a large number of distinct values with a natural numeric ordering (integers, floats, timestamps, dates) and is represented by a channel of a mark, such as position, length, area, or a colour spectrum. A \emph{discrete} dimension has a relatively small number of values that may or may not be ordered, and is used to choose a mark or to vary a channel such as a colour key. A few charts impose a stricter, real-world-type condition rather than a scalar/discrete one: a calendar chart needs a \emph{temporal} attribute, a word cloud needs a \emph{lexical} key, and a choropleth map needs a \emph{geographical} key. Because whether a key is geographical or lexical cannot always be settled from its SQL type alone, these charts are marked \emph{conditional} in the recommendation. Every recommended chart is emitted with a mapping that names the exact role each column plays; the per-pattern descriptions below relate the abstract dimensions of the schema pattern ($k$, $a_1$, $a_2$, \ldots) to those concrete mapping field names, and each is accompanied by a summary table in the style of \cite{brientowards} extended with the mapping fields this project emits.
+
+\paragraph{Basic-entity charts.} Having no foreign-key dependency, a basic entity is the conceptual model of a single table, and it supports the richest group of charts, gated by how many scalar attributes accompany the key $k$:
+\begin{itemize}
+  \item \emph{Bar chart} --- represents each instance as a bar whose length is a single scalar attribute $a_1$; mapped as (\texttt{key}, \texttt{measure}). It is capped at a subjective upper cardinality (the paper uses $1..100$) for legibility.
+  \item \emph{Scatter diagram} --- plots each instance as a point positioned by two scalars $a_1,a_2$ (\texttt{x}, \texttt{y}), with an optional further scalar as a colour channel.
+  \item \emph{Bubble chart} --- extends the scatter diagram with a third scalar $a_3$ as the point's size (\texttt{x}, \texttt{y}, \texttt{size}), and an optional fourth scalar as colour.
+  \item \emph{Calendar chart} --- shades one day cell per instance from a temporal attribute (\texttt{date}, \texttt{key}).
+  \item \emph{Choropleth map} --- colours one geographical region per instance, so it is offered conditionally when the key is geographical (\texttt{region}, \texttt{color}).
+  \item \emph{Word cloud} --- draws one word per instance sized by a scalar, offered conditionally when the key is lexical (\texttt{text}, \texttt{size}).
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Basic-entity charts: schema-pattern dimensions (after \cite{brientowards}) and the mapping fields emitted by Step~2. $|k|$ is the number of distinct key values.}
+\label{tab:step2-basic}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lclll@{}}
+\toprule
+\textbf{Chart} & \textbf{$|k|$} & \textbf{Mandatory} & \textbf{Optional} & \textbf{Mapping fields} \\
+\midrule
+Bar chart & $1..100$ & $a_1$ scalar & --- & \texttt{key}, \texttt{measure} \\
+Scatter diagram & $1..*$ & $a_1,a_2$ scalar & $a_3$ colour & \texttt{key}, \texttt{x}, \texttt{y} \\
+Bubble chart & $1..*$ & $a_1,a_2,a_3$ scalar & $a_4$ colour & \texttt{key}, \texttt{x}, \texttt{y}, \texttt{size} \\
+Calendar & $1..*$ & $a_1$ temporal & $a_2$ colour & \texttt{date}, \texttt{key} \\
+Choropleth map & $1..*$ & $k$ geographical, $a_1$ colour & --- & \texttt{region}, \texttt{color} \\
+Word cloud & $1..*$ & $k$ lexical, $a_1$ scalar & $a_2$ colour & \texttt{text}, \texttt{size} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Weak-entity charts.} A weak entity has a compound key: one part $k_1$ (the parent it is attached to) identifies a set of tuples, and the second part $k_2$ identifies a tuple within that set. Its charts are therefore grouped or small-multiple forms in which the $k_2$ values are compared across the $k_1$ groups on a shared scalar attribute $a_1$:
+\begin{itemize}
+  \item \emph{Line chart} --- draws one line per $k_1$, plotting the scalar child key $k_2$ on the $x$-axis and $a_1$ on the $y$-axis (\texttt{series}$=k_1$, \texttt{x}$=k_2$, \texttt{y}$=a_1$).
+  \item \emph{Stacked bar chart} --- draws one bar per $k_1$ with a stack element per $k_2$ (\texttt{group}$=k_1$, \texttt{segment}$=k_2$, \texttt{value}$=a_1$).
+  \item \emph{Grouped bar chart} --- clusters the $k_2$ bars within each $k_1$, using the same mapping as the stacked form.
+  \item \emph{Spider (radar) chart} --- draws one ring per $k_1$ and one spoke per $k_2$, the intersection set by $a_1$ (\texttt{ring}, \texttt{spoke}, \texttt{value}).
+\end{itemize}
+The stacked and spider forms read best when the weak entity is \emph{complete}, that is, every $k_1$ shares the same set of $k_2$ values, so that stack elements and spokes line up for comparison.
+
+\begin{table}[htbp]
+\centering
+\caption{Weak-entity charts. $|k_1|$ groups each hold a set of $k_2$ tuples; \emph{complete} means every $k_1$ carries the same set of $k_2$ values.}
+\label{tab:step2-weak}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lcccll@{}}
+\toprule
+\textbf{Chart} & \textbf{$|k_1|$} & \textbf{$|k_2|$} & \textbf{Complete} & \textbf{Mandatory} & \textbf{Mapping fields} \\
+\midrule
+Line chart & $1..20$ & $1..*$ & no & $k_2,a_1$ scalar & \texttt{series}, \texttt{x}, \texttt{y} \\
+Stacked bar & $1..20$ & $1..20$ & yes & $a_1$ scalar & \texttt{group}, \texttt{segment}, \texttt{value} \\
+Grouped bar & $1..20$ & $1..20$ & no & $a_1$ scalar & \texttt{group}, \texttt{segment}, \texttt{value} \\
+Spider chart & $3..10$ & $1..20$ & yes & $a_1$ scalar & \texttt{ring}, \texttt{spoke}, \texttt{value} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{One-many charts.} A one-to-many relationship is hierarchical: the entity on the ``many'' side is the parent $E_p$ and the other the child $E_c$, so the charts are containment or tree forms:
+\begin{itemize}
+  \item \emph{Treemap} --- divides a parent rectangle into child rectangles whose area is proportional to a scalar $a_1$ (\texttt{parent}, \texttt{child}, \texttt{measure}).
+  \item \emph{Circle packing} --- nests child circles inside a parent circle, sized likewise, with the same mapping.
+  \item \emph{Hierarchy tree} --- connects parent nodes to child leaves by lines, encoding structure alone; it requires no scalar attribute and maps as (\texttt{parent}, \texttt{child}).
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{One-many charts. $E_p$ is the parent (``one'' side) and $E_c$ the child (``many'' side); the measure sizes the child mark.}
+\label{tab:step2-onemany}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lccll@{}}
+\toprule
+\textbf{Chart} & \textbf{$|k_1|$} & \textbf{$|k_2|$ per $k_1$} & \textbf{Mandatory} & \textbf{Mapping fields} \\
+\midrule
+Treemap & $1..100$ & $1..100$ & $a_1$ scalar & \texttt{parent}, \texttt{child}, \texttt{measure} \\
+Circle packing & $1..100$ & $1..100$ & $a_1$ scalar & \texttt{parent}, \texttt{child}, \texttt{measure} \\
+Hierarchy tree & $1..100$ & $1..100$ & --- & \texttt{parent}, \texttt{child} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Relationship charts.} For the two many-to-many patterns the data that governs the visualisation lives on the relationship between the two entities $E_1$ and $E_2$, so the charts are node-link and matrix forms over the two primary-key foreign keys (\texttt{source}, \texttt{target}). The paper proposes the first two; this project adds the remaining three to cover the dense, large, and attribute-free relations that node-link diagrams handle poorly:
+\begin{itemize}
+  \item \emph{Sankey diagram} --- left elements are instances of $E_1$, right elements instances of $E_2$, and flow width a scalar $a_1$ (\texttt{source}, \texttt{target}, \texttt{width}).
+  \item \emph{Chord diagram} --- perimeter points joined by ribbons whose width is the scalar $a_1$ (\texttt{source}, \texttt{target}, \texttt{width}).
+  \item \emph{Matrix heatmap} \textnormal{(project extension)} --- an adjacency grid whose cell value is a scalar attribute \emph{or} the literal \texttt{"count"} (\texttt{source}, \texttt{target}, \texttt{value}), with an optional \texttt{category} to tint cells.
+  \item \emph{Force-directed graph} \textnormal{(project extension)} --- a physics layout with weighted links, taking \texttt{value} as a scalar or \texttt{"count"} (\texttt{source}, \texttt{target}, \texttt{value}).
+  \item \emph{Arc diagram} \textnormal{(project extension, reflexive only)} --- nodes on a line joined by arcs, taking \texttt{value} as a scalar or \texttt{"count"} (\texttt{source}, \texttt{target}, \texttt{value}).
+\end{itemize}
+Because attribute-free relations such as \texttt{is\_member} carry no scalar, the \texttt{"count"} fallback lets the matrix, force, and arc views weight cells and links by edge count so that these relations can still be visualised at all.
+
+\begin{table}[htbp]
+\centering
+\caption{Relationship charts. Sankey and chord are from \cite{brientowards}; the matrix heatmap, force graph, and arc diagram are this project's extensions for dense, large, and attribute-free relations. \texttt{value} is a scalar attribute or the literal \texttt{"count"}.}
+\label{tab:step2-relationship}
+\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lcll@{}}
+\toprule
+\textbf{Chart} & \textbf{Reflexive} & \textbf{Mandatory} & \textbf{Mapping fields} \\
+\midrule
+Sankey & no & $a_1$ scalar (width) & \texttt{source}, \texttt{target}, \texttt{width} \\
+Chord & yes & $a_1$ scalar (width) & \texttt{source}, \texttt{target}, \texttt{width} \\
+\addlinespace[2pt]
+Matrix heatmap & both & \texttt{value} scalar or \texttt{"count"} & \texttt{source}, \texttt{target}, \texttt{value}, (\texttt{category}) \\
+Force graph & both & \texttt{value} scalar or \texttt{"count"} & \texttt{source}, \texttt{target}, \texttt{value} \\
+Arc diagram & reflexive only & \texttt{value} scalar or \texttt{"count"} & \texttt{source}, \texttt{target}, \texttt{value} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Which of the relationship charts leads is \emph{data-driven}. Whereas the original pattern (Table~\ref{tab:step2-relationship}) offers a fixed menu, a relationship selector measures three properties from the rows themselves: the \emph{density} of the relation (distinct edges divided by $|E_1|\times|E_2|$), its size $N$ (the larger of the two node sets), and how \emph{symmetric} it is (the share of mutual pairs). It then ranks charts by an ordered rule table. A node-link view (Sankey or chord) leads only while the relation is sparse, small, and carries a scalar width; once the relation becomes dense or large, the matrix heatmap leads instead, because node-link diagrams become visually unreadable in that regime. The decision thresholds are explicit constants ($\texttt{DENSE}=0.10$, $\texttt{LARGE\_N}=200$, $\texttt{SYMMETRIC\_MIN}=0.6$), keeping the selector inspectable and its behaviour reproducible.
+
+\section{Step 3 --- Visualisation Generation}
+\label{sec:step3}
+
+Step~3 renders the chosen chart as runnable, interactive HTML using D3~v7 \cite{bostock2011d3}. Rather than a single monolithic prompt, the design uses \emph{layered} prompts: a shared base prompt establishes the D3~v7 contract, mandates interactivity, and forbids brace-based string templating (which collides with JavaScript object literals), while a per-chart block then specifies the particular chart. Each chart is realised as a parameterised renderer with a uniform \texttt{render(mapping, rows)} signature that reads its grouped data at run time via the \texttt{table} field of the mapping.
+
+Because the data is read at run time rather than inlined, a renderer is independent of dataset size, and because the library version is pinned in the base prompt, the deprecated-API failures observed under the run-time approach do not recur. Renderers were built for all five applicable patterns, covering the eighteen charts Step~2 can recommend; each encodes the mapping of Section~\ref{sec:step2} as follows.
+
+\paragraph{Basic-entity renderers.}
+\begin{itemize}
+  \item \emph{Bar chart} --- one bar per entity instance, its length the scalar measure.
+  \item \emph{Scatter diagram} --- each instance a point positioned by two scalars.
+  \item \emph{Bubble chart} --- as the scatter, with a third scalar as the point radius.
+  \item \emph{Calendar chart} --- one shaded day cell per instance according to a temporal attribute.
+  \item \emph{Choropleth map} --- each geographical region coloured by its attribute.
+  \item \emph{Word cloud} --- each key drawn as a word sized by the scalar attribute.
+\end{itemize}
+
+\paragraph{Weak-entity renderers.}
+\begin{itemize}
+  \item \emph{Line chart} --- one line per parent $k_1$ across the child key $k_2$.
+  \item \emph{Stacked bar chart} --- one bar per $k_1$ segmented by $k_2$.
+  \item \emph{Grouped bar chart} --- the $k_2$ bars clustered within each $k_1$.
+  \item \emph{Spider chart} --- one ring per $k_1$ and one spoke per $k_2$, the intersection set by the scalar attribute.
+\end{itemize}
+
+\paragraph{One-many renderers.}
+\begin{itemize}
+  \item \emph{Treemap} --- child rectangles nested inside a parent rectangle, sized by the measure.
+  \item \emph{Circle packing} --- child circles nested within a parent circle, sized likewise.
+  \item \emph{Hierarchy tree} --- a node-link tree connecting each parent to its child leaves.
+\end{itemize}
+
+\paragraph{Relationship renderers.}
+\begin{itemize}
+  \item \emph{Sankey diagram} --- flows from source nodes on the left to target nodes on the right, the width the scalar attribute.
+  \item \emph{Chord diagram} --- nodes on a circle joined by ribbons of that width.
+  \item \emph{Matrix heatmap} --- a grid whose cell colour is the value or edge count.
+  \item \emph{Force-directed graph} --- nodes laid out by a physics simulation with weighted links.
+  \item \emph{Arc diagram} --- nodes on a line joined by arcs.
+\end{itemize}
+These renderers are pattern-aware: a Sankey diagram namespaces the two sides of a many-to-many relation; a chord diagram is bipartite for an ordinary many-to-many relation but shares a single node set for a reflexive one; and a matrix heatmap is square and symmetric for a reflexive relation but bipartite for an ordinary many-to-many.
+
+\section{Natural-Language Front End}
+\label{sec:nl-front-end}
+
+To realise the end-to-end workflow described in the objectives of Chapter~1, an optional layer sits \emph{in front of} the three steps and lets the user express a request in natural language. The project plan of Chapter~\ref{ch:approach}'s predecessor envisaged this stage as a Text-to-SQL component; in the implemented system it was refined into a more constrained and safer design. Rather than generating executable SQL, the front end performs a \emph{semantic parse} that translates free text into a validated \emph{data selection}, a structure of the form \{table, columns, joins, filters, aggregate\}. The model may only choose data; it may never name a pattern or a chart, and every table and column it returns is validated against the schema before use. Data retrieval itself uses a fixed, parameterised query template rather than model-authored SQL.
+
+This design choice is deliberate. Compared with full Text-to-SQL, which must reason over join paths and generate correct executable queries \cite{qin2022survey}, a constrained selection parse is easier to validate and impossible to use to smuggle the answer into the pipeline: because the model at this stage only picks data, the deterministic Step~1 and Step~2 programs remain the sole deciders of pattern and chart, and the experimental blind and gold separation (Chapter~\ref{ch:evaluation}) is preserved. The front end is off by default, so the experimental path is byte-identical whether or not it is used.
+
+\section{User Journey and High-Level Design}
+\label{sec:user-journey}
+
+The primary workflow is \emph{data-first}. A user arrives at the web front end, chooses a base table, and selects the columns of interest; alternatively, when the natural-language front end is enabled, the user simply types a request in free text, which is parsed into the same validated selection (Section~\ref{sec:nl-front-end}). From that point the journey is entirely deterministic and requires no further model interaction: the server runs the selection through Step~1 to identify its visualisation schema pattern, through Step~2 to recommend a chart and produce a field-to-role mapping, and through the corresponding Step~3 renderer to generate runnable HTML, which is displayed to the user in a sandboxed iframe. Charts for which a renderer does not yet exist return a clear placeholder message rather than failing.
+
+This design keeps the interactive surface small and the reasoning where it belongs. The user is only ever asked to express \emph{what data} they care about, in either structured or natural-language form; every decision about \emph{how} to visualise it, the pattern, the chart, and the mapping, is made by the auditable programs behind the front end. Because those programs read their data from disk at run time and make no model calls when serving a request, the same selection always produces the same visualisation, satisfying the reproducibility requirement of Section~\ref{sec:design-requirements} end to end.
+
+
+\chapter{Implementation}
+\label{ch:implementation}
+
+This chapter describes how the design of Chapter~\ref{ch:approach} was realised: the technical choices and model-serving infrastructure, the data-preparation scripts, the prompt-engineering process, the three generated programs, the renderer library, the web front end and production layer, and the problems encountered during development.
+
+\section{Technical Choices and Infrastructure}
+
+The experiment core is written using \emph{only the Python standard library}, so that the pipeline has no installation step and runs identically across environments; the optional production layer adds third-party dependencies but is isolated behind a configuration flag, leaving the experiment path dependency-free. Visualisations target the browser, with D3~v7 as the primary rendering library \cite{bostock2011d3}.
+
+Model access is multi-model. Self-hosted Qwen models run on the Imperial HPC (the cx3 cluster) under the vLLM serving framework, each exposing an OpenAI-compatible API reached over an SSH tunnel. \texttt{Qwen3-14B} is used for the reasoning-heavy Steps~1 and~2, and \texttt{Qwen2.5-Coder-32B-Instruct} for the code generation of Step~3. Where a stronger author was required, GPT (accessed through a university web-chat platform) served as an alternative program author, and a hand-written \emph{reference} program was retained as a trusted artefact for each step.
+
+\section{Schema Extraction, Task Generation, and the Baseline}
+
+Data preparation is a sequence of standard-library scripts. The Mondial SQL schema is parsed into a JSON summary of tables, columns, primary keys, and foreign keys; this is then reduced to the \emph{clean} summary, which contains structural evidence only and no derived pattern labels, expected visualisations, or reasoning. A task generator builds one data-first task per case, a selection of one table plus several columns, from the schema and the gold patterns. Finally, a deterministic classifier predicts the pattern from key structure alone, and a separate evaluator scores it against the gold file; this rule baseline is the reference against which the LLM-authored classifier is compared.
+
+\section{Prompt Engineering and Iteration}
+
+The prompts were developed iteratively, with each iteration kept in its own versioned directory rather than overwriting its predecessor. Early prompts established a baseline using conceptual-modelling grounding; later versions folded in explicit pattern notes and chart groups, split the ambiguous many-to-many versus reflexive decision into separate gated reasoning steps, and constrained the model to reason only over the selected columns so that it could not introduce keys the user had not chosen. The single most significant finding concerned the model's ``thinking'' mode: enabling an explicit chain-of-thought reasoning trace \cite{wei2022chain} resolved a class of consistency errors in Steps~1 and~2 in which the structured evidence was correct but the final label contradicted it. A later reworking retasked the best pattern prompt to \emph{emit a classifier program} rather than answer directly, aligning it with the LLM-as-compiler paradigm of Section~\ref{sec:llm-compiler}.
+
+\section{The Three Generated Programs}
+
+Each pipeline step exists as a generated standard-library program, and the three share aligned contracts. Step~1 is a pattern classifier exposing \texttt{classify\_selection}; Step~2 is a chart recommender that emits a mapping keyed exactly as the renderers expect; Step~3 is a family of renderers sharing the \texttt{render(mapping, rows)} signature. For each step, both a reference program and a model-authored program were produced, so that the model's output could be measured against a trusted baseline. A notable provenance finding was that authoring quality scales sharply with model strength: a strong code model produced a near-correct Step~2 program in a single attempt, whereas a weaker model reached only partial correctness and responded non-monotonically to prompt edits, which is why the reference program is retained as the authoritative artefact for the more complex steps.
+
+\section{The Renderer Library}
+
+Renderers were built for all five applicable patterns, covering the full set of eighteen charts that Step~2 can recommend:
+
+\begin{itemize}
+    \item \texttt{basic\_entity} --- bar, scatter, bubble, calendar, choropleth, and word cloud;
+    \item \texttt{weak\_entity} --- line, stacked bar, grouped bar, and spider (radar);
+    \item \texttt{one\_many\_relationship} --- treemap, circle packing, and hierarchy tree;
+    \item \texttt{many\_many\_relationship} and \texttt{reflexive\_many\_many\_relationship} --- Sankey and chord (node-link), adjacency-matrix heatmap, and force-directed graph, with an arc diagram additionally for the reflexive case.
+\end{itemize}
+
+Each renderer reads the grouped Mondial data at run time and produces complete, interactive HTML with hover interaction. The matrix, force, and arc renderers read the \texttt{value} role as a scalar column or the count fallback, which is what allows the attribute-free relations in Mondial to be visualised at all, a case that the scalar-width Sankey and chord diagrams could not previously handle.
+
+\section{Web Front End and Production Layer}
+
+An interactive web front end chains the three programs. It is a standard-library threaded HTTP server that makes \emph{no model calls at serve time}: the user picks a table and columns, the server runs Step~1, then Step~2, then the selected Step~3 renderer, and the result is displayed in a sandboxed iframe; charts without a renderer return a placeholder message.
+
+An optional production layer sits in front of this without altering it, and is disabled by default so that the experiment path stays byte-identical. A data-source adapter yields the same clean schema and row dictionaries the pipeline consumes, from either the offline JSON files or a live PostgreSQL database, using schema introspection for keys and types and bounded queries for rows. The natural-language module of Section~\ref{sec:nl-front-end} turns free text into a validated selection through an OpenAI-compatible client, degrading gracefully when no API key is configured. Both additions are driven by a git-ignored configuration file, and the experiment core remains free of third-party dependencies.
+
+\section{Problems Encountered During Development}
+
+Several difficulties shaped the final design. Under a tight (16k-token) context window, the verbose inline data of a D3 visualisation could not co-fit with the model's reasoning trace, causing the HTML to truncate mid-array or the reasoning to leak into the output; a controlled comparison against a 32k window confirmed that this \emph{context-budget} axis scales away with more context, whereas a separate \emph{library-version and graph-construction} axis (deprecated APIs, mismatched library and CDN pairings, malformed node and link construction) does not, and must be addressed through prompt constraints. Prompt hardening proved \emph{non-monotonic} on weaker models, where fixing one bug could regress another; this was recorded as evidence rather than patched away. Adding interactivity pushed models past a brace-collision threshold between Python string formatting and JavaScript object literals, which the base prompt now forbids outright. Finally, structural validity checks were found to be necessary but not sufficient, a renderer could pass them yet still be broken in the browser, so static JavaScript checks were added.
+
+
+\chapter{Evaluation}
+\label{ch:evaluation}
+
+\emph{This chapter is to be completed. It will assess the system against the objectives set out in Chapter~1: the accuracy of pattern identification, the appropriateness of the recommended visualisations, the quality of the generated visualisation implementations, the reproducibility and extensibility of the pipeline, and the behaviour of the end-to-end natural-language workflow.}
+
+\section{Pattern Identification Accuracy}
+
+\emph{Placeholder. This section will report the accuracy of the generated Step~1 classifier on the blind cases, compared against the deterministic rule baseline, and analyse the cases that are hardest to classify (in particular the inherited-key basic entity versus weak entity boundary). Preliminary results indicate the classifier reaches full agreement on the nine blind cases.}
+
+\section{Visualisation Recommendation Quality}
+
+\emph{Placeholder. This section will evaluate how well Step~2 recommendations match the gold visualisations, and will examine the behaviour of the data-driven relationship selector on dense versus sparse relations, including the attribute-free relations handled through the count fallback.}
+
+\section{Visualisation Implementation Quality}
+
+\emph{Placeholder. This section will assess the Step~3 renderers for runnability, mapping fidelity, data completeness, faithfulness to the chart type, and readability, and will summarise the controlled context-window study that separated the context-budget and library-version failure axes.}
+
+\section{Determinism, Scalability, and Extensibility}
+
+\emph{Placeholder. This section will argue that the LLM-as-compiler design yields reproducible outputs, scales to full datasets because data is read at run time, and can be extended with new charts and patterns without disturbing the components that already work.}
+
+\section{End-to-End Natural-Language Pipeline}
+
+\emph{Placeholder. This section will evaluate the natural-language front end: how reliably free-text requests are turned into valid data selections, and whether the complete pipeline produces appropriate visualisations while preserving the blind and gold separation.}
+
+
+\chapter{Ethical Considerations}
+\label{ch:ethics}
+
+\emph{This chapter is to be completed. It will discuss the ethical dimensions of the work, including:}
+
+\begin{itemize}
+    \item \emph{the provenance and licensing of the Mondial dataset, and the fact that it contains no personal data;}
+    \item \emph{the transparency and reproducibility benefits of auditable, generated programs over opaque per-case model calls;}
+    \item \emph{the risk that an automatically generated visualisation could mislead a viewer if the underlying mapping is incorrect, and how the deterministic pipeline mitigates this;}
+    \item \emph{the computational and energy cost of self-hosting large language models on shared HPC infrastructure.}
+\end{itemize}
+
+
+\chapter{Future Work}
+\label{ch:future}
+
+\emph{This chapter is to be completed. Anticipated directions include:}
+
+\begin{itemize}
+    \item \emph{extending the relationship chart set with parallel sets or alluvial diagrams and hierarchical edge bundling, and handling directed reflexive relations;}
+    \item \emph{supporting temporal relationship attributes, which the Mondial dataset does not exercise;}
+    \item \emph{investigating whether fine-tuning a model improves program authoring on weaker models, relative to prompt engineering alone;}
+    \item \emph{a user study of the natural-language workflow and of the readability of the generated visualisations;}
+    \item \emph{evaluating the approach on databases beyond Mondial to test its generalisability.}
+\end{itemize}
+
+
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+\emph{This chapter is to be completed. It will summarise the extent to which the project met its objectives, showing that a Large Language Model can perform conceptual-schema-level reasoning to identify visualisation schema patterns and to drive executable visualisation generation, and will reflect on the LLM-as-compiler paradigm as the key enabler of reproducible and auditable results.}
+
+
+\appendix
+
+\chapter{Example Prompts}
+\label{app:prompts}
+
+This appendix reproduces a condensed excerpt of the Step~1 pattern-identification
+prompt (Section~\ref{sec:step1}). Under the LLM-as-compiler paradigm the prompt does
+not ask the model to answer each case; it asks the model to author, once, a
+deterministic Python classifier that encodes the rules below. The excerpt has been
+shortened and reflowed for the page; the full prompt is kept under version control in
+the project repository.
+
+\section{Step 1 --- Pattern-Identification Prompt (Excerpt)}
+\label{app:step1-prompt}
+
+\begin{verbatim}
+You are an expert in relational databases and ER-model reasoning.
+
+Task: write a deterministic Python program that implements the ER
+pattern-identification rules below, so the rules are applied by running
+code rather than by reasoning case by case. Reason ONLY from the primary-
+key (PK) and foreign-key (FK) structure of a selection, never from the
+natural-language meaning of table or column names.
+
+Scope constraint (strict): use only the selected table and selected
+columns. A foreign key counts only if its column is selected; a PK column
+counts only if it is selected. Never introduce a column the user did not
+select.
+
+Pattern rules:
+- Basic entity: selected columns contain a PK and attributes, with no
+  selected foreign-key dependency.
+- Basic entity, inherited key: the WHOLE primary key is inherited as a
+  foreign key from one parent (every PK column is a FK to that parent,
+  with no local PK column). The single-column case counts.
+- Weak entity: compound PK where a proper subset of the key is a FK to a
+  single parent and at least one remaining PK column is local to the child.
+- One-many relationship: a selected FK to a single parent that is NOT part
+  of the table's primary key.
+- Many-many relationship: relationship table whose PK is composed of two
+  FKs to two SEPARATE parent tables.
+- Reflexive many-many: as above, but both FKs reference the SAME parent.
+
+Decision order (apply the first matching rule):
+1. PK has >= 2 columns and every PK column is a FK -> many_many
+   (different parents) or reflexive_many_many (same parent).
+2. Else every PK column is a FK to a single parent (no local PK column)
+   -> basic_entity_inherited_key.
+3. Else compound PK mixes FK columns and local columns -> weak_entity.
+4. Else a selected FK lies outside the PK -> one_many_relationship.
+5. Else -> basic_entity.
+
+Required interface: a single self-contained standard-library module,
+deterministic (no randomness, no network, no model calls), exposing
+classify_selection(schema, table_name, selected_columns) -> dict
+returning predicted_pattern and a short reason. It must read blind input
+only and must never read any gold/answer file.
+\end{verbatim}

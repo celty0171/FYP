@@ -16,12 +16,19 @@ Aggregate spec::
       "aggregate": {
         "resample":  [ { "column": "year", "bucket": 10, "as": "decade" } ],
         "group_by":  ["continent", "decade"],
-        "measures":  [ { "column": "population", "fn": "sum", "as": "total_population" } ]
+        "measures":  [ { "column": "population", "fn": "sum", "as": "total_population" } ],
+        "having":    [ { "column": "total_population", "op": "gt", "value": 0 } ]
       } }
 
 Functions: sum, mean (avg), min, max, count, count_distinct. `count` ignores `column`
 (counts rows per group); the others coerce via float and skip non-numeric values.
 An empty `group_by` is a single global aggregate; an empty/absent spec is the identity.
+
+`having` is a post-aggregate filter (SQL HAVING): a list of filter specs, in the same
+grammar as filter/apply_filters.py, applied to the aggregated rows so it can reference a
+measure alias or a group-by column. This is what lets a request like "countries spanning
+more than 1 continent" be expressed — group by country, measure count_distinct(continent),
+then keep only groups whose count exceeds 1.
 
 Run offline::
 
@@ -215,8 +222,28 @@ def derived_schema(source_schema, table, group_by, measures, bucket_cols=None):
     return schema, dtable, dcols
 
 
+def apply_having(agg_rows, having):
+    """Post-aggregate (SQL HAVING) filter over the aggregated rows.
+
+    Reuses filter/apply_filters.py so the op grammar (incl. gt/ge/lt/le) has a single
+    implementation. An empty/absent `having` is the identity.
+    """
+    if not having:
+        return agg_rows
+    try:
+        from filter.apply_filters import apply as _filter_apply
+    except Exception:  # standalone/CLI: make experiments/ importable, then retry
+        import os
+        import sys as _sys
+        exp_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if exp_dir not in _sys.path:
+            _sys.path.insert(0, exp_dir)
+        from filter.apply_filters import apply as _filter_apply
+    return _filter_apply(agg_rows, having)
+
+
 def prepare(source_schema, table, rows, aggregate_spec):
-    """resample -> aggregate -> synthetic schema. The single call the server uses.
+    """resample -> aggregate -> having -> synthetic schema. The single call the server uses.
 
     Returns (derived_schema, derived_table, derived_columns, aggregated_rows).
     """
@@ -224,9 +251,11 @@ def prepare(source_schema, table, rows, aggregate_spec):
     resamples = spec.get("resample") or []
     group_by = spec.get("group_by") or []
     measures = spec.get("measures") or []
+    having = spec.get("having") or []
 
     rs_rows = resample(rows, resamples)
     agg_rows = aggregate(rs_rows, group_by, measures)
+    agg_rows = apply_having(agg_rows, having)
     bucket_cols = {s.get("as") or (str(s.get("column")) + "_bucket") for s in resamples}
     dschema, dtable, dcols = derived_schema(source_schema, table, group_by, measures, bucket_cols)
     return dschema, dtable, dcols, agg_rows

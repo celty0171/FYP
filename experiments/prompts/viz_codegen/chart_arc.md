@@ -33,7 +33,7 @@ Do **not** use this renderer for `many_many_relationship`: two distinct entity s
 ## D3 v7 construction
 
 - `d3.scalePoint()` (or a band) over the node index range for x-positions.
-- Each arc is an SVG `path` using the elliptical-arc command: `M x1,baseY A r,r 0 0,1 x2,baseY` with `r = |x2 - x1| / 2` (a semicircle above the axis). Arc stroke-width from a `scaleSqrt` of `w`.
+- Each arc is an SVG `path` using the elliptical-arc command: `M x1,baseY A r,r 0 0,<sweep> x2,baseY` with `r = |x2 - x1| / 2`. Draw the diagram **two-sided**: alternate arcs **above** (sweep `1`) and **below** (sweep `0`) the baseline — this halves the visual density on each side, since arcs on opposite sides can never overlap. Alternate by draw order (longest-first) so tall arcs are split between the sides. Arc stroke-width from a `scaleSqrt` of `w`.
 - Draw node circles on the axis (radius/colour by degree) and rotated text labels below.
 
 ## Sizing so the whole diagram is visible (mandatory)
@@ -41,9 +41,9 @@ Do **not** use this renderer for `many_many_relationship`: two distinct entity s
 Because each arc rises **above** the axis by its radius `r = span / 2`, the drawing's height is **not known until the layout is computed**. If you fix the axis near the top with a small constant margin, the top of every wide arc is drawn at a negative `y` — outside the SVG viewport — and is silently clipped (the classic "the upper half of the arc diagram is missing" bug). Size the canvas from the data instead:
 
 - compute each arc's apex height as `|x(i) − x(j)| / 2`, and take `maxR` = the tallest — **but cap it**. After a good crossing-minimising order almost every arc is short (small span), yet a graph can still contain one or two unavoidable long-range **"bridge"** links whose span is nearly the whole axis; a single such arc rises half the axis width and would balloon the canvas into a tall, mostly-empty slab that looks heavy and huge. Cap the apex height at a sensible maximum — e.g. a fraction of the axis width, or a modest multiple of a high span **percentile** (say the 95th) — draw the few over-tall arcs **flattened to that cap** (a shallower arc, i.e. an elliptical `A rx,ry` with a reduced `ry`, rather than a full semicircle), and use the **capped** height as `maxR`. This keeps the figure compact when the ordering has already made the vast majority of arcs short.
-- place the axis at `baseY = maxR + topPad`, so the tallest (capped) arc's apex lands at `y = topPad`, fully inside the canvas;
-- reserve `labelSpace` **below** the axis for the rotated labels (≈ longest label length × font-width);
-- set the SVG **height** to `baseY + labelSpace + bottomPad`, and the **width** to the axis span plus left/right padding.
+- because the diagram is **two-sided**, size each side from its own (capped) tallest arc — `topMaxR` and `botMaxR`. Place the axis at `baseY = topMaxR + topPad` so the tallest top-side arc's apex lands at `y = topPad`;
+- reserve `botMaxR` **plus** `labelSpace` below the axis: the bottom-side arcs occupy `botMaxR`, then the rotated labels sit **below** them at `y = baseY + botMaxR + …` (≈ longest label length × font-width);
+- set the SVG **height** to `baseY + botMaxR + labelSpace + bottomPad`, and the **width** to the axis span plus left/right padding.
 
 As a final, general safeguard against any residual overflow (long labels, stroke widths), after all marks are drawn refit the root `<svg>` to its content: read `svg.node().getBBox()` and set the element's `viewBox` **and** `width`/`height` to that box expanded by a small pad. The structural sizing and the `getBBox` refit together guarantee the entire figure renders for any dataset — do not rely on the host page to scroll or clip.
 

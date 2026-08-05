@@ -11,8 +11,10 @@ values below are placeholders, not fixed names. This renderer must work for **an
 selection, not one specific table:
 
 ```json
-{ "table": "<child table>", "parent": "<parent FK column on the child table>", "child": "<child key column>", "measure": "<scalar child attribute>" }
+{ "table": "<child table>", "parent": "<parent FK column on the child table>", "child": "<child key column>", "measure": "<scalar child attribute>", "color": "<optional attribute a2>", "color_type": "discrete | scalar" }
 ```
+
+The optional `color` (`a2`, paper Section 3) colours the child rectangles via the companion **`color_type`**: `"discrete"` → an **ordinal colour key**; `"scalar"` → a **sequential colour spectrum** over the numeric range. Absent `color` → the default (colour leaves by parent, unchanged).
 
 Never hard-code these names; always read them from the mapping at run time.
 
@@ -30,7 +32,7 @@ Build a **two-level hierarchy**: a synthetic root → one node per distinct `par
 
 - `d3.hierarchy(rootObject).sum(d => d.value || 0).sort((a, b) => b.value - a.value)`.
 - `d3.treemap().size([innerW, innerH]).paddingInner(1).paddingTop(14).round(true)` applied to the root.
-- One `<rect>` per leaf placed at `[x0, y0, x1, y1]`; **colour leaves by their parent** so each parent's children share a hue. Add parent-group labels at each parent node, child labels only when the cell is large enough to fit text, and full detail in a tooltip.
+- One `<rect>` per leaf placed at `[x0, y0, x1, y1]`; if `color` is mapped, colour leaves by it (discrete → ordinal key; scalar → sequential spectrum) with a small legend; otherwise **colour leaves by their parent** so each parent's children share a hue. Add parent-group labels at each parent node, child labels only when the cell is large enough to fit text, and full detail in a tooltip.
 - `d3.hierarchy` / `d3.treemap` are in the D3 v7 bundle — no extra plugin.
 
 ## Interaction (per the base contract)

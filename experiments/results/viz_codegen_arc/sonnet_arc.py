@@ -948,10 +948,21 @@ def render(mapping: dict, rows: list) -> str:
   }, 0);
   const labelSpace = maxLabelLen * FONT_SIZE * 0.62 + 12;
 
+  // ── Two-sided arcs: alternate above/below the baseline to halve visual density ──
+  // Alternate by draw order (longest-first), so tall arcs are split between the two sides.
+  const sideOf = LINKS.map(function(_, k) { return (k % 2 === 0) ? 1 : -1; });
+  let topMaxR = 1, botMaxR = 1;
+  LINKS.forEach(function(lk, k) {
+    const r = Math.min(Math.abs(xOf(lk.j) - xOf(lk.i)) / 2, capR);
+    if (sideOf[k] > 0) { if (r > topMaxR) topMaxR = r; }
+    else { if (r > botMaxR) botMaxR = r; }
+  });
+
   // ── SVG dimensions ────────────────────────────────────────────────────────
-  const baseY    = maxR + TOP_PAD;
+  const baseY    = topMaxR + TOP_PAD;
   const svgW     = axisWidth + LEFT_PAD + RIGHT_PAD;
-  const svgH     = baseY + labelSpace + BOTTOM_PAD;
+  const svgH     = baseY + botMaxR + labelSpace + BOTTOM_PAD;
+  const labelY   = baseY + botMaxR + 4;   // labels sit below the bottom-side arcs
 
   // ── Scales ────────────────────────────────────────────────────────────────
   const maxDeg   = Math.max.apply(null, DEG.concat([1]));
@@ -1070,15 +1081,16 @@ def render(mapping: dict, rows: list) -> str:
     .attr("stroke-linecap", "round")
     .attr("stroke-width", function(d) { return swScale(d.w); })
     .attr("opacity", 0.38)
-    .attr("d", function(d) {
+    .attr("d", function(d, k) {
       var x1 = xOf(d.i);
       var x2 = xOf(d.j);
       var rawRadius = Math.abs(x2 - x1) / 2;
       var rx = rawRadius;
       var ry = Math.min(rawRadius, capR);  // flatten over-tall arcs
-      // SVG elliptical arc: M x1,baseY A rx,ry 0 0,1 x2,baseY
+      // sweep 1 = arc above the baseline, 0 = below (two-sided; alternated per link)
+      var sweep = sideOf[k] > 0 ? 1 : 0;
       return "M " + x1 + "," + baseY +
-             " A " + rx + "," + ry + " 0 0,1 " + x2 + "," + baseY;
+             " A " + rx + "," + ry + " 0 0," + sweep + " " + x2 + "," + baseY;
     })
     .on("mouseover", function(event, d) {
       highlightLink(d);
@@ -1130,13 +1142,13 @@ def render(mapping: dict, rows: list) -> str:
     .append("text")
     .attr("class", "label")
     .attr("x", function(d) { return xOf(d.rank); })
-    .attr("y", baseY + 4)
+    .attr("y", labelY)
     .attr("font-size", FONT_SIZE + "px")
     .attr("fill", "#444")
     .attr("text-anchor", "end")
     .attr("transform", function(d) {
       var x = xOf(d.rank);
-      return "rotate(-90," + x + "," + (baseY + 4) + ")";
+      return "rotate(-90," + x + "," + labelY + ")";
     })
     .text(function(d) { return d.name; });
 
