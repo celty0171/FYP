@@ -48,10 +48,17 @@ def _load_json(path: Path):
 # intent-aware selector choose the chart. They span different tables, chart families and
 # intents so you can see the goal steer the pick. `targets` is a human note only (never sent
 # to the model); the parser/classifier/selector decide everything from the text + schema.
+#
+# nl1-6 are the original set. NOTE: nl1 (economy/gdp/unemployment) and nl5 (borders /
+# country1,country2,length) overlap the few-shot examples baked into the NL parser's system
+# prompt (nl_to_selection._SYSTEM), so their *parse* is partly taught — treat them as
+# demonstrations, not clean measures of parse ability. nl7-11 were chosen to use tables,
+# measures and intents that the parser's system prompt never mentions, so their parse is an
+# independent test.
 NL_EXAMPLES = [
     {"id": "nl1_correlation",
      "query": "I want to see how GDP relates to unemployment across countries",
-     "targets": "economy · correlation intent → scatter"},
+     "targets": "economy · correlation intent → scatter   (NB: overlaps _SYSTEM example)"},
     {"id": "nl2_compare",
      "query": "Compare the total population of each country",
      "targets": "country · comparison/ranking intent → bar"},
@@ -63,10 +70,26 @@ NL_EXAMPLES = [
      "targets": "country_population · trend-over-time (weak entity) → line"},
     {"id": "nl5_relationship",
      "query": "Show which countries border each other and how long each border is",
-     "targets": "borders · relationship/flow (many-many) → sankey/chord"},
+     "targets": "borders · relationship/flow (many-many) → sankey/chord   (NB: overlaps _SYSTEM example)"},
     {"id": "nl6_distribution",
      "query": "Compare lakes by their elevation and depth",
      "targets": "lake · distribution of two scalars → scatter/bubble"},
+    # nl7-11: tables/measures/intents absent from the parser's system prompt (independent parse tests).
+    {"id": "nl7_mountains",
+     "query": "Compare the world's major mountains by their elevation",
+     "targets": "mountain · comparison → bar"},
+    {"id": "nl8_rivers",
+     "query": "How does a river's length relate to its drainage basin area?",
+     "targets": "river · correlation of two scalars → scatter"},
+    {"id": "nl9_area_geo",
+     "query": "Show each country's land area on a world map",
+     "targets": "country · geospatial intent (area, not population) → choropleth"},
+    {"id": "nl10_membership",
+     "query": "Show which countries are members of which international organizations",
+     "targets": "is_member · attribute-free relationship (many-many) → matrix/force"},
+    {"id": "nl11_hierarchy",
+     "query": "Show which sea each river flows into",
+     "targets": "river · one-many relationship → hierarchy tree"},
 ]
 
 
