@@ -90,6 +90,12 @@ NL_EXAMPLES = [
     {"id": "nl11_hierarchy",
      "query": "Show which sea each river flows into",
      "targets": "river · one-many relationship → hierarchy tree"},
+    {"id": "nl12_temporal",
+     "query": "When were the world's international organizations founded?",
+     "targets": "organization · temporal (founding dates) → calendar"},
+    {"id": "nl13_composition",
+     "query": "Show the ethnic group composition within each country",
+     "targets": "ethnic_group · part-to-whole within entity (weak entity) → grouped bar"},
 ]
 
 
