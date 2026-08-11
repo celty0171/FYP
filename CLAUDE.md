@@ -93,6 +93,16 @@ drift). All three steps now exist as LLM-authored standard-library programs with
   bipartite, count fallback), **force graph** (`viz_codegen_force`, topology), and **arc diagram**
   (`viz_codegen_arc`, **reflexive-only**). matrix/force/arc read `mapping["value"]` (scalar column or
   `"count"`), matrix also an optional `category`. Each run dir has a `SUMMARY.md`.
+  The **choropleth** is the one renderer with two **switchable basemaps** (picked via
+  `mapping["basemap"]`, toggled from the viz toolbar so a reviewer can compare): `"mapunits"`
+  (default) = Natural Earth 50m admin-0 **map units** — dependencies (French overseas depts, Macao,
+  West Bank/Gaza) drawn separately and UK/Belgium sub-units all coloured, joined per unit via
+  `mondial_mapunit_crosswalk.json` (GU_A3→code, 242/246); `"countries"` = **world-atlas 50m**
+  sovereign outlines — cleaner (UK/Belgium each one shape) but dependencies merged into the
+  sovereign, joined on the ISO numeric `d.id` via `mondial_iso_crosswalk.json` (210/246). The
+  renderer auto-detects TopoJSON vs GeoJSON, and uses a sqrt colour scale + grey borders so highly
+  skewed measures (population/area) don't wash small countries out to white. Regenerate either
+  crosswalk with the sibling `build_*_crosswalk.py`.
 - **Web front-end.** `experiments/web_pipeline/` (`server.py` + `index.html`, std-lib
   ThreadingHTTPServer, **no model calls at serve time**) chains the three programs and renders the
   result in a sandboxed iframe; unbuilt charts return `"working in process"`.
