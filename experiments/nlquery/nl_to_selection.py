@@ -10,6 +10,7 @@ with a clear message rather than emit a bad selection.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 ALLOWED_OPS = {"range", "in", "eq", "not_null", "gt", "ge", "lt", "le", "group_having"}
@@ -21,7 +22,11 @@ _SYSTEM = (
     "You translate a user's natural-language request into a JSON data selection against a "
     "given relational schema. Output ONLY a JSON object, no prose. Never invent table or "
     "column names — use exactly the names in the schema. Do NOT choose a chart type or a "
-    "visualisation pattern; only pick data.\n\n"
+    "visualisation pattern; only pick data.\n"
+    "Choose the table that CONTAINS the attributes to be visualised. If the entity named and "
+    "its attributes live in different tables (e.g. GDP/unemployment are in 'economy', not "
+    "'country'), pick the table that has the attributes (it is usually keyed by the entity), "
+    "or join them in — do not silently drop a requested attribute.\n\n"
     "Output shape:\n"
     "{\n"
     '  "table": "<base table name>",\n'
@@ -210,12 +215,98 @@ def _ensure_identifying_columns(selection: dict[str, Any], schema: dict[str, Any
     return selection
 
 
+# --- Deterministic request grounding (no LLM) -------------------------------
+# A cheap, reproducible keyword resolver that spots which *measure* columns (numeric/
+# temporal attributes) the request literally names, and where they live. It does NOT parse
+# the request — the LLM still does the semantic/relational work; this only nudges the model
+# towards the right table (a hint) and catches the LLM's known failure of silently dropping a
+# named measure (a coverage check + retry). It is high-precision but low-recall: paraphrases
+# with no matching keyword ("wealthiest nations") yield nothing, and the LLM is on its own.
+_NUMERIC_TYPES = {"INT", "INTEGER", "BIGINT", "SMALLINT", "NUMERIC", "DECIMAL",
+                  "FLOAT", "DOUBLE", "REAL", "MONEY"}
+_TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
+_REQ_STOP = {
+    "the", "a", "an", "of", "and", "or", "to", "by", "for", "in", "on", "with", "as", "at",
+    "each", "all", "every", "show", "compare", "visualise", "visualize", "display", "plot",
+    "how", "what", "which", "who", "where", "across", "between", "their", "its", "me", "i",
+    "want", "see", "per", "over", "total", "number", "count", "many", "much", "has", "have",
+    "is", "are", "do", "does", "relate", "relates", "related", "relationship", "change",
+    "changed", "changes", "this", "that", "these", "those", "list", "give", "find",
+}
+
+
+def _is_measure(type_str: Any) -> bool:
+    b = str(type_str or "").strip().upper().split("(")[0].strip()
+    return b in _NUMERIC_TYPES or b in _TEMPORAL_TYPES
+
+
+def _measure_index(schema: dict[str, Any]) -> dict[str, list[tuple[str, str]]]:
+    """Lowercased measure-column name -> [(table, column), ...] over the whole schema."""
+    idx: dict[str, list[tuple[str, str]]] = {}
+    for t, tdef in (schema.get("tables") or {}).items():
+        for col in tdef.get("columns") or []:
+            name = col.get("name") if isinstance(col, dict) else col
+            typ = col.get("type", "") if isinstance(col, dict) else ""
+            if name and _is_measure(typ):
+                idx.setdefault(str(name).lower(), []).append((t, str(name)))
+    return idx
+
+
+def resolve_request_columns(text: str, schema: dict[str, Any]) -> list[dict[str, Any]]:
+    """Measure columns the request literally names: [{"term", "matches": [(table, col)...]}].
+
+    Deterministic: split into tokens, drop stop-words, and exact-match (with a light plural
+    fold) against numeric/temporal column names. Discrete keys (name/code/country) are ignored
+    as ubiquitous noise; the point is the *measures* that pin the table and that get dropped.
+    """
+    idx = _measure_index(schema)
+    toks = [w for w in re.split(r"[^a-z0-9]+", (text or "").lower()) if w and w not in _REQ_STOP]
+    resolved: dict[str, list[tuple[str, str]]] = {}
+    for w in toks:
+        for cand in (w, w[:-1] if len(w) > 3 and w.endswith("s") else None):
+            if cand and cand in idx and cand not in resolved:
+                resolved[cand] = idx[cand]
+    return [{"term": k, "matches": v} for k, v in resolved.items()]
+
+
+def _request_hint(resolved: list[dict[str, Any]]) -> str:
+    if not resolved:
+        return ""
+    parts = []
+    for r in resolved:
+        tables = sorted({t for t, _ in r["matches"]})
+        parts.append(r["matches"][0][1] + " (in " + "/".join(tables[:3]) + ")")
+    return ("Attributes the request appears to name: " + "; ".join(parts)
+            + ". Choose the table that contains the attributes to visualise, or join them in.")
+
+
+def _coverage_gap(selection: dict[str, Any], resolved: list[dict[str, Any]]) -> str:
+    """Measure terms the request named but the selection omitted (comma-joined), else ""."""
+    if not resolved:
+        return ""
+    present = {str(c).lower() for c in (selection.get("columns") or [])}
+    for j in selection.get("joins") or []:
+        bring = j.get("bring", "")
+        if "." in bring:
+            present.add(bring.split(".", 1)[1].lower())
+        if j.get("as"):
+            present.add(str(j["as"]).lower())
+    agg = selection.get("aggregate") or {}
+    for m in agg.get("measures") or []:
+        if m.get("column"):
+            present.add(str(m["column"]).lower())
+    for gb in agg.get("group_by") or []:
+        present.add(str(gb).lower())
+    return ", ".join(r["term"] for r in resolved if r["term"] not in present)
+
+
 def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str, Any]:
     """Parse ``nl_text`` into a validated selection.
 
     Returns ``{"ok": bool, "selection": {...}|None, "error": str, "raw": {...}|None}``.
     ``client`` may be injected (for testing); otherwise a Bailian client is built from
-    ``config.load_config()``.
+    ``config.load_config()``. A deterministic keyword resolver adds a table hint and, if the
+    model drops a measure the request named, retries once with a correction before accepting.
     """
     if client is None:
         from config import load_config
@@ -224,13 +315,16 @@ def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str,
         client = from_config(load_config())
 
     brief = _schema_brief(schema)
-    user = "Schema:\n" + brief + "\n\nRequest: " + nl_text.strip() + "\n\nReturn the JSON selection."
+    resolved = resolve_request_columns(nl_text, schema)
+    hint = _request_hint(resolved)
+    user = ("Schema:\n" + brief + "\n\nRequest: " + nl_text.strip()
+            + (("\n\n" + hint) if hint else "") + "\n\nReturn the JSON selection.")
 
     error = ""
     raw: dict[str, Any] | None = None
-    for attempt in range(2):
-        prompt = user if attempt == 0 else (
-            user + "\n\nYour previous answer was invalid: " + error + "\nFix it and return valid JSON."
+    for attempt in range(3):
+        prompt = user if not error else (
+            user + "\n\nYour previous answer had a problem: " + error + "\nFix it and return valid JSON."
         )
         try:
             raw = client.chat_json(_SYSTEM, prompt)
@@ -238,9 +332,15 @@ def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str,
             error = "model did not return parseable JSON: " + str(exc)
             continue
         err = _validate(raw, schema)
-        if err is None:
-            sel = _ensure_identifying_columns(_normalise(raw), schema)
-            return {"ok": True, "selection": sel, "error": "", "raw": raw}
-        error = err
+        if err is not None:
+            error = err
+            continue
+        sel = _ensure_identifying_columns(_normalise(raw), schema)
+        gap = _coverage_gap(sel, resolved)
+        if gap and attempt < 2:  # measure dropped -> correct and retry; accept on the last try
+            error = ("the request names " + gap + " but the selection omitted them; choose the "
+                     "table that contains them or join them in")
+            continue
+        return {"ok": True, "selection": sel, "error": "", "raw": raw}
 
     return {"ok": False, "selection": None, "error": error or "could not resolve request", "raw": raw}

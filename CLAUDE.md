@@ -115,6 +115,10 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   chart label, so blind/gold separation holds. For a non-aggregate data-first selection it
   deterministically ensures the base table's **primary-key column(s)** are in `columns`
   (`_ensure_identifying_columns`), so Step 2 always has a key/region/text role and real candidates.
+  A std-lib keyword resolver (`resolve_request_columns`) also spots which **measure columns** the
+  request literally names and where they live: it injects a table hint and, if the model drops a
+  named measure, retries with a correction (`_coverage_gap`) — high-precision/low-recall, so
+  paraphrases with no keyword fall through to the LLM unaided.
   Served at `POST /api/nl` (returns the selection for the UI to confirm, then run via `/api/run`);
   degrades gracefully when no key is set.
 - **LLM chart selection (Step 2)** `experiments/chartselect/` — opt-in (`VIZER_LLM_STEP2=on`,
