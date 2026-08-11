@@ -44,10 +44,25 @@
   button.ghost:hover:not(:disabled) { background:#f2f6fb; }
   button:disabled { opacity:.5; cursor:default; }
   #run { width:100%; margin-top:10px; }
-  .pill { display:inline-block; padding:3px 8px; border-radius:12px; font-size:12px; margin:3px 4px 0 0; border:1px solid var(--line); background:#fff; cursor:pointer; }
-  .pill.sel { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pill { display:inline-block; padding:4px 10px; border-radius:14px; font-size:12px; margin:4px 5px 0 0; border:1px solid var(--line); background:#fff; cursor:pointer; transition:background .12s, border-color .12s, box-shadow .12s; }
+  .pill:hover { border-color:var(--accent); background:#f4f8fd; }
+  .pill.sel { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 1px 4px rgba(63,111,176,.35); }
+  .pill.sel:hover { background:var(--accent-d); }
   .pill.llm { box-shadow:0 0 0 2px #f0a500; }
-  .pill.wip { opacity:.6; }
+  .pill.sel.llm { box-shadow:0 0 0 2px #f0a500, 0 1px 4px rgba(63,111,176,.35); }
+  .pill.wip { opacity:.55; }
+  /* "What the system detected" card: pattern badge, mapping chips, LLM rationale */
+  #pattern.badge { display:inline-block; font-family:inherit; font-weight:600; font-size:12px; color:var(--accent-d);
+                   background:#eaf1fb; border:1px solid #cfe0f5; padding:2px 11px; border-radius:12px; text-transform:capitalize; }
+  .mapview { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .mapview:empty::before { content:"—"; color:#98a2b3; }
+  .maprow { display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:7px; overflow:hidden; font-size:12px; background:#fff; }
+  .maprow .mrole { background:#eef2f8; color:#5b6675; padding:3px 9px; font-weight:600; }
+  .maprow .mval { padding:3px 9px; font-family:ui-monospace,monospace; color:#1f2733; }
+  #llmRow { align-items:baseline; }
+  #llmChart { color:var(--accent-d); }
+  #llmRank div { padding:2px 0; border-top:1px dashed var(--line); }
+  #llmRank div:first-child { border-top:0; }
   pre { background:#0f1115; color:#cdd3de; padding:10px; border-radius:6px; font-size:12px; overflow:auto; }
   #viz { height:72vh; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fbfbfc; position:relative; }
   #vizHolder { background:#fff; }
@@ -202,8 +217,8 @@
       <div class="row"><span class="k">Recommended charts (click to render):</span> <span id="charts"></span></div>
       <div class="row" id="llmRow" style="display:none;"><span class="k">LLM pick:</span> <b id="llmChart"></b> <span id="llmReason" class="k"></span></div>
       <div id="llmRank" class="k" style="font-size:12px;margin:2px 0 6px 0;line-height:1.5;"></div>
-      <div class="row"><span class="k">Selected mapping:</span></div>
-      <pre id="mapping">—</pre>
+      <div class="row"><span class="k">Mapping for the shown chart:</span></div>
+      <div id="mapping" class="mapview"></div>
     </div>
     <div class="panel viz-panel">
       <div class="vizhead">
@@ -615,6 +630,16 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape" && document.body.classList.contains("vizfull")) { document.body.classList.remove("vizfull"); applyZoom(); }
 });
 
+// Render a chart mapping as readable "role -> column" chips instead of raw JSON.
+function renderMapping(m) {
+  m = m || {};
+  const keys = Object.keys(m).filter(k => m[k] !== undefined && m[k] !== null && m[k] !== "");
+  if (!keys.length) return "";
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return keys.map(k =>
+    `<span class="maprow"><span class="mrole">${esc(k)}</span><span class="mval">${esc(m[k])}</span></span>`).join("");
+}
+
 function drawCharts(step2) {
   const rec = step2.recommended_charts || [];
   const sel = (step2.selected || {}).chart;
@@ -653,9 +678,12 @@ function drawCharts(step2) {
     $("llmRank").innerHTML = "";
   }
   document.querySelectorAll('#charts .pill').forEach(p => p.onclick = async () => {
+    // The active/selected highlight follows the click (the gold LLM ring/★ stays put).
+    document.querySelectorAll('#charts .pill').forEach(x => x.classList.remove('sel'));
+    p.classList.add('sel');
     const chart = p.dataset.chart;
     const mapping = byChart[chart] || (step2.selected||{}).mapping;
-    $("mapping").textContent = JSON.stringify(mapping, null, 2);
+    $("mapping").innerHTML = renderMapping(mapping);
     // Use the mapping's own table (correct for every chart, incl. the natural-language path
     // where the manual table dropdown was never set); fall back to the last run, then the UI.
     const table = (mapping && mapping.table) || (last && last.table) || $("table").value;
@@ -695,8 +723,8 @@ async function runSelection(sel) {
   });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
-  $("pattern").textContent = j.step1.pattern;
-  $("mapping").textContent = JSON.stringify((j.step2.selected||{}).mapping || {}, null, 2);
+  $("pattern").textContent = (j.step1.pattern || "—").replace(/_/g, " ");
+  $("mapping").innerHTML = renderMapping((j.step2.selected||{}).mapping || {});
   drawCharts(j.step2);
   renderViz(j.step3);
 }
