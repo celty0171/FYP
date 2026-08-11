@@ -233,6 +233,43 @@ def _single_pk(table: str | None) -> str | None:
     return pk[0] if len(pk) == 1 else None
 
 
+_NUMERIC_TYPES = {"INT", "INTEGER", "BIGINT", "SMALLINT", "NUMERIC", "DECIMAL",
+                  "FLOAT", "DOUBLE", "REAL", "MONEY"}
+_TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
+_TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
+
+
+def _dim_of(type_str: Any) -> str:
+    b = str(type_str or "").strip().upper().split("(")[0].strip()
+    if b in _NUMERIC_TYPES:
+        return "scalar"
+    if b in _TEMPORAL_TYPES:
+        return "temporal"
+    if b in _TEXT_TYPES:
+        return "discrete"
+    return "other"
+
+
+def _schema_meta() -> dict[str, Any]:
+    """Per-table metadata for the front end: primary key + each column's type / dimension /
+    pk / fk flags, so the UI can badge columns and validate a manual selection client-side."""
+    out: dict[str, Any] = {}
+    for t, tdef in (SCHEMA.get("tables") or {}).items():
+        pk = list(tdef.get("primary_key") or [])
+        fk_cols: set[str] = set()
+        for fk in tdef.get("foreign_keys") or []:
+            for c in fk.get("columns") or []:
+                fk_cols.add(c)
+        cols = []
+        for c in tdef.get("columns") or []:
+            name = c.get("name") if isinstance(c, dict) else c
+            typ = c.get("type", "") if isinstance(c, dict) else ""
+            cols.append({"name": name, "type": typ, "dim": _dim_of(typ),
+                         "pk": name in pk, "fk": name in fk_cols})
+        out[t] = {"primary_key": pk, "columns": cols}
+    return out
+
+
 def _label_col(table: str | None) -> str | None:
     """The human-readable label column of an entity table, if distinct from its key.
     Convention: a `name` column, unless `name` is itself the key (already readable)."""
@@ -505,7 +542,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, (HERE / "index.html").read_bytes(), "text/html; charset=utf-8")
         elif self.path == "/api/schema":
             tables = {t: [c["name"] for c in SCHEMA["tables"][t]["columns"]] for t in sorted(SCHEMA["tables"])}
-            self._send(200, {"tables": tables})
+            self._send(200, {"tables": tables, "meta": _schema_meta()})
         elif self.path == "/api/datasource":
             self._send(200, {"status": DS_STATUS, "tables": sorted(SCHEMA.get("tables", {}))})
         elif self.path.startswith("/api/column_stats"):

@@ -4,22 +4,44 @@
 <meta charset="utf-8">
 <title>Mondial Step 1→2→3 pipeline</title>
 <style>
-  :root { --line:#d8dce3; --bg:#f7f8fa; --accent:#4a78b5; }
+  :root { --line:#dde1e8; --bg:#f4f6f9; --accent:#3f6fb0; --accent-d:#345c93; }
   * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; margin: 0; background: var(--bg); color: #222; }
-  header { background: #fff; border-bottom: 1px solid var(--line); padding: 12px 20px; }
-  header h1 { font-size: 17px; margin: 0; }
-  header p { margin: 4px 0 0; font-size: 12px; color: #666; }
-  main { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 16px 20px; }
-  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
-  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #555; margin: 0 0 10px; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Arial, Helvetica, sans-serif; margin: 0; background: var(--bg); color: #1f2733; }
+  header { background: linear-gradient(90deg,#ffffff,#f7fafe); border-bottom: 1px solid var(--line); padding: 14px 22px; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing:-.01em; }
+  header p { margin: 4px 0 0; font-size: 12px; color: #667085; }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 18px; padding: 18px 22px; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: #667085; margin: 0 0 10px; }
   select, button { font-size: 13px; }
-  select { width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 6px; }
-  #cols { max-height: 240px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:6px; margin-top:8px; }
+  select { width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 7px; background:#fff; }
+  select:focus, input:focus { outline:2px solid rgba(63,111,176,.35); outline-offset:0; border-color:var(--accent); }
+  #cols { max-height: 260px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:4px; margin-top:8px; background:#fff; }
   #cols label { display:block; font-size:13px; padding:2px 0; cursor:pointer; }
   .badge { font-family:monospace; }
-  button { padding: 7px 12px; border: 1px solid var(--accent); background: var(--accent); color:#fff; border-radius:6px; cursor:pointer; }
-  button.ghost { background:#fff; color:var(--accent); }
+  /* column rows with type + key/fk badges (also help avoid selection mistakes) */
+  #cols label.colrow { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:5px; }
+  #cols label.colrow:hover { background:#f2f6fb; }
+  #cols .ctags { margin-left:auto; display:flex; align-items:center; gap:5px; }
+  .ctype { font-family:ui-monospace,monospace; font-size:10px; color:#7a8394; background:#eef1f6; padding:1px 5px; border-radius:4px; }
+  .cbadge { font-size:10px; padding:1px 6px; border-radius:10px; white-space:nowrap; }
+  .cbadge.pk { background:#fff4d6; color:#8a6d00; border:1px solid #f0d98a; }
+  .cbadge.fk { background:#e6eefc; color:#37589c; border:1px solid #c5d6f5; }
+  /* live manual-selection warnings */
+  #selWarn { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+  #selWarn:empty { display:none; }
+  .selwarn { display:flex; gap:8px; font-size:12px; line-height:1.45; padding:8px 10px; border-radius:7px; border:1px solid; }
+  .selwarn .wi { flex:0 0 auto; }
+  .selwarn.block { background:#fdecec; border-color:#f3c2c2; color:#8a1220; }
+  .selwarn.warn  { background:#fff6e6; border-color:#f0d59a; color:#7a5600; }
+  .selwarn.info  { background:#eef4ff; border-color:#c8dafc; color:#2f4c88; }
+  .selwarn code { background:rgba(0,0,0,.06); padding:0 4px; border-radius:4px; font-size:11px; }
+  .fixbtn { font-size:11px; padding:2px 8px; margin-left:4px; border-radius:5px; border:1px solid currentColor; background:#fff; color:inherit; cursor:pointer; font-weight:bold; }
+  .fixbtn:hover { background:rgba(0,0,0,.05); }
+  button { padding: 8px 13px; border: 1px solid var(--accent); background: var(--accent); color:#fff; border-radius:7px; cursor:pointer; font-weight:600; transition:filter .12s, background .12s; }
+  button:hover:not(:disabled) { filter:brightness(1.07); }
+  button.ghost { background:#fff; color:var(--accent); font-weight:500; }
+  button.ghost:hover:not(:disabled) { background:#f2f6fb; }
   button:disabled { opacity:.5; cursor:default; }
   #run { width:100%; margin-top:10px; }
   .pill { display:inline-block; padding:3px 8px; border-radius:12px; font-size:12px; margin:3px 4px 0 0; border:1px solid var(--line); background:#fff; cursor:pointer; }
@@ -123,6 +145,7 @@
         <label class="fld-label">Table</label>
         <select id="table"></select>
         <div id="cols"></div>
+        <div id="selWarn"></div>
         <h3>Related columns (join)</h3>
         <div id="joinPick">
           <select id="joinSel"></select>
@@ -201,7 +224,7 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
-let schema = {}, last = null;
+let schema = {}, schemaMeta = {}, last = null;
 
 async function api(path, body) {
   const opt = body ? { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) } : {};
@@ -210,13 +233,68 @@ async function api(path, body) {
 }
 
 function showColumns(table) {
-  const cols = schema[table] || [];
-  $("cols").innerHTML = cols.map(c =>
-    `<label><input type="checkbox" value="${c}"> ${c}</label>`).join("");
+  const meta = schemaMeta[table];
+  const cols = (meta && meta.columns) || (schema[table] || []).map(n => ({ name: n }));
+  $("cols").innerHTML = cols.map(c => {
+    const type = c.type ? `<span class="ctype">${c.type}</span>` : "";
+    const pk = c.pk ? `<span class="cbadge pk" title="primary key">🔑 key</span>` : "";
+    const fk = c.fk ? `<span class="cbadge fk" title="foreign key">🔗 fk</span>` : "";
+    return `<label class="colrow"><input type="checkbox" value="${c.name}">` +
+           `<span class="cname">${c.name}</span>` +
+           `<span class="ctags">${type}${pk}${fk}</span></label>`;
+  }).join("");
+  validateSelection();
 }
 
 function selectedColumns() {
   return [...document.querySelectorAll('#cols input:checked')].map(i => i.value);
+}
+
+// Live validation of a manual selection: warn on the table-selection mistakes that leave
+// Step 1/2 with nothing to work with, each with a hint and (where possible) a one-click fix.
+function checkCols(names) {
+  document.querySelectorAll('#cols input').forEach(i => { if (names.includes(i.value)) i.checked = true; });
+  validateSelection();
+}
+window._checkCols = checkCols;
+
+function validateSelection() {
+  const box = $("selWarn");
+  if (!box) return;
+  const t = $("table") && $("table").value;
+  const meta = schemaMeta[t];
+  if (!meta) { box.innerHTML = ""; return; }
+  const cols = selectedColumns();
+  const pk = meta.primary_key || [];
+  const by = {}; (meta.columns || []).forEach(c => by[c.name] = c);
+  const pkSel = pk.filter(k => cols.includes(k));
+  const nonKey = cols.filter(c => !pk.includes(c));
+  const measures = nonKey.filter(c => by[c] && (by[c].dim === "scalar" || by[c].dim === "temporal"));
+  const allFk = cols.length > 0 && cols.every(c => by[c] && by[c].fk);
+  const code = s => `<code>${s}</code>`;
+  const W = [];
+  if (cols.length === 0) {
+    W.push({ lvl: "info", msg: pk.length ? `Select the columns to visualise — include the key ${code(pk.join(", "))} 🔑 and at least one numeric or date value.` : "Select the columns to visualise." });
+  } else {
+    if (pk.length && pkSel.length === 0) {
+      W.push({ lvl: "warn", msg: `No key selected. Rows of <b>${t}</b> are identified by ${code(pk.join(", "))} — add it so each entity is distinct, otherwise the chart has nothing to key on.`, fix: pk, fixLabel: "Add key" });
+    } else if (pk.length > 1 && pkSel.length > 0 && pkSel.length < pk.length) {
+      const miss = pk.filter(k => !cols.includes(k));
+      W.push({ lvl: "warn", msg: `Partial key. <b>${t}</b> is keyed by ${code("(" + pk.join(", ") + ")")}; add ${code(miss.join(", "))} to fully identify the ${pk.length > 1 ? "relationship" : "entity"}.`, fix: miss, fixLabel: "Complete key" });
+    }
+    if (pkSel.length > 0 && measures.length === 0 && !allFk) {
+      const ex = (meta.columns || []).filter(c => !c.pk && (c.dim === "scalar" || c.dim === "temporal")).slice(0, 3).map(c => c.name);
+      W.push({ lvl: "warn", msg: `No measurable column selected. Add a numeric or date column${ex.length ? " (e.g. " + code(ex.join(", ")) : ""}${ex.length ? ")" : ""} so the chart has a value — otherwise only count/category charts are possible.` });
+    }
+    if (allFk) {
+      W.push({ lvl: "info", msg: "This looks like a relationship (every selected column is a foreign key) — good for a network or matrix chart; add a scalar column for edge weights." });
+    }
+  }
+  box.innerHTML = W.map((w, i) => {
+    const icon = w.lvl === "block" ? "⛔" : w.lvl === "warn" ? "⚠️" : "💡";
+    const fix = w.fix ? ` <button class="fixbtn" onclick="_checkCols(${JSON.stringify(w.fix).replace(/"/g, "&quot;")})">${w.fixLabel}</button>` : "";
+    return `<div class="selwarn ${w.lvl}"><span class="wi">${icon}</span><span>${w.msg}${fix}</span></div>`;
+  }).join("");
 }
 
 let colStats = {};
@@ -731,6 +809,7 @@ $("nlParse").onclick = async () => {
 async function loadSchema() {
   const j = await api("/api/schema");
   schema = j.tables;
+  schemaMeta = j.meta || {};
   $("table").innerHTML = Object.keys(schema).map(t => `<option>${t}</option>`).join("");
   showColumns($("table").value);
   await showJoins($("table").value);
@@ -771,6 +850,7 @@ document.querySelectorAll(".mtab").forEach(t => t.onclick = () => {
 });
 
 (async () => {
+  $("cols").addEventListener("change", validateSelection);  // live warnings as columns toggle
   $("table").onchange = async () => {
     showColumns($("table").value);
     await showJoins($("table").value);
