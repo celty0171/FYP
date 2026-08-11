@@ -45,7 +45,13 @@ const lookup = (p) => {
 };
 
 const vals = Object.values(valueByCode);
-const color = d3.scaleSequential(d3.interpolateYlGnBu).domain([0, d3.max(vals) || 1]);
+const vmax = d3.max(vals) || 1;
+// Measures like population / area / gdp are highly skewed (one huge value dwarfs the rest), so a
+// linear ramp leaves almost every country at the palette's lightest end — invisible on a white
+// map. Spread the domain with a sqrt scale and lift the colour floor so even the smallest value
+// gets a clearly visible tint.
+const tScale = d3.scaleSqrt().domain([0, vmax]).range([0, 1]).clamp(true);
+const color = v => d3.interpolateYlGnBu(0.15 + 0.85 * tScale(v));
 
 d3.json(basemapUrl).then(geo => {
   const countries = geo.features;
@@ -54,10 +60,10 @@ d3.json(basemapUrl).then(geo => {
 
   g.selectAll("path").data(countries).join("path")
     .attr("d", path)
-    .attr("stroke", "#fff").attr("stroke-width", 0.4)
+    .attr("stroke", "#9aa4b2").attr("stroke-width", 0.4)
     .attr("fill", d => {
       const v = lookup(d.properties || {});
-      return (v === undefined) ? "#eee" : color(v);
+      return (v === undefined) ? "#e6e8ec" : color(v);
     })
     .on("mouseover", (event, d) => {
       const p = d.properties || {};
@@ -68,7 +74,7 @@ d3.json(basemapUrl).then(geo => {
       moveTip(event);
     })
     .on("mousemove", moveTip)
-    .on("mouseout", (event) => { d3.select(event.currentTarget).attr("stroke", "#fff").attr("stroke-width", 0.4); tip.style("opacity", 0); });
+    .on("mouseout", (event) => { d3.select(event.currentTarget).attr("stroke", "#9aa4b2").attr("stroke-width", 0.4); tip.style("opacity", 0); });
 
   // simple legend
   const lw = 180, lh = 8, lx = 20, ly = height - 30;
