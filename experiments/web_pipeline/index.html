@@ -24,6 +24,7 @@
   #run { width:100%; margin-top:10px; }
   .pill { display:inline-block; padding:3px 8px; border-radius:12px; font-size:12px; margin:3px 4px 0 0; border:1px solid var(--line); background:#fff; cursor:pointer; }
   .pill.sel { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pill.llm { box-shadow:0 0 0 2px #f0a500; }
   .pill.wip { opacity:.6; }
   pre { background:#0f1115; color:#cdd3de; padding:10px; border-radius:6px; font-size:12px; overflow:auto; }
   #viz { height:72vh; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fbfbfc; position:relative; }
@@ -164,6 +165,7 @@
           </div>
           <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
         </div>
+        <input id="intent" type="text" placeholder="Goal / purpose (optional) — e.g. compare across countries, or GDP vs unemployment correlation" style="width:100%;box-sizing:border-box;margin:6px 0;">
         <button id="run">Visualise</button>
       </div>
 
@@ -175,6 +177,8 @@
       <h2>What the system detected</h2>
       <div class="row"><span class="k">Schema pattern:</span> <b id="pattern" class="badge">—</b></div>
       <div class="row"><span class="k">Recommended charts (click to render):</span> <span id="charts"></span></div>
+      <div class="row" id="llmRow" style="display:none;"><span class="k">LLM pick:</span> <b id="llmChart"></b> <span id="llmReason" class="k"></span></div>
+      <div id="llmRank" class="k" style="font-size:12px;margin:2px 0 6px 0;line-height:1.5;"></div>
       <div class="row"><span class="k">Selected mapping:</span></div>
       <pre id="mapping">—</pre>
     </div>
@@ -536,18 +540,40 @@ window.addEventListener("keydown", e => {
 function drawCharts(step2) {
   const rec = step2.recommended_charts || [];
   const sel = (step2.selected || {}).chart;
+  const llm = step2.llm || null;
+  // The LLM highlight only applies when an LLM actually chose (source "llm").
+  const llmChart = (llm && llm.source === "llm") ? llm.recommended_chart : null;
   const byChart = {};
   (step2.candidates || []).forEach(c => { if (c.mapping && Object.keys(c.mapping).length) byChart[c.chart] = c.mapping; });
   // also offer "conditional" charts (choropleth/word cloud) the user can interpret as geo/lexical
   const cond = (step2.candidates || []).filter(c => c.eligible === "conditional" && byChart[c.chart]).map(c => c.chart);
   const allCharts = rec.concat(cond.filter(c => !rec.includes(c)));
   const built = new Set(["bar chart","scatter diagram","bubble chart","calendar chart","tree map","circle packing","hierarchy tree","sankey diagram","chord diagram","matrix heatmap","force graph","arc diagram","line chart","stacked bar chart","grouped bar chart","spider chart","choropleth map","word cloud"]);
+  // Per-candidate rationale from the LLM ranking (A4): {chart -> note}.
+  const noteOf = {};
+  ((llm && llm.ranking) || []).forEach(r => { if (r && r.chart) noteOf[r.chart] = r.note || ""; });
   $("charts").innerHTML = allCharts.length ? allCharts.map(c => {
     const wip = built.has(c.toLowerCase()) ? "" : " wip";
     const s = (c === sel) ? " sel" : "";
+    const l = (c === llmChart) ? " llm" : "";
     const tag = cond.includes(c) ? " (if geo/lexical)" : "";
-    return `<span class="pill${s}${wip}" data-chart="${c}" title="${tag}">${c}${tag}${wip?" ⏳":""}</span>`;
+    const star = (c === llmChart) ? " ★" : "";
+    const tip = (noteOf[c] || tag || "").replace(/"/g, "&quot;");
+    return `<span class="pill${s}${l}${wip}" data-chart="${c}" title="${tip}">${c}${tag}${star}${wip?" ⏳":""}</span>`;
   }).join("") : '<span class="k">No chart — the selection has a key but no measurable column. Add a numeric or date column to enable a visualisation.</span>';
+  // LLM rationale row + ranked notes: only shown when the LLM made the pick.
+  if (llmChart) {
+    $("llmChart").textContent = llmChart;
+    $("llmReason").textContent = llm.reason ? ("— " + llm.reason) : "";
+    const ranked = ((llm && llm.ranking) || []).filter(r => r && r.note);
+    $("llmRank").innerHTML = ranked.length
+      ? ranked.map(r => `<div><b>${r.chart}</b> — ${r.note}</div>`).join("")
+      : "";
+    $("llmRow").style.display = "";
+  } else {
+    $("llmRow").style.display = "none";
+    $("llmRank").innerHTML = "";
+  }
   document.querySelectorAll('#charts .pill').forEach(p => p.onclick = async () => {
     const chart = p.dataset.chart;
     const mapping = byChart[chart] || (step2.selected||{}).mapping;
@@ -587,6 +613,7 @@ async function runSelection(sel) {
   const j = await api("/api/run", {
     table: sel.table, columns: sel.columns || [],
     filters: sel.filters || [], aggregate: sel.aggregate || {}, joins: sel.joins || [],
+    intent: sel.intent || $("intent").value.trim(),
   });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
@@ -689,6 +716,8 @@ function showNlConfirm(sel) {
 $("nlParse").onclick = async () => {
   const text = $("nlText").value.trim();
   if (!text) return;
+  // The NL request is also the user's goal — carry it into Step 2's intent-aware selection.
+  $("intent").value = text;
   $("nlOut").textContent = "parsing…";
   const j = await api("/api/nl", { text });
   if (!j || !j.ok) {

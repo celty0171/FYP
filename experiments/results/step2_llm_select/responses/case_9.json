@@ -1,0 +1,58 @@
+{
+  "case_id": "9",
+  "selected_table": "borders",
+  "selected_columns": [
+    "country1",
+    "country2",
+    "length"
+  ],
+  "identified_pattern": "reflexive_many_many_relationship",
+  "deterministic": {
+    "recommended_charts": [
+      "chord diagram",
+      "matrix heatmap",
+      "force graph",
+      "arc diagram"
+    ],
+    "selected": {
+      "chart": "chord diagram",
+      "mapping": {
+        "table": "borders",
+        "source": "country1",
+        "target": "country2",
+        "width": "length",
+        "pattern": "reflexive_many_many_relationship"
+      }
+    }
+  },
+  "llm": {
+    "recommended_chart": "chord diagram",
+    "reason": "Chord diagrams effectively display weighted many-to-many relationships like border lengths between countries in a compact, readable circular layout.",
+    "ranking": [
+      {
+        "chart": "chord diagram",
+        "note": "Compact circular layout clearly displays weighted many-to-many relationships like border lengths between ~169 countries."
+      },
+      {
+        "chart": "force graph",
+        "note": "Good for showing network topology and clusters, but precise edge weights are harder to read than chord widths."
+      },
+      {
+        "chart": "matrix heatmap",
+        "note": "Shows all pairs without crossings, but a 169x169 matrix with 1% density is mostly empty and visually sparse."
+      },
+      {
+        "chart": "arc diagram",
+        "note": "Requires an arbitrary ordering of countries, making global relationship patterns harder to discern than in a chord diagr"
+      }
+    ],
+    "mapping": {
+      "table": "borders",
+      "source": "country1",
+      "target": "country2",
+      "width": "length",
+      "pattern": "reflexive_many_many_relationship"
+    },
+    "source": "llm"
+  }
+}

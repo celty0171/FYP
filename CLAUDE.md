@@ -114,6 +114,21 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   into a validated `{table, columns, filters, joins, aggregate}` selection — **never** a pattern or
   chart label, so blind/gold separation holds. Served at `POST /api/nl` (returns the selection for the
   UI to confirm, then run via `/api/run`); degrades gracefully when no key is set.
+- **LLM chart selection (Step 2)** `experiments/chartselect/` — opt-in (`VIZER_LLM_STEP2=on`,
+  default `off`). `llm_chart_selector.select(schema, table, columns, pattern, s2, client, rows, intent)`
+  asks the Bailian client to **rank every deterministic Step-2 candidate** (each with a one-line note),
+  pick one to highlight, give one short English rationale, and optionally swap a selected column into an
+  **existing** mapping role (same dimension only) — it never invents charts, mapping keys, or column
+  names, and never sees a gold label, so both the blind/gold separation and the Step-2→Step-3
+  field-name contract hold. It is **intent-aware** (the user's request flows through as a soft *goal*
+  signal) and **data-aware** (deterministic row-count / cardinality / null-share / numeric-range
+  signals), so the same columns under different goals or data scales can lead to different charts.
+  Wired in `server.py::_step2_block` (both the aggregate and non-aggregate paths, fed `rows`+`intent`
+  from `run_pipeline`; `/api/run` reads `intent`, the UI's optional purpose box prefilled from the NL
+  request): all valid candidates are still returned, `step2.llm = {recommended_chart, reason, source,
+  ranking:[{chart,note}]}` is added, and the highlighted chart becomes `selected` for Step 3. Any
+  error/invalid answer → deterministic pick (`source="fallback"`). Prompt contract documented in
+  `prompts/step2_llm_select_prompt.md`.
 
 The Step-2→Step-3 mapping field-name contract and the base-renderer rules (thinking off,
 `repetition_penalty=1.1`, no f-string/`.format()` brace templating, structural + static-JS validation)

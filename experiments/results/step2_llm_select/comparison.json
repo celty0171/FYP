@@ -1,0 +1,214 @@
+{
+  "n_cases": 9,
+  "deterministic_hits": 7,
+  "llm_hits": 9,
+  "agreement": 7,
+  "llm_answered_by_model": 9,
+  "note": "",
+  "cases": [
+    {
+      "case_id": "1",
+      "table": "country",
+      "columns": [
+        "code",
+        "population"
+      ],
+      "pattern": "basic_entity",
+      "gold_visualisations": [
+        "bar_chart",
+        "choropleth_map",
+        "word_cloud"
+      ],
+      "det_chart": "bar chart",
+      "det_norm": "bar_chart",
+      "det_hit": true,
+      "llm_chart": "bar chart",
+      "llm_norm": "bar_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A bar chart effectively compares the scalar population values across the 246 distinct country codes.",
+      "agree": true
+    },
+    {
+      "case_id": "2",
+      "table": "economy",
+      "columns": [
+        "country",
+        "gdp",
+        "unemployment"
+      ],
+      "pattern": "basic_entity_inherited_key",
+      "gold_visualisations": [
+        "scatter_chart"
+      ],
+      "det_chart": "bar chart",
+      "det_norm": "bar_chart",
+      "det_hit": false,
+      "llm_chart": "scatter diagram",
+      "llm_norm": "scatter_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A scatter plot effectively reveals the relationship between two continuous variables across 246 countries without the clutter of a 246-bar chart.",
+      "agree": false
+    },
+    {
+      "case_id": "3",
+      "table": "lake",
+      "columns": [
+        "name",
+        "elevation",
+        "depth",
+        "dam_height"
+      ],
+      "pattern": "basic_entity",
+      "gold_visualisations": [
+        "bubble_chart",
+        "scatter_chart"
+      ],
+      "det_chart": "bar chart",
+      "det_norm": "bar_chart",
+      "det_hit": false,
+      "llm_chart": "scatter diagram",
+      "llm_norm": "scatter_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A scatter plot effectively shows the relationship between elevation and depth for 223 lakes, avoiding bar chart overcrowding and the high null rate in dam_height.",
+      "agree": false
+    },
+    {
+      "case_id": "4",
+      "table": "organization",
+      "columns": [
+        "abbreviation",
+        "established"
+      ],
+      "pattern": "basic_entity",
+      "gold_visualisations": [
+        "bar_chart",
+        "calendar_chart",
+        "word_cloud"
+      ],
+      "det_chart": "calendar chart",
+      "det_norm": "calendar_chart",
+      "det_hit": true,
+      "llm_chart": "calendar chart",
+      "llm_norm": "calendar_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "The calendar chart is the only candidate and effectively maps the primary key and temporal columns to visualize establishment dates.",
+      "agree": true
+    },
+    {
+      "case_id": "5",
+      "table": "country_population",
+      "columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "pattern": "weak_entity",
+      "gold_visualisations": [
+        "line_chart"
+      ],
+      "det_chart": "line chart",
+      "det_norm": "line_chart",
+      "det_hit": true,
+      "llm_chart": "line chart",
+      "llm_norm": "line_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A line chart best captures temporal trends over years, while a grouped bar chart would be entirely unreadable with 246 countries and 161 years.",
+      "agree": true
+    },
+    {
+      "case_id": "6",
+      "table": "ethnic_group",
+      "columns": [
+        "country",
+        "name",
+        "percentage"
+      ],
+      "pattern": "weak_entity",
+      "gold_visualisations": [
+        "grouped_bar_chart"
+      ],
+      "det_chart": "grouped bar chart",
+      "det_norm": "grouped_bar_chart",
+      "det_hit": true,
+      "llm_chart": "grouped bar chart",
+      "llm_norm": "grouped_bar_chart",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A grouped bar chart compares the percentage distribution of ethnic group names across countries, matching the weak entity relationship.",
+      "agree": true
+    },
+    {
+      "case_id": "7",
+      "table": "airport",
+      "columns": [
+        "iata_code",
+        "island",
+        "elevation"
+      ],
+      "pattern": "one_many_relationship",
+      "gold_visualisations": [
+        "circle_packing",
+        "treemap"
+      ],
+      "det_chart": "tree map",
+      "det_norm": "treemap",
+      "det_hit": true,
+      "llm_chart": "tree map",
+      "llm_norm": "treemap",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "A tree map best displays the hierarchical relationship and scalar measure via space-efficient rectangles, outperforming circle packing and hierarchy tree.",
+      "agree": true
+    },
+    {
+      "case_id": "8",
+      "table": "encompasses",
+      "columns": [
+        "country",
+        "continent",
+        "percentage"
+      ],
+      "pattern": "many_many_relationship",
+      "gold_visualisations": [
+        "sankey_diagram"
+      ],
+      "det_chart": "Sankey diagram",
+      "det_norm": "sankey_diagram",
+      "det_hit": true,
+      "llm_chart": "Sankey diagram",
+      "llm_norm": "sankey_diagram",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "Sankey diagram effectively visualizes the distribution of countries across 6 continents with proportional flows, avoiding the clutter of a 250-node force graph or a sparse matrix.",
+      "agree": true
+    },
+    {
+      "case_id": "9",
+      "table": "borders",
+      "columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "pattern": "reflexive_many_many_relationship",
+      "gold_visualisations": [
+        "chord_diagram",
+        "network_chart"
+      ],
+      "det_chart": "chord diagram",
+      "det_norm": "chord_diagram",
+      "det_hit": true,
+      "llm_chart": "chord diagram",
+      "llm_norm": "chord_diagram",
+      "llm_hit": true,
+      "llm_source": "llm",
+      "llm_reason": "Chord diagrams effectively display weighted many-to-many relationships like border lengths between countries in a compact, readable circular layout.",
+      "agree": true
+    }
+  ]
+}

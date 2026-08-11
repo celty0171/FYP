@@ -1,0 +1,51 @@
+{
+  "case_id": "7",
+  "selected_table": "airport",
+  "selected_columns": [
+    "iata_code",
+    "island",
+    "elevation"
+  ],
+  "identified_pattern": "one_many_relationship",
+  "deterministic": {
+    "recommended_charts": [
+      "tree map",
+      "circle packing",
+      "hierarchy tree"
+    ],
+    "selected": {
+      "chart": "tree map",
+      "mapping": {
+        "table": "airport",
+        "parent": "island",
+        "child": "iata_code",
+        "measure": "elevation"
+      }
+    }
+  },
+  "llm": {
+    "recommended_chart": "tree map",
+    "reason": "A tree map best displays the hierarchical relationship and scalar measure via space-efficient rectangles, outperforming circle packing and hierarchy tree.",
+    "ranking": [
+      {
+        "chart": "tree map",
+        "note": "Best for showing hierarchical part-to-whole relationships with a scalar measure using space-efficient rectangles."
+      },
+      {
+        "chart": "circle packing",
+        "note": "Shows hierarchy and measure but is less space-efficient and harder to compare sizes than a tree map."
+      },
+      {
+        "chart": "hierarchy tree",
+        "note": "Shows the hierarchy but fails to incorporate the scalar measure for deeper insight."
+      }
+    ],
+    "mapping": {
+      "table": "airport",
+      "parent": "island",
+      "child": "iata_code",
+      "measure": "elevation"
+    },
+    "source": "llm"
+  }
+}

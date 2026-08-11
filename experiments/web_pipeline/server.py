@@ -353,6 +353,67 @@ def nl_select(text: str) -> dict[str, Any]:
         return {"ok": False, "selection": None, "error": str(exc)}
 
 
+# --- Opt-in LLM chart selection (Step 2) -----------------------------------
+# When VIZER_LLM_STEP2 is on and a key is configured, an LLM ranks the deterministic
+# Step-2 candidates and picks one to highlight (with a short English rationale, and
+# optional same-dimension mapping swaps). Off/no-key -> deterministic pick, unchanged.
+_LLM_CLIENT: Any = None
+_LLM_CLIENT_INIT = False
+
+
+def _get_llm_client() -> Any:
+    """Lazily build (and cache) one Bailian client for Step-2 selection, or None."""
+    global _LLM_CLIENT, _LLM_CLIENT_INIT
+    if _LLM_CLIENT_INIT:
+        return _LLM_CLIENT
+    _LLM_CLIENT_INIT = True
+    if not (CONFIG.llm_step2 and CONFIG.has_llm):
+        return None
+    try:
+        from nlquery.bailian_client import BailianClient
+        _LLM_CLIENT = BailianClient(
+            api_key=CONFIG.dashscope_api_key,
+            base_url=CONFIG.dashscope_base_url,
+            model=CONFIG.step2_model,
+        )
+    except Exception:  # keep the pipeline alive if the SDK/key is unavailable
+        _LLM_CLIENT = None
+    return _LLM_CLIENT
+
+
+def _step2_block(schema: dict[str, Any], table: str, columns: list[str],
+                 pattern: str, s2: dict[str, Any],
+                 rows: list[dict[str, Any]] | None = None,
+                 intent: str = "") -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build the ``step2`` response block and the chart to render.
+
+    All valid candidates are always returned; when LLM selection is on, the LLM's pick is
+    highlighted via ``step2.llm`` and becomes ``selected`` (so Step 3 renders it). ``rows`` and
+    ``intent`` make the pick data- and goal-aware. Returns ``(block, selected)``.
+    """
+    selected = s2.get("selected") or {}
+    block = {
+        "recommended_charts": s2.get("recommended_charts", []),
+        "candidates": s2.get("candidates", []),
+        "selected": selected,
+    }
+    client = _get_llm_client()
+    if client is not None:
+        from chartselect import select as llm_select
+        pick = llm_select(schema, table, columns, pattern, s2, client=client,
+                          rows=rows, intent=intent)
+        if pick.get("source") == "llm" and pick.get("recommended_chart"):
+            selected = {"chart": pick["recommended_chart"], "mapping": pick.get("mapping") or {}}
+            block["selected"] = selected
+        block["llm"] = {
+            "recommended_chart": pick.get("recommended_chart"),
+            "reason": pick.get("reason", ""),
+            "source": pick.get("source"),
+            "ranking": pick.get("ranking", []),
+        }
+    return block, selected
+
+
 def _empty_run(table, columns, filters, aggregate, joins, pattern, reason, msg):
     return {
         "selected_table": table,
@@ -369,7 +430,8 @@ def _empty_run(table, columns, filters, aggregate, joins, pattern, reason, msg):
 def run_pipeline(table: str, columns: list[str],
                  filters: list[dict[str, Any]] | None = None,
                  aggregate: dict[str, Any] | None = None,
-                 joins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+                 joins: list[dict[str, Any]] | None = None,
+                 intent: str = "") -> dict[str, Any]:
     # Order: join (enrich) -> filter -> (aggregate) -> Step 1/2/3. Join + filter run
     # before Step 2 so the selector measures on the subset the user sees.
     fdata = filtered_data(table, filters, joins)
@@ -388,7 +450,7 @@ def run_pipeline(table: str, columns: list[str],
         s1 = STEP1.classify_selection(dschema, dtable, dcols)
         pattern = s1["predicted_pattern"]
         s2 = STEP2.recommend(dschema, dtable, dcols, pattern, rows=arows)
-        selected = s2.get("selected") or {}
+        step2, selected = _step2_block(dschema, dtable, dcols, pattern, s2, rows=arows, intent=intent)
         ddata = {"tables": {dtable: arows}}
         rendered = render_chart(selected.get("chart"), selected.get("mapping") or {}, data=ddata)
         return {
@@ -399,11 +461,7 @@ def run_pipeline(table: str, columns: list[str],
             "joins": joins or [],
             "step1": {"pattern": pattern, "reason": s1.get("reason", ""),
                       "derived_table": dtable},
-            "step2": {
-                "recommended_charts": s2.get("recommended_charts", []),
-                "candidates": s2.get("candidates", []),
-                "selected": selected,
-            },
+            "step2": step2,
             "step3": rendered,
         }
 
@@ -414,7 +472,7 @@ def run_pipeline(table: str, columns: list[str],
         return _empty_run(table, columns, filters, aggregate, joins, pattern,
                           s1.get("reason", ""), "no rows match the current filter")
     s2 = STEP2.recommend(SCHEMA, table, columns, pattern, rows=rows)
-    selected = s2.get("selected") or {}
+    step2, selected = _step2_block(SCHEMA, table, columns, pattern, s2, rows=rows, intent=intent)
     rendered = render_chart(selected.get("chart"), selected.get("mapping") or {}, data=fdata)
     return {
         "selected_table": table,
@@ -423,11 +481,7 @@ def run_pipeline(table: str, columns: list[str],
         "aggregate": aggregate or {},
         "joins": joins or [],
         "step1": {"pattern": pattern, "reason": s1.get("reason", "")},
-        "step2": {
-            "recommended_charts": s2.get("recommended_charts", []),
-            "candidates": s2.get("candidates", []),
-            "selected": selected,
-        },
+        "step2": step2,
         "step3": rendered,
     }
 
@@ -493,10 +547,11 @@ class Handler(BaseHTTPRequestHandler):
                 filters = body.get("filters") or []
                 aggregate = body.get("aggregate") or {}
                 joins = body.get("joins") or []
+                intent = (body.get("intent") or "").strip()
                 if not table or not columns:
                     self._send(400, {"error": "pick a table and at least one column"})
                     return
-                self._send(200, run_pipeline(table, columns, filters, aggregate, joins))
+                self._send(200, run_pipeline(table, columns, filters, aggregate, joins, intent))
             elif self.path == "/api/connect":
                 # Live-DB login from the web form: connect + swap the active data source.
                 self._send(200, connect_postgres(body))

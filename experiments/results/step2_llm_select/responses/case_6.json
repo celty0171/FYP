@@ -1,0 +1,41 @@
+{
+  "case_id": "6",
+  "selected_table": "ethnic_group",
+  "selected_columns": [
+    "country",
+    "name",
+    "percentage"
+  ],
+  "identified_pattern": "weak_entity",
+  "deterministic": {
+    "recommended_charts": [
+      "grouped bar chart"
+    ],
+    "selected": {
+      "chart": "grouped bar chart",
+      "mapping": {
+        "table": "ethnic_group",
+        "group": "country",
+        "segment": "name",
+        "value": "percentage"
+      }
+    }
+  },
+  "llm": {
+    "recommended_chart": "grouped bar chart",
+    "reason": "A grouped bar chart compares the percentage distribution of ethnic group names across countries, matching the weak entity relationship.",
+    "ranking": [
+      {
+        "chart": "grouped bar chart",
+        "note": "Compares percentages of ethnic groups across countries, fitting the weak entity structure despite high cardinality."
+      }
+    ],
+    "mapping": {
+      "table": "ethnic_group",
+      "group": "country",
+      "segment": "name",
+      "value": "percentage"
+    },
+    "source": "llm"
+  }
+}

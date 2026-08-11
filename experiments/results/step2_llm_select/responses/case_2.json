@@ -1,0 +1,45 @@
+{
+  "case_id": "2",
+  "selected_table": "economy",
+  "selected_columns": [
+    "country",
+    "gdp",
+    "unemployment"
+  ],
+  "identified_pattern": "basic_entity_inherited_key",
+  "deterministic": {
+    "recommended_charts": [
+      "bar chart",
+      "scatter diagram"
+    ],
+    "selected": {
+      "chart": "bar chart",
+      "mapping": {
+        "table": "economy",
+        "key": "country",
+        "measure": "gdp"
+      }
+    }
+  },
+  "llm": {
+    "recommended_chart": "scatter diagram",
+    "reason": "A scatter plot effectively reveals the relationship between two continuous variables across 246 countries without the clutter of a 246-bar chart.",
+    "ranking": [
+      {
+        "chart": "scatter diagram",
+        "note": "Ideal for exploring the relationship between two continuous scalar variables across many entities."
+      },
+      {
+        "chart": "bar chart",
+        "note": "Plotting 246 distinct countries as bars would create an overcrowded and unreadable visualization."
+      }
+    ],
+    "mapping": {
+      "table": "economy",
+      "key": "country",
+      "x": "gdp",
+      "y": "unemployment"
+    },
+    "source": "llm"
+  }
+}

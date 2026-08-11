@@ -1,0 +1,189 @@
+{
+  "examples": [
+    {
+      "id": "nl1_correlation",
+      "query": "I want to see how GDP relates to unemployment across countries",
+      "targets": "economy · correlation intent → scatter",
+      "parsed_table": "economy",
+      "parsed_columns": [
+        "gdp",
+        "unemployment"
+      ],
+      "pattern": "basic_entity",
+      "candidates": [],
+      "rule_pick": null,
+      "llm": {
+        "recommended_chart": null,
+        "reason": "",
+        "ranking": [],
+        "mapping": {},
+        "source": "fallback"
+      }
+    },
+    {
+      "id": "nl2_compare",
+      "query": "Compare the total population of each country",
+      "targets": "country · comparison/ranking intent → bar",
+      "parsed_table": "country",
+      "parsed_columns": [
+        "name",
+        "population"
+      ],
+      "pattern": "basic_entity",
+      "candidates": [],
+      "rule_pick": null,
+      "llm": {
+        "recommended_chart": null,
+        "reason": "",
+        "ranking": [],
+        "mapping": {},
+        "source": "fallback"
+      }
+    },
+    {
+      "id": "nl3_geo",
+      "query": "Show each country's population on a world map",
+      "targets": "country · geospatial intent → choropleth",
+      "parsed_table": "country",
+      "parsed_columns": [
+        "name",
+        "population"
+      ],
+      "pattern": "basic_entity",
+      "candidates": [],
+      "rule_pick": null,
+      "llm": {
+        "recommended_chart": null,
+        "reason": "",
+        "ranking": [],
+        "mapping": {},
+        "source": "fallback"
+      }
+    },
+    {
+      "id": "nl4_trend",
+      "query": "Show how each country's population has changed over the years",
+      "targets": "country_population · trend-over-time (weak entity) → line",
+      "parsed_table": "country_population",
+      "parsed_columns": [
+        "country",
+        "year",
+        "population"
+      ],
+      "pattern": "weak_entity",
+      "candidates": [
+        "line chart",
+        "grouped bar chart"
+      ],
+      "rule_pick": "line chart",
+      "llm": {
+        "recommended_chart": "line chart",
+        "reason": "A line chart effectively displays continuous population trends over time for multiple countries, whereas a grouped bar chart would be too cluttered.",
+        "ranking": [
+          {
+            "chart": "line chart",
+            "note": "Ideal for displaying continuous trends over time for multiple series."
+          },
+          {
+            "chart": "grouped bar chart",
+            "note": "Too many categories and time segments make it cluttered and unreadable."
+          }
+        ],
+        "mapping": {
+          "table": "country_population",
+          "series": "country",
+          "x": "year",
+          "y": "population"
+        },
+        "source": "llm"
+      }
+    },
+    {
+      "id": "nl5_relationship",
+      "query": "Show which countries border each other and how long each border is",
+      "targets": "borders · relationship/flow (many-many) → sankey/chord",
+      "parsed_table": "borders",
+      "parsed_columns": [
+        "country1",
+        "country2",
+        "length"
+      ],
+      "pattern": "reflexive_many_many_relationship",
+      "candidates": [
+        "chord diagram",
+        "matrix heatmap",
+        "force graph",
+        "arc diagram"
+      ],
+      "rule_pick": "chord diagram",
+      "llm": {
+        "recommended_chart": "chord diagram",
+        "reason": "A chord diagram clearly displays the network of borders between countries while using ribbon width to accurately represent the scalar border lengths.",
+        "ranking": [
+          {
+            "chart": "chord diagram",
+            "note": "Best for showing weighted connections between many nodes; ribbon width effectively encodes border length."
+          },
+          {
+            "chart": "matrix heatmap",
+            "note": "Shows every pair without crossings, but the sparse density (1.1%) makes the matrix mostly empty and hard to read."
+          },
+          {
+            "chart": "force graph",
+            "note": "Good for revealing topology and clusters, but edge thickness is less precise for comparing exact border lengths than rib"
+          },
+          {
+            "chart": "arc diagram",
+            "note": "Requires a meaningful 1D ordering of countries, which is absent, making the arcs messy and hard to interpret."
+          }
+        ],
+        "mapping": {
+          "table": "borders",
+          "source": "country1",
+          "target": "country2",
+          "width": "length",
+          "pattern": "reflexive_many_many_relationship"
+        },
+        "source": "llm"
+      }
+    },
+    {
+      "id": "nl6_distribution",
+      "query": "Compare lakes by their elevation and depth",
+      "targets": "lake · distribution of two scalars → scatter/bubble",
+      "parsed_table": "lake",
+      "parsed_columns": [
+        "name",
+        "elevation",
+        "depth"
+      ],
+      "pattern": "basic_entity",
+      "candidates": [
+        "bar chart",
+        "scatter diagram"
+      ],
+      "rule_pick": "bar chart",
+      "llm": {
+        "recommended_chart": "scatter diagram",
+        "reason": "A scatter diagram effectively compares two scalar attributes across many entities without the clutter of 223 distinct labels.",
+        "ranking": [
+          {
+            "chart": "scatter diagram",
+            "note": "Ideal for comparing two scalar attributes (elevation and depth) across 223 entities without label clutter."
+          },
+          {
+            "chart": "bar chart",
+            "note": "Unreadable with 223 distinct categories and can only display one scalar measure at a time."
+          }
+        ],
+        "mapping": {
+          "table": "lake",
+          "key": "name",
+          "x": "elevation",
+          "y": "depth"
+        },
+        "source": "llm"
+      }
+    }
+  ]
+}
