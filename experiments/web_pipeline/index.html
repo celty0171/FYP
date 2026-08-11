@@ -38,6 +38,16 @@
   .selwarn code { background:rgba(0,0,0,.06); padding:0 4px; border-radius:4px; font-size:11px; }
   .fixbtn { font-size:11px; padding:2px 8px; margin-left:4px; border-radius:5px; border:1px solid currentColor; background:#fff; color:inherit; cursor:pointer; font-weight:bold; }
   .fixbtn:hover { background:rgba(0,0,0,.05); }
+  /* hover hint icon + tooltip card for explaining join / filter / aggregate to new users */
+  .hint { display:inline-block; width:15px; height:15px; line-height:15px; text-align:center; border-radius:50%;
+          background:#e6ecf5; color:var(--accent-d); font-size:10px; font-weight:bold; font-style:normal;
+          cursor:help; position:relative; text-transform:none; letter-spacing:normal; vertical-align:middle; }
+  .hint::after { content:attr(data-tip); position:absolute; left:0; top:20px; width:min(250px,72vw);
+          background:#1f2733; color:#fff; font-size:11px; font-weight:400; line-height:1.5; padding:8px 10px;
+          border-radius:7px; box-shadow:0 6px 18px rgba(0,0,0,.22); opacity:0; visibility:hidden;
+          transition:opacity .12s; z-index:60; pointer-events:none; white-space:normal;
+          text-transform:none; letter-spacing:normal; }
+  .hint:hover::after { opacity:1; visibility:visible; }
   button { padding: 8px 13px; border: 1px solid var(--accent); background: var(--accent); color:#fff; border-radius:7px; cursor:pointer; font-weight:600; transition:filter .12s, background .12s; }
   button:hover:not(:disabled) { filter:brightness(1.07); }
   button.ghost { background:#fff; color:var(--accent); font-weight:500; }
@@ -161,35 +171,35 @@
         <select id="table"></select>
         <div id="cols"></div>
         <div id="selWarn"></div>
-        <h3>Related columns (join)</h3>
+        <h3>Related columns (join) <span class="hint" data-tip="Bring in a column from a related table (linked by a foreign key) so you can show or filter by it — e.g. add each country's continent onto a borders table. Optional.">i</span></h3>
         <div id="joinPick">
           <select id="joinSel"></select>
           <button id="addJoin" class="ghost" style="width:100%;margin-top:4px;">+ add related column</button>
           <div id="joinList" style="margin-top:6px;"></div>
         </div>
-        <h3>Filters</h3>
+        <h3>Filters <span class="hint" data-tip="Narrow the rows before charting — e.g. only European countries, or population above 1 million. The chart then describes just the matching rows. Optional.">i</span></h3>
         <div id="filters"><span class="k" style="font-size:12px;">pick a table…</span></div>
         <div id="filterSummary" class="row" style="font-size:12px;color:#555;"></div>
         <button id="clearFilters" class="ghost" style="width:100%;margin-top:6px;">Clear filters</button>
-        <h3>Aggregate</h3>
+        <h3>Aggregate <span class="hint" data-tip="Summarise rows into groups instead of charting them individually — e.g. total population per continent. Pick a Group by column and a measure; the chart then describes the groups. Leave the Group by empty to chart the raw rows.">i</span></h3>
         <div id="aggregate">
           <div class="fitem">
-            <div class="fname">Resample <span class="fdim">(optional)</span></div>
+            <div class="fname">Resample <span class="fdim">(optional)</span> <span class="hint" data-tip="Bucket a numeric or date column into ranges before grouping — e.g. years into decades, or GDP into bands.">i</span></div>
             <select id="rsCol" style="width:auto;"></select>
             bucket <input id="rsBucket" type="number" style="width:60px;">
             as <input id="rsAs" style="width:72px;padding:3px;border:1px solid var(--line);border-radius:4px;" placeholder="decade">
           </div>
           <div class="fitem">
-            <div class="fname">Group by</div>
+            <div class="fname">Group by <span class="hint" data-tip="The column(s) whose distinct values become the groups — one bar or point per group. Choosing a Group by is what turns on aggregation.">i</span></div>
             <div id="groupby" class="fvals"></div>
           </div>
           <div class="fitem">
-            <div class="fname">Measures</div>
+            <div class="fname">Measures <span class="hint" data-tip="What to compute for each group — e.g. sum of population, count of rows, average of gdp.">i</span></div>
             <div id="measures"></div>
             <button id="addMeasure" class="ghost" style="margin-top:4px;padding:3px 8px;">+ measure</button>
           </div>
           <div class="fitem">
-            <div class="fname">Having <span class="fdim">(optional)</span></div>
+            <div class="fname">Having <span class="fdim">(optional)</span> <span class="hint" data-tip="Keep only groups whose measure passes a threshold — e.g. only groups with count greater than 3.">i</span></div>
             <select id="hvCol" style="width:auto;"><option value="">—</option></select>
             <select id="hvOp" style="width:auto;">
               <option value="gt">&gt;</option><option value="ge">&ge;</option>
@@ -199,6 +209,7 @@
             <input id="hvVal" type="number" style="width:70px;">
             <label style="display:block;margin-top:6px;font-weight:400;font-size:12px;">
               <input type="checkbox" id="keepRows"> filter entities by this condition
+              <span class="hint" data-tip="On: keep the raw rows/entities whose group meets the Having condition (the relationship is preserved). Off: collapse rows into the aggregated groups themselves.">i</span>
             </label>
           </div>
           <div id="aggSummary" class="row" style="font-size:12px;color:#555;"></div>
@@ -526,7 +537,10 @@ function collectAggregate() {
     const m = { fn }; if (fn !== "count") m.column = col; if (as) m.as = as;
     return m;
   }).filter(Boolean);
-  if (!group_by.length && !measures.length) return {};
+  // Aggregation only kicks in once the user picks a Group by. Otherwise the always-present
+  // default measure row would silently aggregate the whole table and mis-report the ER
+  // pattern of the raw selection — so with no group_by we treat it as "no aggregation".
+  if (!group_by.length) return {};
   const resample = [];
   const rc = $("rsCol").value, rb = $("rsBucket").value, ra = $("rsAs").value.trim();
   if (rc && rb) resample.push({ column: rc, bucket: Number(rb), as: ra || (rc + "_bucket") });
