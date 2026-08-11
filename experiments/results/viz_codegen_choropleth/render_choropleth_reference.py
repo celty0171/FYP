@@ -4,11 +4,13 @@ Faithful response to prompts/viz_codegen/base_d3v7.md + chart_choropleth.md. Col
 basemap by a scalar attribute. It uses the Natural Earth **admin-0 map units** basemap (50m),
 so dependencies an ordinary country outline folds into a sovereign state — French overseas
 departments, Macao, Svalbard, the West Bank / Gaza split, and many island territories — are
-separate, joinable polygons. Each region is joined to the basemap by its stable geo-unit code
-``GU_A3`` via ``mondial_mapunit_crosswalk.json`` (which resolves both the Mondial ``code`` and
-``name`` to that code), so wording differences no longer grey out a country and coverage rises
-to 242/246 Mondial countries. A lowercased-name lookup is kept as a fallback, so the renderer
-degrades gracefully if the crosswalk file is missing.
+separate, joinable polygons. Each map unit is resolved to its Mondial country via
+``mondial_mapunit_crosswalk.json`` (``GU_A3`` -> Mondial code, built per unit by own name else
+sovereign), so wording differences no longer grey out a country AND every sub-unit of a state
+that map units *split* — England/Scotland/Wales/N.Ireland, the Belgian regions — shares its
+country's value instead of only one unit colouring. Coverage is 242/246 Mondial countries. A
+lowercased-name lookup is kept as a fallback, so the renderer degrades gracefully if the
+crosswalk file is missing.
 
 The relational data is injected inline; the geometry is fetched at run time from a CDN (pinned
 Natural Earth release). Reads a flat row array or the grouped Mondial database (mapping["table"]).
@@ -32,15 +34,17 @@ const g = svg.append("g");
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
-// Join on the map unit's stable geo-unit code GU_A3 (wording-independent); fall back to the
-// feature name for anything not covered by the crosswalk.
+// Resolve each map unit to its Mondial country via GU_A3 -> code, then to the value; every
+// sub-unit of a split state (England/Scotland/Wales/N.Ireland, the Belgian regions) shares its
+// country's value. Fall back to the feature name for anything not covered by the crosswalk.
 const lookup = (p) => {
-  let v = valueByRegion[p.GU_A3];
-  if (v === undefined) v = valueByRegion[(p.NAME || "").toLowerCase()];
+  const code = guToCode[p.GU_A3];
+  let v = (code !== undefined) ? valueByCode[code] : undefined;
+  if (v === undefined) v = valueByCode[(p.NAME || "").toLowerCase()];
   return v;
 };
 
-const vals = Object.values(valueByRegion);
+const vals = Object.values(valueByCode);
 const color = d3.scaleSequential(d3.interpolateYlGnBu).domain([0, d3.max(vals) || 1]);
 
 d3.json(basemapUrl).then(geo => {
@@ -102,15 +106,16 @@ HEAD = """<!DOCTYPE html>
 
 
 def _load_crosswalk() -> tuple[dict[str, str], dict[str, str], str]:
-    """Mondial code/name -> GU_A3, plus the basemap URL, from the sibling JSON (defaults on failure)."""
+    """GU_A3 -> Mondial code and Mondial name -> code, plus the basemap URL, from the sibling
+    JSON (empty/defaults on failure)."""
     try:
         d = json.loads((Path(__file__).with_name("mondial_mapunit_crosswalk.json")).read_text("utf-8"))
-        return d.get("code_to_id", {}), d.get("name_to_id", {}), d.get("basemap", BASEMAP_URL)
+        return d.get("gu_to_code", {}), d.get("name_to_code", {}), d.get("basemap", BASEMAP_URL)
     except Exception:
         return {}, {}, BASEMAP_URL
 
 
-CODE_TO_ID, NAME_TO_ID, CROSSWALK_BASEMAP = _load_crosswalk()
+GU_TO_CODE, NAME_TO_CODE, CROSSWALK_BASEMAP = _load_crosswalk()
 
 
 def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
@@ -130,32 +135,34 @@ def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
 def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     region_col, color_col = mapping["region"], mapping["color"]
 
-    # Key each value by the map unit's GU_A3 (via the crosswalk, wording-independent) AND by the
-    # lowercased region string (fallback for anything the crosswalk doesn't cover).
-    value_by_region: dict[str, float] = {}
-    matched_ids = 0
+    # Key each value by the Mondial country *code* (resolving a name-valued region via
+    # name_to_code), plus the lowercased region string as a fallback. The JS then maps each map
+    # unit's GU_A3 -> code -> value, so all sub-units of a split state share the value.
+    value_by_code: dict[str, float] = {}
+    matched = 0
     for r in rows:
         try:
             v = float(r[color_col])
         except (TypeError, ValueError, KeyError):
             continue
         rv = r.get(region_col)
-        gu = CODE_TO_ID.get(rv) or NAME_TO_ID.get(rv)
-        if gu:
-            value_by_region[gu] = v
-            matched_ids += 1
-        if rv is not None:
-            value_by_region[str(rv).strip().lower()] = v
+        if rv is None:
+            continue
+        code = NAME_TO_CODE.get(rv, rv)      # a name -> its code; else assume rv is already a code
+        value_by_code[str(code)] = v
+        value_by_code[str(rv).strip().lower()] = v
+        matched += 1
 
     title = html.escape(mapping.get("title") or (color_col + " by " + region_col + " (choropleth)"))
-    subtitle = html.escape("Regions coloured by " + color_col + "; joined on GU_A3 to the Natural "
-                           + "Earth map-units basemap (" + str(matched_ids) + " matched via crosswalk, "
-                           + "name fallback otherwise).")
+    subtitle = html.escape("Regions coloured by " + color_col + "; each Natural Earth map unit is "
+                           + "resolved (GU_A3 -> Mondial country) so every sub-unit of a split "
+                           + "state is filled. " + str(matched) + " rows mapped.")
     width, height = 980, 560
 
     return (
         HEAD.replace("__T__", title).replace("__SUB__", subtitle)
-        + "const valueByRegion = " + json.dumps(value_by_region) + ";\n"
+        + "const valueByCode = " + json.dumps(value_by_code) + ";\n"
+        + "const guToCode = " + json.dumps(GU_TO_CODE) + ";\n"
         + "const valueName = " + json.dumps(color_col) + ";\n"
         + "const basemapUrl = " + json.dumps(CROSSWALK_BASEMAP) + ";\n"
         + "const width = " + str(width) + ", height = " + str(height) + ";\n"

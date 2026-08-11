@@ -1,20 +1,21 @@
-"""Build a verified Mondial -> Natural Earth map-unit crosswalk for the choropleth renderer.
+"""Build a verified Natural-Earth-map-unit -> Mondial crosswalk for the choropleth renderer.
 
-The choropleth uses the Natural Earth **admin-0 map units** basemap (50m) instead of a plain
-country outline, so dependencies drawn as part of a sovereign state on an ordinary map — French
-overseas departments (French Guiana, Guadeloupe, Martinique, Mayotte, Réunion), Macao, Svalbard,
-the West Bank / Gaza split, and many island territories — are separate, joinable polygons. Each
-feature carries a unique, stable geo-unit code ``GU_A3`` (265/265 distinct), which is the join key.
+The choropleth uses the Natural Earth **admin-0 map units** basemap (50m), where dependencies
+an ordinary country outline folds into a sovereign state (French overseas departments, Macao,
+the West Bank / Gaza split, island territories) are separate, joinable polygons.
 
-This script matches every Mondial country to its map unit once — automatically by
-accent/punctuation-folded name against all Natural Earth name fields, plus a small curated alias
-table for the few wording differences — and writes ``mondial_mapunit_crosswalk.json`` keyed by
-both the Mondial ``code`` and ``name`` (the exact strings the renderer receives at run time,
-whether the region role carries the code offline or the label-resolved name on the server).
+But map units also *split* some sovereign states into sub-national units — the United Kingdom
+into England/Scotland/Wales/N. Ireland, Belgium into Flemish/Walloon/Brussels — while Mondial
+has ONE row per sovereign. So the crosswalk is built **per map unit** (reverse: GU_A3 ->
+Mondial code), assigning each unit to a Mondial country by:
+  1. its own name (GEOUNIT/NAME/...), so units Mondial lists separately (French Guiana, Bermuda)
+     map to their own Mondial row; else
+  2. its sovereign (the ADMIN field), so England/Scotland/Wales/N. Ireland all map to Mondial
+     'United Kingdom' and the three Belgian regions all map to 'Belgium'.
+This colours every unit of a country, not just one, while keeping the dependencies separate.
 
-Coverage: 242/246 Mondial countries. The 4 left out (Akrotiri and Dhekelia, Ceuta, Melilla,
-Gibraltar) are micro-enclaves / bases that Natural Earth does not separate at 50m — no country
-basemap represents them as distinct polygons.
+Output ``mondial_mapunit_crosswalk.json`` has ``gu_to_code`` (GU_A3 -> Mondial code) and
+``name_to_code`` (Mondial name -> code, so the renderer can resolve a name-valued region).
 
 Run: ``python build_mapunit_crosswalk.py`` (needs network for the basemap).
 """
@@ -29,18 +30,20 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 MONDIAL = HERE.parents[1] / "mondial_database" / "mondial_data.json"
-# Pinned Natural Earth release for reproducibility (same URL the renderer fetches).
 BASEMAP = ("https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/"
            "geojson/ne_50m_admin_0_map_units.geojson")
 
-# Mondial code -> a Natural Earth name variant, for units that do not fold to the Mondial name.
-ALIAS = {
-    "CGO": "Democratic Republic of the Congo", "RCB": "Republic of the Congo",
-    "VIRG": "United States Virgin Islands", "PN": "Pitcairn Islands",
-    "NLB": "Caribbean Netherlands", "FSM": "Federated States of Micronesia",
-    "SWZ": "eSwatini", "MK": "North Macedonia", "CI": "Côte d'Ivoire",
+# Natural Earth unit name -> Mondial name, for units whose name does not fold to the Mondial
+# name (abbreviations / wording / accents). Keyed by the NE string, valued by the Mondial name.
+NE_TO_MONDIAL = {
+    "Democratic Republic of the Congo": "Congo, Dem.Rep.", "Republic of the Congo": "Congo",
+    "United States Virgin Islands": "Virgin Islands", "Pitcairn Islands": "Pitcairn",
+    "Caribbean Netherlands": "Bonaire", "Federated States of Micronesia": "Micronesia",
+    "eSwatini": "Swaziland", "Republic of Serbia": "Serbia", "Czechia": "Czech Republic",
+    "Macedonia": "North Macedonia", "United Republic of Tanzania": "Tanzania",
+    "The Bahamas": "Bahamas", "East Timor": "East Timor",
 }
-NAME_FIELDS = ("NAME", "GEOUNIT", "NAME_LONG", "NAME_EN", "BRK_NAME", "SUBUNIT", "ADMIN")
+UNIT_NAME_FIELDS = ("GEOUNIT", "NAME", "NAME_LONG", "NAME_EN", "BRK_NAME", "SUBUNIT")
 
 
 def norm(s: object) -> str:
@@ -50,45 +53,47 @@ def norm(s: object) -> str:
 
 def main() -> None:
     mon = json.loads(MONDIAL.read_text("utf-8"))["tables"]["country"]
+    name_to_code = {c["name"]: c["code"] for c in mon}
+
+    # normalised Mondial name -> code, plus the curated NE-name aliases
+    mon_by_norm: dict[str, str] = {norm(c["name"]): c["code"] for c in mon}
+    for ne_name, mon_name in NE_TO_MONDIAL.items():
+        if mon_name in name_to_code:
+            mon_by_norm[norm(ne_name)] = name_to_code[mon_name]
+
     req = urllib.request.Request(BASEMAP, headers={"User-Agent": "crosswalk-build"})
     feats = json.loads(urllib.request.urlopen(req, timeout=60).read())["features"]
 
-    idx: dict[str, str] = {}   # normalised NE name -> GU_A3
+    gu_to_code: dict[str, str] = {}
+    unassigned = []
     for f in feats:
         p = f.get("properties") or {}
         gu = p.get("GU_A3")
-        for k in NAME_FIELDS:
-            if p.get(k):
-                idx.setdefault(norm(p[k]), gu)
-
-    code_to_id: dict[str, str] = {}
-    name_to_id: dict[str, str] = {}
-    missing = []
-    for c in mon:
-        code, name = c.get("code"), c.get("name")
-        gu = idx.get(norm(name))
-        if gu is None and code in ALIAS:
-            gu = idx.get(norm(ALIAS[code]))
-        if gu:
-            code_to_id[code] = gu
-            name_to_id[name] = gu
+        code = None
+        for k in UNIT_NAME_FIELDS:          # 1) the unit's own name (keeps dependencies separate)
+            if p.get(k) and norm(p[k]) in mon_by_norm:
+                code = mon_by_norm[norm(p[k])]
+                break
+        if code is None and p.get("ADMIN"):  # 2) else its sovereign (UK/Belgium sub-units)
+            code = mon_by_norm.get(norm(p["ADMIN"]))
+        if code:
+            gu_to_code[gu] = code
         else:
-            missing.append((code, name))
+            unassigned.append((gu, p.get("GEOUNIT")))
 
     out = {
-        "_note": "Mondial code/name -> Natural Earth GU_A3 (ne_50m_admin_0_map_units v5.1.2). "
-                 "Built by build_mapunit_crosswalk.py; regenerate if Mondial's country set changes.",
+        "_note": "Natural Earth GU_A3 -> Mondial code (ne_50m_admin_0_map_units v5.1.2), built "
+                 "per unit (own name, else sovereign ADMIN). Regenerate via build_mapunit_crosswalk.py.",
         "basemap": BASEMAP,
         "join_property": "GU_A3",
-        "code_to_id": code_to_id,
-        "name_to_id": name_to_id,
+        "gu_to_code": gu_to_code,
+        "name_to_code": name_to_code,
     }
     (HERE / "mondial_mapunit_crosswalk.json").write_text(
         json.dumps(out, indent=1, ensure_ascii=False), "utf-8")
-    print(f"covered {len(code_to_id)}/{len(mon)} Mondial countries -> GU_A3")
-    print(f"left out {len(missing)} (Natural Earth does not separate these at 50m):")
-    for code, name in sorted(missing, key=lambda x: str(x[1])):
-        print("   ", repr(code), repr(name))
+    covered = sorted(set(gu_to_code.values()))
+    print(f"assigned {len(gu_to_code)}/{len(feats)} map units to {len(covered)} Mondial countries")
+    print(f"unassigned units (no Mondial country / not a state): {len(unassigned)}")
 
 
 if __name__ == "__main__":
