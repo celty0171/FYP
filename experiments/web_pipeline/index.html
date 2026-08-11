@@ -63,7 +63,7 @@
   .pill.wip { opacity:.55; }
   /* "What the system detected" card: pattern badge, mapping chips, LLM rationale */
   #pattern.badge { display:inline-block; font-family:inherit; font-weight:600; font-size:12px; color:var(--accent-d);
-                   background:#eaf1fb; border:1px solid #cfe0f5; padding:2px 11px; border-radius:12px; text-transform:capitalize; }
+                   background:#eaf1fb; border:1px solid #cfe0f5; padding:2px 11px; border-radius:12px; }
   .mapview { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
   .mapview:empty::before { content:"—"; color:#98a2b3; }
   .maprow { display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:7px; overflow:hidden; font-size:12px; background:#fff; }
@@ -644,6 +644,10 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape" && document.body.classList.contains("vizfull")) { document.body.classList.remove("vizfull"); applyZoom(); }
 });
 
+// Capitalise the first letter for display (e.g. "bar chart" -> "Bar chart", "basic entity"
+// -> "Basic entity"). Display-only; the raw lower-case name stays the identifier.
+function cap(s) { s = String(s || ""); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
 // Render a chart mapping as readable "role -> column" chips instead of raw JSON.
 function renderMapping(m) {
   m = m || {};
@@ -673,18 +677,17 @@ function drawCharts(step2) {
     const wip = built.has(c.toLowerCase()) ? "" : " wip";
     const s = (c === sel) ? " sel" : "";
     const l = (c === llmChart) ? " llm" : "";
-    const tag = cond.includes(c) ? " (if geo/lexical)" : "";
     const star = (c === llmChart) ? " ★" : "";
-    const tip = (noteOf[c] || tag || "").replace(/"/g, "&quot;");
-    return `<span class="pill${s}${l}${wip}" data-chart="${c}" title="${tip}">${c}${tag}${star}${wip?" ⏳":""}</span>`;
+    const tip = (noteOf[c] || "").replace(/"/g, "&quot;");
+    return `<span class="pill${s}${l}${wip}" data-chart="${c}" title="${tip}">${cap(c)}${star}${wip?" ⏳":""}</span>`;
   }).join("") : '<span class="k">No chart — the selection has a key but no measurable column. Add a numeric or date column to enable a visualisation.</span>';
   // LLM rationale row + ranked notes: only shown when the LLM made the pick.
   if (llmChart) {
-    $("llmChart").textContent = llmChart;
+    $("llmChart").textContent = cap(llmChart);
     $("llmReason").textContent = llm.reason ? ("— " + llm.reason) : "";
     const ranked = ((llm && llm.ranking) || []).filter(r => r && r.note);
     $("llmRank").innerHTML = ranked.length
-      ? ranked.map(r => `<div><b>${r.chart}</b> — ${r.note}</div>`).join("")
+      ? ranked.map(r => `<div><b>${cap(r.chart)}</b> — ${r.note}</div>`).join("")
       : "";
     $("llmRow").style.display = "";
   } else {
@@ -737,7 +740,7 @@ async function runSelection(sel) {
   });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
-  $("pattern").textContent = (j.step1.pattern || "—").replace(/_/g, " ");
+  $("pattern").textContent = cap((j.step1.pattern || "—").replace(/_/g, " "));
   $("mapping").innerHTML = renderMapping((j.step2.selected||{}).mapping || {});
   drawCharts(j.step2);
   renderViz(j.step3);
