@@ -1,11 +1,16 @@
 """Reference choropleth renderer for basic_entity (geographical key) selections (D3 v7).
 
 Faithful response to prompts/viz_codegen/base_d3v7.md + chart_choropleth.md. Colours a
-world basemap by a scalar attribute, joining each map feature by name to the selected
-region key. The relational data is injected inline; the geometry is fetched at run time
-from a CDN (world-atlas) — this is the external dependency that the choropleth needs.
-Reads a flat row array or the grouped Mondial database (mapping["table"]). HTML by plain
-concatenation (no f-string / str.format). Std-lib only.
+world basemap by a scalar attribute. It joins each region to the basemap by its stable
+ISO 3166-1 **numeric id** (``d.id``, e.g. 840 = USA) via ``mondial_iso_crosswalk.json``,
+which resolves both the Mondial ``code`` and ``name`` to that id — so wording differences
+(United States vs United States of America, Czechia, Dem. Rep. Congo, accents, "Is."/"Rep."
+abbreviations) no longer grey out a country. A lowercased-name lookup is kept as a fallback,
+so anything outside the crosswalk still behaves as before and the renderer degrades
+gracefully if the crosswalk file is missing. The relational data is injected inline; the
+geometry is fetched at run time from a CDN (world-atlas). Reads a flat row array or the
+grouped Mondial database (mapping["table"]). HTML by plain concatenation (no f-string /
+str.format). Std-lib only.
 """
 
 from __future__ import annotations
@@ -22,6 +27,14 @@ const g = svg.append("g");
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
+// Join on the basemap's stable ISO numeric id first (wording-independent); fall back to the
+// feature name for anything not covered by the crosswalk.
+const lookup = (d) => {
+  let v = valueByRegion[String(d.id)];
+  if (v === undefined) v = valueByRegion[(d.properties.name || "").toLowerCase()];
+  return v;
+};
+
 const vals = Object.values(valueByRegion);
 const color = d3.scaleSequential(d3.interpolateYlGnBu).domain([0, d3.max(vals) || 1]);
 
@@ -34,11 +47,11 @@ d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(w
     .attr("d", path)
     .attr("stroke", "#fff").attr("stroke-width", 0.4)
     .attr("fill", d => {
-      const v = valueByRegion[(d.properties.name || "").toLowerCase()];
+      const v = lookup(d);
       return (v === undefined) ? "#eee" : color(v);
     })
     .on("mouseover", (event, d) => {
-      const v = valueByRegion[(d.properties.name || "").toLowerCase()];
+      const v = lookup(d);
       if (v === undefined) return;
       d3.select(event.currentTarget).attr("stroke", "#222").attr("stroke-width", 1.2).raise();
       tip.style("opacity", 1).html("<strong>" + d.properties.name + "</strong><br>" + valueName + ": " + v);
@@ -83,6 +96,18 @@ HEAD = """<!DOCTYPE html>
 """
 
 
+def _load_crosswalk() -> tuple[dict[str, str], dict[str, str]]:
+    """Mondial code/name -> ISO numeric id, from the sibling JSON (empty on any failure)."""
+    try:
+        d = json.loads((Path(__file__).with_name("mondial_iso_crosswalk.json")).read_text("utf-8"))
+        return d.get("code_to_id", {}), d.get("name_to_id", {})
+    except Exception:
+        return {}, {}
+
+
+CODE_TO_ID, NAME_TO_ID = _load_crosswalk()
+
+
 def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return data
@@ -100,18 +125,26 @@ def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
 def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     region_col, color_col = mapping["region"], mapping["color"]
 
+    # Key each value by the basemap's ISO numeric id (via the crosswalk, wording-independent)
+    # AND by the lowercased region string (fallback for anything the crosswalk doesn't cover).
     value_by_region: dict[str, float] = {}
+    matched_ids = 0
     for r in rows:
         try:
             v = float(r[color_col])
         except (TypeError, ValueError, KeyError):
             continue
-        key = str(r.get(region_col)).strip().lower()
-        value_by_region[key] = v
+        rv = r.get(region_col)
+        iso = CODE_TO_ID.get(rv) or NAME_TO_ID.get(rv)
+        if iso:
+            value_by_region[iso] = v
+            matched_ids += 1
+        if rv is not None:
+            value_by_region[str(rv).strip().lower()] = v
 
     title = html.escape(mapping.get("title") or (color_col + " by " + region_col + " (choropleth)"))
-    subtitle = html.escape("Regions coloured by " + color_col + "; joined on " + region_col
-                           + " to the world basemap. " + str(len(value_by_region)) + " regions with data.")
+    subtitle = html.escape("Regions coloured by " + color_col + "; joined on ISO id to the world "
+                           + "basemap (" + str(matched_ids) + " matched via crosswalk, name fallback otherwise).")
     width, height = 980, 560
 
     return (
