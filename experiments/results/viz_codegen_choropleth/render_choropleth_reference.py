@@ -1,20 +1,23 @@
 """Reference choropleth renderer for basic_entity (geographical key) selections (D3 v7).
 
 Faithful response to prompts/viz_codegen/base_d3v7.md + chart_choropleth.md. Colours a world
-basemap by a scalar attribute. It uses the Natural Earth **admin-0 map units** basemap (50m),
-so dependencies an ordinary country outline folds into a sovereign state — French overseas
-departments, Macao, Svalbard, the West Bank / Gaza split, and many island territories — are
-separate, joinable polygons. Each map unit is resolved to its Mondial country via
-``mondial_mapunit_crosswalk.json`` (``GU_A3`` -> Mondial code, built per unit by own name else
-sovereign), so wording differences no longer grey out a country AND every sub-unit of a state
-that map units *split* — England/Scotland/Wales/N.Ireland, the Belgian regions — shares its
-country's value instead of only one unit colouring. Coverage is 242/246 Mondial countries. A
-lowercased-name lookup is kept as a fallback, so the renderer degrades gracefully if the
-crosswalk file is missing.
+basemap by a scalar attribute, and supports **two switchable basemaps** (chosen via
+``mapping["basemap"]``) so a reviewer can pick the version they prefer:
 
-The relational data is injected inline; the geometry is fetched at run time from a CDN (pinned
-Natural Earth release). Reads a flat row array or the grouped Mondial database (mapping["table"]).
-HTML by plain concatenation (no f-string / str.format). Std-lib only.
+* ``"mapunits"`` (default) — Natural Earth admin-0 **map units** (50m). Dependencies an ordinary
+  outline folds into a sovereign state (French overseas departments, Macao, the West Bank / Gaza
+  split, island territories) are separate polygons, and states Natural Earth splits (the UK into
+  England/Scotland/Wales/N.Ireland, Belgium into its three regions) all share their Mondial
+  country's value. Joined per unit via ``mondial_mapunit_crosswalk.json`` (GU_A3 -> Mondial code).
+* ``"countries"`` — **world-atlas** sovereign country outlines (50m). Each sovereign is a single
+  polygon (UK, Belgium each one shape) and dependencies are merged into their sovereign. Joined on
+  the ISO 3166-1 numeric id via ``mondial_iso_crosswalk.json``.
+
+A highly skewed measure (population/area/gdp) is spread with a sqrt colour scale and a lifted
+floor so small countries stay visible; borders are light grey so every shape is outlined. The
+geometry is fetched at run time from a CDN (pinned); TopoJSON vs GeoJSON is auto-detected. Reads a
+flat row array or the grouped Mondial database (mapping["table"]). HTML by plain concatenation
+(no f-string / str.format). Std-lib only.
 """
 
 from __future__ import annotations
@@ -25,8 +28,22 @@ import json
 from pathlib import Path
 from typing import Any
 
-BASEMAP_URL = ("https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/"
-               "geojson/ne_50m_admin_0_map_units.geojson")
+# Switchable basemaps: url + how each feature exposes its join key ("id" = d.id ISO numeric,
+# "guA3" = d.properties.GU_A3) + a human label for the UI.
+BASEMAPS = {
+    "mapunits": {
+        "url": ("https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/"
+                "geojson/ne_50m_admin_0_map_units.geojson"),
+        "join": "guA3",
+        "label": "Natural Earth map units (dependencies drawn separately)",
+    },
+    "countries": {
+        "url": "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json",
+        "join": "id",
+        "label": "World-atlas countries (sovereign outlines)",
+    },
+}
+DEFAULT_BASEMAP = "mapunits"
 
 JS_BODY = """
 const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
@@ -34,27 +51,27 @@ const g = svg.append("g");
 const tip = d3.select("#tip");
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
-// Resolve each map unit to its Mondial country via GU_A3 -> code, then to the value; every
-// sub-unit of a split state (England/Scotland/Wales/N.Ireland, the Belgian regions) shares its
-// country's value. Fall back to the feature name for anything not covered by the crosswalk.
-const lookup = (p) => {
-  const code = guToCode[p.GU_A3];
-  let v = (code !== undefined) ? valueByCode[code] : undefined;
-  if (v === undefined) v = valueByCode[(p.NAME || "").toLowerCase()];
+// Each feature's join key (ISO numeric d.id, or the map-unit GU_A3) and its display name.
+const keyOf = (d) => joinProp === "id" ? String(d.id) : ((d.properties || {}).GU_A3 || "");
+const nameOf = (d) => { const p = d.properties || {}; return p.name || p.NAME || ""; };
+const lookup = (d) => {
+  let v = valueByKey[keyOf(d)];
+  if (v === undefined) v = valueByKey[nameOf(d).toLowerCase()];
   return v;
 };
 
-const vals = Object.values(valueByCode);
+const vals = Object.values(valueByKey);
 const vmax = d3.max(vals) || 1;
-// Measures like population / area / gdp are highly skewed (one huge value dwarfs the rest), so a
-// linear ramp leaves almost every country at the palette's lightest end — invisible on a white
-// map. Spread the domain with a sqrt scale and lift the colour floor so even the smallest value
-// gets a clearly visible tint.
+// Measures like population / area / gdp are highly skewed, so a linear ramp leaves almost every
+// country at the palette's lightest end (invisible on a white map). Spread the domain with a sqrt
+// scale and lift the floor so even the smallest value gets a clearly visible tint.
 const tScale = d3.scaleSqrt().domain([0, vmax]).range([0, 1]).clamp(true);
 const color = v => d3.interpolateYlGnBu(0.15 + 0.85 * tScale(v));
 
 d3.json(basemapUrl).then(geo => {
-  const countries = geo.features;
+  const countries = (geo.type === "Topology")
+    ? topojson.feature(geo, geo.objects.countries).features
+    : geo.features;
   const projection = d3.geoNaturalEarth1().fitSize([width, height], {type: "FeatureCollection", features: countries});
   const path = d3.geoPath(projection);
 
@@ -62,15 +79,14 @@ d3.json(basemapUrl).then(geo => {
     .attr("d", path)
     .attr("stroke", "#9aa4b2").attr("stroke-width", 0.4)
     .attr("fill", d => {
-      const v = lookup(d.properties || {});
+      const v = lookup(d);
       return (v === undefined) ? "#e6e8ec" : color(v);
     })
     .on("mouseover", (event, d) => {
-      const p = d.properties || {};
-      const v = lookup(p);
+      const v = lookup(d);
       if (v === undefined) return;
       d3.select(event.currentTarget).attr("stroke", "#222").attr("stroke-width", 1.2).raise();
-      tip.style("opacity", 1).html("<strong>" + (p.NAME || "") + "</strong><br>" + valueName + ": " + v);
+      tip.style("opacity", 1).html("<strong>" + nameOf(d) + "</strong><br>" + valueName + ": " + v);
       moveTip(event);
     })
     .on("mousemove", moveTip)
@@ -79,12 +95,11 @@ d3.json(basemapUrl).then(geo => {
   // simple legend
   const lw = 180, lh = 8, lx = 20, ly = height - 30;
   const lg = svg.append("g").attr("transform", `translate(${lx},${ly})`);
-  const dmax = d3.max(vals) || 1;
   const stops = d3.range(0, 1.001, 0.1);
   lg.selectAll("rect").data(stops.slice(0, -1)).join("rect")
     .attr("x", (d, i) => i * lw / (stops.length - 1)).attr("width", lw / (stops.length - 1)).attr("height", lh)
-    .attr("fill", d => color(d * dmax));
-  lg.append("text").attr("y", -4).attr("font-size", "10px").text(valueName + " (0 – " + Math.round(dmax) + ")");
+    .attr("fill", d => color(d * vmax));
+  lg.append("text").attr("y", -4).attr("font-size", "10px").text(valueName + " (0 – " + Math.round(vmax) + ")");
 });
 """
 
@@ -94,6 +109,7 @@ HEAD = """<!DOCTYPE html>
 <meta charset="utf-8">
 <title>__T__</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <style>
   body { font-family: Arial, sans-serif; margin: 16px; }
   h1 { font-size: 18px; margin-bottom: 2px; }
@@ -111,17 +127,19 @@ HEAD = """<!DOCTYPE html>
 """
 
 
-def _load_crosswalk() -> tuple[dict[str, str], dict[str, str], str]:
-    """GU_A3 -> Mondial code and Mondial name -> code, plus the basemap URL, from the sibling
-    JSON (empty/defaults on failure)."""
+def _load_json_sibling(name: str) -> dict[str, Any]:
     try:
-        d = json.loads((Path(__file__).with_name("mondial_mapunit_crosswalk.json")).read_text("utf-8"))
-        return d.get("gu_to_code", {}), d.get("name_to_code", {}), d.get("basemap", BASEMAP_URL)
+        return json.loads((Path(__file__).with_name(name)).read_text("utf-8"))
     except Exception:
-        return {}, {}, BASEMAP_URL
+        return {}
 
 
-GU_TO_CODE, NAME_TO_CODE, CROSSWALK_BASEMAP = _load_crosswalk()
+_MU = _load_json_sibling("mondial_mapunit_crosswalk.json")   # GU_A3 -> code, name -> code
+_ISO = _load_json_sibling("mondial_iso_crosswalk.json")      # code -> ISO id, name -> ISO id
+GU_TO_CODE = _MU.get("gu_to_code", {})
+MU_NAME_TO_CODE = _MU.get("name_to_code", {})
+ISO_CODE_TO_ID = _ISO.get("code_to_id", {})
+ISO_NAME_TO_ID = _ISO.get("name_to_id", {})
 
 
 def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
@@ -138,14 +156,14 @@ def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
     raise ValueError("unsupported data shape: expected a row array or a grouped {'tables': {...}} database")
 
 
-def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
-    region_col, color_col = mapping["region"], mapping["color"]
-
-    # Key each value by the Mondial country *code* (resolving a name-valued region via
-    # name_to_code), plus the lowercased region string as a fallback. The JS then maps each map
-    # unit's GU_A3 -> code -> value, so all sub-units of a split state share the value.
-    value_by_code: dict[str, float] = {}
-    matched = 0
+def _value_by_key(rows: list[dict[str, Any]], region_col: str, color_col: str, basemap: str) -> dict[str, float]:
+    """Key each value by the feature's join value for the chosen basemap, plus a lowercased-name
+    fallback. For map units, one Mondial country expands to all its sub-unit GU_A3s."""
+    out: dict[str, float] = {}
+    code_to_gus: dict[str, list[str]] = {}
+    if basemap == "mapunits":
+        for gu, code in GU_TO_CODE.items():
+            code_to_gus.setdefault(code, []).append(gu)
     for r in rows:
         try:
             v = float(r[color_col])
@@ -154,23 +172,38 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         rv = r.get(region_col)
         if rv is None:
             continue
-        code = NAME_TO_CODE.get(rv, rv)      # a name -> its code; else assume rv is already a code
-        value_by_code[str(code)] = v
-        value_by_code[str(rv).strip().lower()] = v
-        matched += 1
+        if basemap == "mapunits":
+            code = MU_NAME_TO_CODE.get(rv, rv)      # a name -> code; else assume already a code
+            for gu in code_to_gus.get(code, []):
+                out[gu] = v
+        else:  # countries
+            iso = ISO_CODE_TO_ID.get(rv) or ISO_NAME_TO_ID.get(rv)
+            if iso:
+                out[str(iso)] = v
+        out[str(rv).strip().lower()] = v            # name fallback (matches feature name)
+    return out
+
+
+def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
+    region_col, color_col = mapping["region"], mapping["color"]
+    basemap = mapping.get("basemap") or DEFAULT_BASEMAP
+    if basemap not in BASEMAPS:
+        basemap = DEFAULT_BASEMAP
+    cfg = BASEMAPS[basemap]
+
+    value_by_key = _value_by_key(rows, region_col, color_col, basemap)
 
     title = html.escape(mapping.get("title") or (color_col + " by " + region_col + " (choropleth)"))
-    subtitle = html.escape("Regions coloured by " + color_col + "; each Natural Earth map unit is "
-                           + "resolved (GU_A3 -> Mondial country) so every sub-unit of a split "
-                           + "state is filled. " + str(matched) + " rows mapped.")
+    subtitle = html.escape("Regions coloured by " + color_col + " · basemap: " + cfg["label"]
+                           + ". " + str(len([k for k in value_by_key])) + " keys mapped.")
     width, height = 980, 560
 
     return (
         HEAD.replace("__T__", title).replace("__SUB__", subtitle)
-        + "const valueByCode = " + json.dumps(value_by_code) + ";\n"
-        + "const guToCode = " + json.dumps(GU_TO_CODE) + ";\n"
+        + "const valueByKey = " + json.dumps(value_by_key) + ";\n"
+        + "const joinProp = " + json.dumps(cfg["join"]) + ";\n"
         + "const valueName = " + json.dumps(color_col) + ";\n"
-        + "const basemapUrl = " + json.dumps(CROSSWALK_BASEMAP) + ";\n"
+        + "const basemapUrl = " + json.dumps(cfg["url"]) + ";\n"
         + "const width = " + str(width) + ", height = " + str(height) + ";\n"
         + JS_BODY
         + "</script>\n</body>\n</html>\n"
@@ -182,9 +215,12 @@ def main() -> None:
     parser.add_argument("--mapping", required=True)
     parser.add_argument("--data", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--basemap", choices=sorted(BASEMAPS), help="override mapping['basemap']")
     args = parser.parse_args()
 
     mapping = json.loads(Path(args.mapping).read_text(encoding="utf-8"))
+    if args.basemap:
+        mapping["basemap"] = args.basemap
     rows = _rows_for(mapping, json.loads(Path(args.data).read_text(encoding="utf-8")))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

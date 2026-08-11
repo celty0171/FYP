@@ -235,6 +235,10 @@
       <div class="vizhead">
         <h2>Step 3 — visualisation</h2>
         <div class="vtools">
+          <select id="basemapSel" title="Choropleth basemap — switch and compare" style="display:none;width:auto;padding:4px 6px;font-size:12px;">
+            <option value="mapunits">Basemap: map units (territories split)</option>
+            <option value="countries">Basemap: country outlines</option>
+          </select>
           <button id="zoomOut" class="ghost" title="Zoom out" disabled>&minus;</button>
           <span class="zlabel" id="zoomLabel">100%</span>
           <button id="zoomIn" class="ghost" title="Zoom in" disabled>+</button>
@@ -707,10 +711,26 @@ function drawCharts(step2) {
     const filters = (last && last.filters) || collectFilters();
     const aggregate = (last && last.aggregate) || collectAggregate();
     const joins = (last && last.joins) || collectJoins();
-    showLoading("rendering " + chart + "…");
-    renderViz(await api("/api/render", { chart, mapping, table, filters, aggregate, joins }));
+    doRender({ chart, mapping, table, filters, aggregate, joins });
   });
 }
+
+// The last chart render, tracked so the choropleth basemap selector can re-render it. The
+// stored mapping stays clean (no basemap key); the chosen basemap is merged only at call time.
+let curRender = null;
+function updateBasemapUI() {
+  $("basemapSel").style.display = (curRender && curRender.chart === "choropleth map") ? "" : "none";
+}
+async function doRender(params) {
+  curRender = params;
+  updateBasemapUI();
+  const mapping = (params.chart === "choropleth map")
+    ? Object.assign({}, params.mapping, { basemap: $("basemapSel").value })
+    : params.mapping;
+  showLoading("rendering " + params.chart + "…");
+  renderViz(await api("/api/render", Object.assign({}, params, { mapping })));
+}
+$("basemapSel").onchange = () => { if (curRender) doRender(curRender); };
 
 $("clearFilters").onclick = () => { showFilters($("table").value); };
 $("addJoin").onclick = () => {
@@ -744,6 +764,11 @@ async function runSelection(sel) {
   $("mapping").innerHTML = renderMapping((j.step2.selected||{}).mapping || {});
   drawCharts(j.step2);
   renderViz(j.step3);
+  // Track the initial render so the basemap selector can re-render a choropleth (the server
+  // already rendered j.step3 with the default basemap).
+  curRender = { chart: (j.step2.selected||{}).chart, mapping: (j.step2.selected||{}).mapping || {},
+                table: j.selected_table, filters: j.filters, aggregate: j.aggregate, joins: j.joins };
+  updateBasemapUI();
 }
 
 $("run").onclick = async () => {
