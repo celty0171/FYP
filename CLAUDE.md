@@ -112,8 +112,11 @@ it is off by default so the experiment path is byte-identical. Configured via a 
 - **NL → selection** `experiments/nlquery/` — `nl_to_selection.parse(text, schema)` uses the Bailian /
   DashScope OpenAI-compatible client (`bailian_client.py`, key `DASHSCOPE_API_KEY`) to turn free text
   into a validated `{table, columns, filters, joins, aggregate}` selection — **never** a pattern or
-  chart label, so blind/gold separation holds. Served at `POST /api/nl` (returns the selection for the
-  UI to confirm, then run via `/api/run`); degrades gracefully when no key is set.
+  chart label, so blind/gold separation holds. For a non-aggregate data-first selection it
+  deterministically ensures the base table's **primary-key column(s)** are in `columns`
+  (`_ensure_identifying_columns`), so Step 2 always has a key/region/text role and real candidates.
+  Served at `POST /api/nl` (returns the selection for the UI to confirm, then run via `/api/run`);
+  degrades gracefully when no key is set.
 - **LLM chart selection (Step 2)** `experiments/chartselect/` — opt-in (`VIZER_LLM_STEP2=on`,
   default `off`). `llm_chart_selector.select(schema, table, columns, pattern, s2, client, rows, intent)`
   asks the Bailian client to **rank every deterministic Step-2 candidate** (each with a one-line note),
@@ -127,8 +130,11 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   from `run_pipeline`; `/api/run` reads `intent`, the UI's optional purpose box prefilled from the NL
   request): all valid candidates are still returned, `step2.llm = {recommended_chart, reason, source,
   ranking:[{chart,note}]}` is added, and the highlighted chart becomes `selected` for Step 3. Any
-  error/invalid answer → deterministic pick (`source="fallback"`). Prompt contract documented in
-  `prompts/step2_llm_select_prompt.md`.
+  error/invalid answer → deterministic pick (`source="fallback"`). Conditional candidates
+  (choropleth/word cloud, which need a geographic/lexical key unprovable from schema) are in the
+  selector's pool but flagged `[CONDITIONAL]` — the LLM may elevate one only when the goal/columns
+  justify it, while the deterministic pick and fallback stay True-eligible only. Prompt contract
+  documented in `prompts/step2_llm_select_prompt.md`.
 
 The Step-2→Step-3 mapping field-name contract and the base-renderer rules (thinking off,
 `repetition_penalty=1.1`, no f-string/`.format()` brace templating, structural + static-JS validation)

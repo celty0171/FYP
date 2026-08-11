@@ -34,7 +34,10 @@ _SYSTEM = (
     '  "aggregate": {"group_by": ["<col>"...], "measures": [{"column":"<col>","fn":"sum","as":"<alias>"}],\n'
     '                "having": [{"column":"<measure alias or group_by col>","op":"<gt|ge|lt|le|eq>","value":<n>}]}\n'
     "}\n"
-    "Rules: omit joins/filters/aggregate if not needed (use [] or {}). For a plain filter "
+    "Rules: for a data-first visualisation, 'columns' MUST include the base table's "
+    "identifying key (its primary-key column(s)) as well as the attributes to show — the key "
+    "identifies the entities being visualised (e.g. for country include 'code', not only "
+    "'name'). Omit joins/filters/aggregate if not needed (use [] or {}). For a plain filter "
     "use only one of value / values / (min,max) matching the op (eq->value, in->values, "
     "range->min&max, not_null->none, gt/ge/lt/le->value). To filter by an attribute that "
     "lives in another table (e.g. a country's continent), add a join to bring that column "
@@ -188,6 +191,25 @@ def _normalise(selection: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _ensure_identifying_columns(selection: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    """Guarantee a non-aggregate data-first selection carries its identifying key.
+
+    Models often pick readable attributes but drop the primary key, leaving Step 2 with no
+    key/region/text role and therefore no candidates. Deterministically prepend any missing
+    base-table primary-key column(s). No-op when aggregating (the group_by becomes the key
+    downstream) — the added columns are real base columns, so the selection stays valid.
+    """
+    if selection.get("aggregate"):
+        return selection
+    tdef = schema.get("tables", {}).get(selection.get("table")) or {}
+    pk = tdef.get("primary_key") or []
+    cols = list(selection.get("columns") or [])
+    missing = [c for c in pk if c not in cols]
+    if missing:
+        selection["columns"] = missing + cols
+    return selection
+
+
 def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str, Any]:
     """Parse ``nl_text`` into a validated selection.
 
@@ -217,7 +239,8 @@ def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str,
             continue
         err = _validate(raw, schema)
         if err is None:
-            return {"ok": True, "selection": _normalise(raw), "error": "", "raw": raw}
+            sel = _ensure_identifying_columns(_normalise(raw), schema)
+            return {"ok": True, "selection": sel, "error": "", "raw": raw}
         error = err
 
     return {"ok": False, "selection": None, "error": error or "could not resolve request", "raw": raw}

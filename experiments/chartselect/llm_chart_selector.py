@@ -50,6 +50,10 @@ _SYSTEM = (
     "Rules:\n"
     "- 'recommended_chart' MUST be exactly one of the candidate chart names given.\n"
     "- You may NOT invent charts, mapping keys, or column names.\n"
+    "- A chart marked [CONDITIONAL] (e.g. choropleth needs a geographic key; word cloud needs "
+    "a lexical/text key) may be chosen ONLY when the user's goal or the column semantics "
+    "clearly satisfy its precondition (e.g. the goal mentions a map/geography, or the key "
+    "names places). Otherwise prefer an unconditional candidate.\n"
     "- 'mapping_overrides' is optional: an object {role: column} that swaps which selected "
     "column fills an existing role of the chosen chart. Use it when the goal emphasises a "
     "particular column (put it in the lead role). Only use roles listed as swappable for that "
@@ -178,9 +182,15 @@ def _swappable_roles(mapping: dict[str, Any], meta: dict[str, dict[str, Any]]) -
 
 
 def _eligible_candidates(s2: dict[str, Any]) -> list[dict[str, Any]]:
+    """Charts the selector may pick. Includes ``eligible == "conditional"`` charts
+    (choropleth / word cloud): they are structurally valid but need a geographic / lexical key
+    the schema can't prove — the user's goal can supply that evidence. They stay clearly
+    flagged in the prompt, and the deterministic pick + fallback never choose them, so an
+    unjustified elevation can only come from an explicit LLM decision."""
     return [
         c for c in s2.get("candidates", [])
-        if c.get("eligible") is True and isinstance(c.get("mapping"), dict) and c.get("mapping")
+        if c.get("eligible") in (True, "conditional")
+        and isinstance(c.get("mapping"), dict) and c.get("mapping")
     ]
 
 
@@ -217,7 +227,9 @@ def _build_user_prompt(pattern: str, meta: dict[str, dict[str, Any]],
     for c in cands:
         mapping = c.get("mapping") or {}
         swap = _swappable_roles(mapping, meta)
-        lines.append("- " + c["chart"] + ": " + str(c.get("reason", "")))
+        cond = " [CONDITIONAL: pick only if the goal/columns satisfy its precondition]" \
+            if c.get("eligible") == "conditional" else ""
+        lines.append("- " + c["chart"] + cond + ": " + str(c.get("reason", "")))
         lines.append("    mapping: " + json.dumps(mapping, ensure_ascii=False))
         if swap:
             swap_desc = "; ".join(

@@ -37,31 +37,29 @@ missing key, or invalid answer it falls back to the deterministic pick (`source=
   the string `"count"`) are never swappable. Invalid overrides are silently ignored.
 - **Determinism when off** — with `VIZER_LLM_STEP2=off` (or no key) the experiment path is
   byte-identical to the pure-deterministic Step 2.
+- **Conditional candidates** — charts the recommender marks `eligible="conditional"`
+  (choropleth needs a geographic key, word cloud a lexical key — unprovable from schema) are
+  included in the selector's pool but flagged `[CONDITIONAL]`. The LLM may elevate one **only**
+  when the user's goal or column semantics satisfy its precondition; the deterministic pick and
+  the fallback stay True-eligible only, so an unjustified elevation can only come from an
+  explicit LLM decision. (Upstream, `nlquery` guarantees a data-first selection carries its
+  primary-key column, so a key-role chart always has candidates to choose from.)
 
 ## System prompt
 
-```
-You are choosing the single most effective visualisation for a data selection, from a FIXED
-list of already-valid candidate charts. Output ONLY a JSON object, no prose.
+The verbatim system prompt is the `_SYSTEM` constant in
+`experiments/chartselect/llm_chart_selector.py` (the source of truth). Its rules, in brief:
 
-Rules:
-- 'recommended_chart' MUST be exactly one of the candidate chart names given.
-- You may NOT invent charts, mapping keys, or column names.
-- 'mapping_overrides' is optional: an object {role: column} that swaps which selected column
-  fills an existing role of the chosen chart. Only use roles listed as swappable for that
-  chart, and only columns from that role's allowed list (same data dimension).
-- 'reason' MUST be ONE short English sentence (<= 200 characters) explaining, from the column
-  types and relationship signals, why this chart reads best for this selection.
-- 'ranking' is optional: the candidate chart names best-first.
-
-Output shape:
-{
-  "recommended_chart": "<one candidate chart name>",
-  "mapping_overrides": {"<role>": "<selected column>"},
-  "reason": "<one short English sentence>",
-  "ranking": ["<chart>", ...]
-}
-```
+- decide from the user's goal (if given), each column's type/role, and the measured data
+  signals (a high-cardinality key makes a single-axis chart unreadable; two scalars suit a
+  scatter; a regular date series suits a line; few categories suit part-to-whole);
+- `recommended_chart` must be exactly one candidate; never invent charts, mapping keys, or
+  column names;
+- a `[CONDITIONAL]` chart (choropleth/word cloud) may be chosen **only** when the goal or
+  column semantics satisfy its precondition, else prefer an unconditional candidate;
+- `mapping_overrides` may only swap a same-dimension selected column into an existing role;
+- `reason` is one short English sentence; `ranking` lists **every** candidate best-first,
+  each `{chart, note}`.
 
 ## User message shape
 
