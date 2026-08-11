@@ -221,9 +221,9 @@ def _select_rows(mapping: dict[str, Any], data: dict[str, Any] | None) -> list[d
 
 # Mapping roles whose value is an entity *identifier* shown as a label — safe to swap a
 # code for a readable name. `region` is included so the choropleth shows readable country
-# names; the renderer itself now joins on the basemap's ISO numeric id via a crosswalk that
-# resolves either the Mondial code or name (with a name fallback), so it no longer greys out
-# on wording differences and works whichever the region role carries. Excludes measure/temporal.
+# names; the renderer itself now joins on the Natural Earth map-unit code GU_A3 via a crosswalk
+# that resolves either the Mondial code or name (with a name fallback), so it no longer greys
+# out on wording differences and works whichever the region role carries. Excludes measure/temporal.
 LABEL_ROLES = ("key", "source", "target", "parent", "child", "region",
                "series", "group", "segment", "ring", "spoke", "node")
 
