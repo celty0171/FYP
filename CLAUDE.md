@@ -121,8 +121,9 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   default `off`). `llm_chart_selector.select(schema, table, columns, pattern, s2, client, rows, intent)`
   asks the Bailian client to **rank every deterministic Step-2 candidate** (each with a one-line note),
   pick one to highlight, give one short English rationale, and optionally swap a selected column into an
-  **existing** mapping role (same dimension only) — it never invents charts, mapping keys, or column
-  names, and never sees a gold label, so both the blind/gold separation and the Step-2→Step-3
+  **existing expressive** mapping role (measure/x/y/color/size…, same dimension only; identity/join
+  roles in `FIXED_ROLES` like key/region/source/target are never swappable) — it never invents charts,
+  mapping keys, or column names, and never sees a gold label, so both the blind/gold separation and the Step-2→Step-3
   field-name contract hold. It is **intent-aware** (the user's request flows through as a soft *goal*
   signal) and **data-aware** (deterministic row-count / cardinality / null-share / numeric-range
   signals), so the same columns under different goals or data scales can lead to different charts.

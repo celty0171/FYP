@@ -39,6 +39,14 @@ NUMERIC_TYPES = {
 TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
 TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
 
+# Mapping roles the LLM may NOT swap: they establish an entity's identity or a join/label key
+# (`region` decides which country a choropleth colours, `source`/`target` the relationship
+# endpoints, etc.), so changing which column fills them alters *what* is shown or breaks the
+# join, with no expressive benefit. Only expressive channels (measure, x, y, color, size,
+# value, width, ...) remain swappable. Mirrors the server's LABEL_ROLES plus structural keys.
+FIXED_ROLES = {"table", "key", "region", "text", "source", "target", "parent", "child",
+               "series", "group", "segment", "ring", "spoke", "node", "pattern"}
+
 _SYSTEM = (
     "You are choosing the single most effective visualisation for a data selection, from a "
     "FIXED list of already-valid candidate charts, to serve the user's goal. Output ONLY a "
@@ -167,12 +175,12 @@ def _signals_text(sig: dict[str, Any]) -> str:
 
 
 def _swappable_roles(mapping: dict[str, Any], meta: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """For each mapping role whose value is a selected column with same-dimension
-    alternatives, list the allowed replacement columns. 'table' and literal values
-    (e.g. the string "count") are never swappable."""
+    """For each *expressive* mapping role whose value is a selected column with same-dimension
+    alternatives, list the allowed replacement columns. Identity/join roles (FIXED_ROLES) and
+    literal values (e.g. the string "count") are never swappable."""
     out: dict[str, dict[str, Any]] = {}
     for role, val in mapping.items():
-        if role == "table" or val not in meta:
+        if role in FIXED_ROLES or val not in meta:
             continue
         dim = meta[val]["dim"]
         options = [c for c, m in meta.items() if m["dim"] == dim and c != val]
@@ -246,12 +254,13 @@ def _build_user_prompt(pattern: str, meta: dict[str, dict[str, Any]],
 
 def _apply_overrides(mapping: dict[str, Any], overrides: Any,
                      meta: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    """Accept only valid same-dimension column swaps into existing roles; ignore the rest."""
+    """Accept only valid same-dimension swaps into existing *expressive* roles; ignore the rest
+    (identity/join roles in FIXED_ROLES can never be overridden, even if the model asks)."""
     out = deepcopy(mapping)
     if not isinstance(overrides, dict):
         return out
     for role, new_val in overrides.items():
-        if role == "table" or role not in out:
+        if role in FIXED_ROLES or role not in out:
             continue
         orig = out[role]
         if orig not in meta or new_val not in meta:

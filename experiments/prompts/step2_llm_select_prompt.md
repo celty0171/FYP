@@ -32,9 +32,13 @@ missing key, or invalid answer it falls back to the deterministic pick (`source=
   pk/fk roles), the ER pattern, and the candidate chart names/mappings only. It never sees a
   gold pattern or an expected visualisation.
 - **Step-2 → Step-3 field-name contract** — mapping *keys* are fixed. An override may only
-  change which selected **column** fills an existing role, and only to another selected column
-  of the **same dimension** (scalar / temporal / discrete). `table` and literal values (e.g.
-  the string `"count"`) are never swappable. Invalid overrides are silently ignored.
+  change which selected **column** fills an existing **expressive** role (measure / x / y /
+  color / size / value / width …), and only to another selected column of the **same dimension**
+  (scalar / temporal / discrete). **Identity / join / label roles are never swappable** —
+  `FIXED_ROLES` = table, key, region, text, source, target, parent, child, series, group,
+  segment, ring, spoke, node, pattern — because changing which column *is* the region/key/end
+  alters what is shown or breaks the join with no expressive benefit. Invalid overrides are
+  silently ignored (enforced in both the prompt's swappable list and `_apply_overrides`).
 - **Determinism when off** — with `VIZER_LLM_STEP2=off` (or no key) the experiment path is
   byte-identical to the pure-deterministic Step 2.
 - **Conditional candidates** — charts the recommender marks `eligible="conditional"`
