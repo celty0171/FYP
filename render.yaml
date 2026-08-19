@@ -1,0 +1,72 @@
+# Render Blueprint for the VizLM shareable demo.
+#
+# Deploy: Render -> New -> Blueprint -> connect the GitHub repo -> pick branch `render-deploy`.
+# Then set the DASHSCOPE_API_KEY secret in the dashboard (it is not stored in git).
+# Free web service spins down after ~15 min idle; the first hit cold-starts in ~30-60s.
+#
+# This provisions a MANAGED PostgreSQL database (below) in the same region and wires the
+# service's PG_* env vars to it via `fromDatabase`, so the app reads a real live DB — no
+# laptop / localhost involved. After the first deploy, load Mondial into it once using the
+# database's EXTERNAL connection string (see the load step in README / commit message):
+#
+#   pip install -r requirements.txt
+#   python experiments/scripts/load_mondial_postgres.py \
+#     --url "postgresql+psycopg2://<user>:<pass>@<external-host>:5432/mondial?sslmode=require"
+#
+# NOTE: Render's FREE Postgres is deleted ~30 days after creation. For a genuinely permanent
+# link either upgrade the database plan, or point PG_* at a persistent free managed Postgres
+# (Neon / Supabase) instead of this block.
+databases:
+  - name: vizlm-db
+    databaseName: mondial
+    # No `user:` — Render auto-generates one ("postgres" is reserved and rejected). The
+    # service reads PG_USER via fromDatabase below, so the generated name is used automatically.
+    plan: free
+    region: singapore
+
+services:
+  - type: web
+    name: vizlm
+    runtime: docker
+    plan: free
+    region: singapore          # must match the database region for internal networking
+    branch: render-deploy      # Render deploys this branch (keeps main/master untouched)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      # Live PostgreSQL data source (not the bundled JSON files).
+      - key: VIZER_DATASOURCE
+        value: postgres
+      # Connection details pulled from the managed database above (internal host/port).
+      - key: PG_HOST
+        fromDatabase:
+          name: vizlm-db
+          property: host
+      - key: PG_PORT
+        fromDatabase:
+          name: vizlm-db
+          property: port
+      - key: PG_USER
+        fromDatabase:
+          name: vizlm-db
+          property: user
+      - key: PG_PASSWORD
+        fromDatabase:
+          name: vizlm-db
+          property: password
+      - key: PG_DATABASE
+        fromDatabase:
+          name: vizlm-db
+          property: database
+      # Full experience: LLM ranks the Step-2 candidates + parses natural language.
+      - key: VIZER_LLM_STEP2
+        value: "on"
+      - key: VIZER_STEP2_MODEL
+        value: qwen3.7-plus
+      - key: NL_MODEL
+        value: qwen3.7-plus
+      - key: DASHSCOPE_BASE_URL
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      # Secret: enter in the Render dashboard, never committed.
+      - key: DASHSCOPE_API_KEY
+        sync: false

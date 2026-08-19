@@ -1,0 +1,13 @@
+# Keep the image small, but DO NOT exclude experiments/mondial_database/ or results/ —
+# server.py imports the LLM-authored programs from results/ and reads the Mondial JSON.
+.git
+.gitignore
+.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.env
+experiments/outputs/
+experiments/generated/
+*.log
+.DS_Store
