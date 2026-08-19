@@ -982,6 +982,16 @@ document.querySelectorAll(".mtab").forEach(t => t.onclick = () => {
     showFilters($("table").value);
     showAggregate();
   };
+  // Prefill the connect form from the server's configured .env (host/port/user/database,
+  // never the password), so connecting is a single click.
+  try {
+    const ds = await api("/api/datasource");
+    const d = (ds && ds.defaults) || {};
+    if (d.host) $("pgHost").value = d.host;
+    if (d.port) $("pgPort").value = d.port;
+    if (d.user) $("pgUser").value = d.user;
+    if (d.database) $("pgDatabase").value = d.database;
+  } catch (e) { /* leave form defaults */ }
   // Start locked: the user must connect a database before either mode is usable.
   setConnected(false);
 })();

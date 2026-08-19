@@ -180,6 +180,19 @@ def connect_postgres(params: dict[str, Any]) -> dict[str, Any]:
         return {"ok": False, "error": str(exc)}
 
 
+def _pg_form_defaults() -> dict[str, str]:
+    """Non-secret connection fields parsed from the configured DATABASE_URL, to prefill the
+    web connect form so a click is enough (the password is never included)."""
+    from urllib.parse import urlsplit
+
+    try:
+        u = urlsplit(CONFIG.database_url or "")
+        return {"host": u.hostname or "localhost", "port": str(u.port or 5432),
+                "user": u.username or "postgres", "database": (u.path or "").lstrip("/")}
+    except Exception:
+        return {}
+
+
 def use_default_datasource() -> dict[str, Any]:
     """Revert to the .env-configured source (usually the bundled Mondial JSON)."""
     try:
@@ -605,7 +618,8 @@ class Handler(BaseHTTPRequestHandler):
             tables = {t: [c["name"] for c in SCHEMA["tables"][t]["columns"]] for t in sorted(SCHEMA["tables"])}
             self._send(200, {"tables": tables, "meta": _schema_meta()})
         elif self.path == "/api/datasource":
-            self._send(200, {"status": DS_STATUS, "tables": sorted(SCHEMA.get("tables", {}))})
+            self._send(200, {"status": DS_STATUS, "tables": sorted(SCHEMA.get("tables", {})),
+                             "defaults": _pg_form_defaults()})
         elif self.path.startswith("/api/column_stats"):
             from urllib.parse import parse_qs, urlparse
             q = parse_qs(urlparse(self.path).query)
