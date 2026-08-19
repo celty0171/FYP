@@ -41,11 +41,22 @@ def _resolve_url(cli_url: str | None) -> str:
     return url
 
 
-def _run_sql_file(conn, path: Path) -> None:
-    sql = path.read_text("utf-8")
+def _strip_grants(sql: str) -> str:
+    """Drop GRANT/REVOKE statements. The Mondial dump ends with environment-specific
+    `GRANT ... TO lab` lines (a lab role that need not exist elsewhere); permissions are
+    irrelevant to running the app, and keeping them would abort the load transaction on any
+    site without that role."""
+    keep = [ln for ln in sql.splitlines()
+            if not ln.lstrip().upper().startswith(("GRANT ", "REVOKE "))]
+    return "\n".join(keep)
+
+
+def _run_sql_file(engine, path: Path) -> None:
+    sql = _strip_grants(path.read_text("utf-8"))
     # psycopg2 executes multiple ';'-separated statements (and -- comments) in one call;
-    # the whole file runs inside the caller's transaction.
-    conn.exec_driver_sql(sql)
+    # each file runs in its own transaction (schema before data satisfies the FKs).
+    with engine.begin() as conn:
+        conn.exec_driver_sql(sql)
 
 
 def main() -> None:
@@ -66,11 +77,10 @@ def main() -> None:
 
     url = _resolve_url(args.url)
     engine = create_engine(url)
-    with engine.begin() as conn:            # one transaction: schema then data
-        print("Loading schema:", args.schema)
-        _run_sql_file(conn, args.schema)
-        print("Loading data:  ", args.data)
-        _run_sql_file(conn, args.data)
+    print("Loading schema:", args.schema)
+    _run_sql_file(engine, args.schema)
+    print("Loading data:  ", args.data)
+    _run_sql_file(engine, args.data)
     print("Done. Mondial loaded into", engine.url.render_as_string(hide_password=True))
 
 
