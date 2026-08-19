@@ -13,11 +13,12 @@ CREATE TABLE country
 
 -- country_population
 CREATE TABLE country_population (
- country VARCHAR(4), --CONSTRAINT country_population_of REFERENCES country,
+ country VARCHAR(4),
  year INT CONSTRAINT country_population_year CHECK (year >= 0),
  population INT NOT NULL
  CONSTRAINT country_population_population CHECK (population >= 0),
- CONSTRAINT country_population_pk PRIMARY KEY (country,year));
+ CONSTRAINT country_population_pk PRIMARY KEY (country,year),
+ CONSTRAINT country_population_of FOREIGN KEY (country) REFERENCES country);
 
 -- province
 CREATE TABLE province

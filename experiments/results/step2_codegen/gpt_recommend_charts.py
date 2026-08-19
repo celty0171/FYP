@@ -282,6 +282,74 @@ def choose_selected(pattern, true_candidates, cols):
     return {"chart": true_candidates[0]["chart"], "mapping": true_candidates[0]["mapping"]}
 
 
+# Mapping values that are not references to a selected column (literals the renderers read).
+NON_COLUMN_MAPPING_VALUES = {"count"}
+
+
+def compute_fit(mapping, cols):
+    """Measure how completely a candidate's mapping consumes the user's selected columns.
+
+    This is the intent-first "mapping fit" signal the downstream LLM selector combines with
+    the user's goal. A chart that leaves selected *scalar* attributes unmapped under-serves
+    the selection (those measures are silently dropped — e.g. a single-measure bar chart when
+    the user picked gdp *and* inflation). Surplus temporal/discrete attributes are different:
+    the paper parks them on a time slider / paging option, so they are reported separately in
+    ``slider_columns`` and NOT counted as a hard drop. Identity/join columns (primary key,
+    foreign key) are structural, not user-added measures, so they never count as unused.
+
+    Returns ``{used_columns, unused_columns, hard_leftover, slider_columns}`` (name lists +
+    the count of dropped scalars). ``hard_leftover == 0`` means the chart shows every measure
+    the user selected.
+    """
+    if not isinstance(mapping, dict) or not mapping:
+        return {"used_columns": [], "unused_columns": [], "hard_leftover": 0, "slider_columns": []}
+    mapped_vals = {
+        norm_name(v) for k, v in mapping.items()
+        if isinstance(v, str) and not str(k).endswith("_type")
+        and norm_name(v) not in NON_COLUMN_MAPPING_VALUES
+    }
+    used, unused_scalar, slider = [], [], []
+    for c in cols:
+        if c["is_pk"] or c["is_fk"]:
+            continue  # identity / join columns are structural, not measures the user added
+        if c["name_norm"] in mapped_vals:
+            used.append(c["name"])
+        elif c["dim"] == "scalar":
+            unused_scalar.append(c["name"])   # dropped: scalars have no slider/paging fallback
+        elif c["dim"] in ("temporal", "discrete"):
+            slider.append(c["name"])          # parked for a time slider / paging (paper §3.1)
+    return {
+        "used_columns": used,
+        "unused_columns": unused_scalar,
+        "hard_leftover": len(unused_scalar),
+        "slider_columns": slider,
+    }
+
+
+def attach_fit(candidate, cols):
+    """Compute the mapping-fit signal for one candidate and fold a human-readable summary of
+    any dropped / parked columns into its ``note`` (so the UI and the LLM prompt both see it)."""
+    fit = compute_fit(candidate.get("mapping"), cols)
+    candidate["used_columns"] = fit["used_columns"]
+    candidate["unused_columns"] = fit["unused_columns"]
+    candidate["hard_leftover"] = fit["hard_leftover"]
+    candidate["slider_columns"] = fit["slider_columns"]
+    extra = []
+    if fit["unused_columns"]:
+        extra.append(
+            "Shows %d of the selected measure(s); not shown: %s."
+            % (len(fit["used_columns"]), ", ".join(fit["unused_columns"]))
+        )
+    if fit["slider_columns"]:
+        extra.append(
+            "%s would move to a time slider / paging (not yet rendered)."
+            % ", ".join(fit["slider_columns"])
+        )
+    if extra:
+        base = candidate.get("note")
+        candidate["note"] = (base + " " if base else "") + " ".join(extra)
+
+
 def recommend(schema, table_name, selected_columns, pattern, rows=None):
     schema_n = normalize_schema(schema)
     tname_n = norm_name(table_name)
@@ -591,7 +659,19 @@ def recommend(schema, table_name, selected_columns, pattern, rows=None):
         else:
             add("spider chart", False, "Needs k1, k2, and scalar a1.", None)
 
+    # Measure the mapping-fit signal for every candidate (drives the LLM selector + UI notes).
+    for c in candidates:
+        attach_fit(c, cols)
+
     true_candidates = [c for c in candidates if c["eligible"] is True]
+    if pattern in ("basic_entity", "basic_entity_inherited_key"):
+        # Intent-first fallback order: charts that consume more of the selection lead (fewest
+        # dropped scalars), so a two-measure scatter surfaces ahead of a single-measure bar
+        # for the same gdp+inflation selection instead of the paper's table order. This only
+        # sets the deterministic fallback; the authoritative ranking among valid charts —
+        # combining mapping fit with the user's intent — is the downstream LLM selector's job.
+        # (Relationship/weak orderings are data-signal driven and are left untouched.)
+        true_candidates = sorted(true_candidates, key=lambda c: c.get("hard_leftover", 0))
     recommended = [c["chart"] for c in true_candidates]
     selected = choose_selected(pattern, true_candidates, cols)
 

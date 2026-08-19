@@ -61,6 +61,10 @@ _VENDOR = {
     "https://d3js.org/d3.v7.min.js": "d3.v7.min.js",
     "https://cdn.jsdelivr.net/npm/d3-sankey@0.12/dist/d3-sankey.min.js": "d3-sankey.min.js",
     "https://cdn.jsdelivr.net/npm/d3-cloud@1/build/d3.layout.cloud.js": "d3.layout.cloud.js",
+    # topojson-client decodes the choropleth's world-atlas TopoJSON basemap. It must be inlined
+    # like d3: in the sandboxed srcdoc iframe (opaque origin) a <script src> can't load, so
+    # without this `topojson` is undefined and the map renders blank.
+    "https://cdn.jsdelivr.net/npm/topojson-client@3": "topojson-client.min.js",
 }
 
 
@@ -250,6 +254,39 @@ def _dim_of(type_str: Any) -> str:
     return "other"
 
 
+# Geographic entity tables in Mondial: a text column that *is* the key of one of these, or a
+# foreign key *referencing* one, names a place — enough for the UI to hint "geographical"
+# (choropleth-eligible). Display-only: geography is still not proven to the pipeline, so the
+# choropleth candidate stays "conditional" (see step2). The four labels below are the paper's
+# key data types (numeric / temporal / lexical / geographical).
+_GEO_TABLES = {"country", "city", "province", "continent", "sea", "river", "lake",
+               "island", "mountain", "desert", "organization"}
+_GEO_NAMES = {"country", "country1", "country2", "province", "city", "continent",
+              "capital", "region"}
+
+
+def _semantic_types(name: str, type_str: Any, is_pk: bool,
+                    ref_table: str | None, own_table: str | None) -> list[str]:
+    """The paper's semantic data type(s) for a column, for UI badges:
+    numeric / temporal / lexical / geographical. A column can carry **more than one** — a
+    place name (e.g. a country) is both a readable word (lexical → word cloud) and a
+    geographic identifier (geographical → choropleth). numeric / temporal are exclusive.
+    Geographical is a best-effort hint from name + FK reference (unprovable from SQL type
+    alone), not a pipeline decision."""
+    dim = _dim_of(type_str)
+    if dim == "scalar":
+        return ["numeric"]
+    if dim == "temporal":
+        return ["temporal"]
+    # text-valued: always lexical; also geographical when it names / references a place.
+    n = (name or "").lower()
+    own_geo = bool(own_table) and str(own_table).lower() in _GEO_TABLES
+    is_geo = (n in _GEO_NAMES
+              or (ref_table and str(ref_table).lower() in _GEO_TABLES)
+              or (own_geo and (is_pk or n == "name")))
+    return ["lexical", "geographical"] if is_geo else ["lexical"]
+
+
 def _schema_meta() -> dict[str, Any]:
     """Per-table metadata for the front end: primary key + each column's type / dimension /
     pk / fk flags, so the UI can badge columns and validate a manual selection client-side."""
@@ -257,14 +294,19 @@ def _schema_meta() -> dict[str, Any]:
     for t, tdef in (SCHEMA.get("tables") or {}).items():
         pk = list(tdef.get("primary_key") or [])
         fk_cols: set[str] = set()
+        fk_ref: dict[str, str] = {}
         for fk in tdef.get("foreign_keys") or []:
             for c in fk.get("columns") or []:
                 fk_cols.add(c)
+                if fk.get("references_table"):
+                    fk_ref.setdefault(c, fk["references_table"])
         cols = []
         for c in tdef.get("columns") or []:
             name = c.get("name") if isinstance(c, dict) else c
             typ = c.get("type", "") if isinstance(c, dict) else ""
             cols.append({"name": name, "type": typ, "dim": _dim_of(typ),
+                         "datatypes": _semantic_types(name, typ, name in pk,
+                                                      fk_ref.get(name), t),
                          "pk": name in pk, "fk": name in fk_cols})
         out[t] = {"primary_key": pk, "columns": cols}
     return out
@@ -430,6 +472,17 @@ def _step2_block(schema: dict[str, Any], table: str, columns: list[str],
     ``intent`` make the pick data- and goal-aware. Returns ``(block, selected)``.
     """
     selected = s2.get("selected") or {}
+    # Attach, per candidate, the expressive roles the user may re-point at another selected
+    # column of the same dimension (deterministic, independent of the LLM path). This powers the
+    # front-end switcher for charts that cannot show every selected column (e.g. a bar chart
+    # given two scalars), so the user can flip which column is plotted.
+    from chartselect import swap_options
+    for c in s2.get("candidates", []):
+        mapping = c.get("mapping")
+        if isinstance(mapping, dict) and mapping:
+            sw = swap_options(schema, table, columns, mapping, rows=rows)
+            if sw:
+                c["swaps"] = sw
     block = {
         "recommended_charts": s2.get("recommended_charts", []),
         "candidates": s2.get("candidates", []),

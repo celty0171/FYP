@@ -187,12 +187,54 @@ def recommend(schema: dict[str, Any], table_name: str, selected_columns: list[st
         if pc:
             c["mapping"]["color"], c["mapping"]["color_type"] = pc
 
-    recommended = [c["chart"] for c in candidates if c["eligible"] is True]
-    # selected = the eligible chart whose mapping uses the most of the selection.
+    # Mapping-fit signal (same contract as gpt_recommend_charts.compute_fit): how completely
+    # each candidate's mapping consumes the user's selected measures. A dropped scalar is a
+    # hard drop (no fallback); surplus temporal/discrete attributes are parked on a time
+    # slider / paging (paper §3.1), reported separately and not counted as a drop.
+    _non_column_values = {"count"}
+    for c in candidates:
+        m = c.get("mapping") or {}
+        mapped = {str(v).lower() for k, v in m.items()
+                  if isinstance(v, str) and not str(k).endswith("_type")
+                  and str(v).lower() not in _non_column_values}
+        used, unused_scalar, slider = [], [], []
+        for col in sel:
+            if col in pk or col in fkmap:
+                continue  # identity / join columns are structural, not user-added measures
+            if col in mapped:
+                used.append(col)
+            elif dims.get(col) == "scalar":
+                unused_scalar.append(col)
+            elif dims.get(col) in ("temporal", "discrete"):
+                slider.append(col)
+        c["used_columns"] = used
+        c["unused_columns"] = unused_scalar
+        c["hard_leftover"] = len(unused_scalar)
+        c["slider_columns"] = slider
+        extra = []
+        if unused_scalar:
+            extra.append("Shows %d of the selected measure(s); not shown: %s."
+                         % (len(used), ", ".join(unused_scalar)))
+        if slider:
+            extra.append("%s would move to a time slider / paging (not yet rendered)."
+                         % ", ".join(slider))
+        if extra:
+            c["note"] = ((c["note"] + " ") if c.get("note") else "") + " ".join(extra)
+
     eligible_full = [c for c in candidates if c["eligible"] is True]
+    if pattern in ("basic_entity", "basic_entity_inherited_key"):
+        # Intent-first fallback order: fewest dropped measures first (scatter ahead of a
+        # single-measure bar for the same selection). Final ranking among valid charts —
+        # mapping fit combined with the user's intent — is the downstream LLM selector's job.
+        eligible_full = sorted(eligible_full, key=lambda c: c.get("hard_leftover", 0))
+    recommended = [c["chart"] for c in eligible_full]
     selected: dict[str, Any] = {}
     if eligible_full:
-        best = max(eligible_full, key=lambda c: len([v for v in c["mapping"].values() if v]))
+        if pattern in ("basic_entity", "basic_entity_inherited_key"):
+            best = eligible_full[0]
+        else:
+            # selected = the eligible chart whose mapping uses the most of the selection.
+            best = max(eligible_full, key=lambda c: len([v for v in c["mapping"].values() if v]))
         selected = {"chart": best["chart"], "mapping": best["mapping"]}
 
     return {

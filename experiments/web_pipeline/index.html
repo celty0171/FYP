@@ -27,6 +27,12 @@
   .cbadge { font-size:10px; padding:1px 6px; border-radius:10px; white-space:nowrap; }
   .cbadge.pk { background:#fff4d6; color:#8a6d00; border:1px solid #f0d98a; }
   .cbadge.fk { background:#e6eefc; color:#37589c; border:1px solid #c5d6f5; }
+  /* semantic data type (paper's key types): numeric / temporal / lexical / geographical */
+  .dtype { font-size:10px; padding:1px 7px; border-radius:10px; white-space:nowrap; font-weight:600; letter-spacing:.02em; }
+  .dtype.numeric      { background:#e7f0ff; color:#1f4fa8; border:1px solid #bcd3f7; }
+  .dtype.temporal     { background:#f0e9ff; color:#5a34a8; border:1px solid #d3c2f2; }
+  .dtype.lexical      { background:#e6f6ec; color:#1f7a45; border:1px solid #b9e4c8; }
+  .dtype.geographical { background:#fdefe1; color:#a35a12; border:1px solid #f3d3ac; }
   /* live manual-selection warnings */
   #selWarn { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
   #selWarn:empty { display:none; }
@@ -69,6 +75,14 @@
   .maprow { display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:7px; overflow:hidden; font-size:12px; background:#fff; }
   .maprow .mrole { background:#eef2f8; color:#5b6675; padding:3px 9px; font-weight:600; }
   .maprow .mval { padding:3px 9px; font-family:ui-monospace,monospace; color:#1f2733; }
+  /* per-role column switcher: shown when a chart can't plot every selected column */
+  .swapctl { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; margin-top:8px; }
+  .swapctl:empty { display:none; }
+  .swapctl .swaphint { flex-basis:100%; font-size:12px; line-height:1.45; color:#7a5600;
+                       background:#fff6e6; border:1px solid #f0d59a; border-radius:7px; padding:6px 9px; }
+  .swapctl label { font-size:12px; display:inline-flex; align-items:center; gap:6px; color:#3a4453; font-weight:600; }
+  .swapctl select { width:auto; padding:3px 7px; font-size:12px; font-weight:normal;
+                    border:1px solid var(--line); border-radius:6px; }
   #llmRow { align-items:baseline; }
   #llmChart { color:var(--accent-d); }
   #llmRank div { padding:2px 0; border-top:1px dashed var(--line); }
@@ -230,15 +244,12 @@
       <div id="llmRank" class="k" style="font-size:12px;margin:2px 0 6px 0;line-height:1.5;"></div>
       <div class="row"><span class="k">Mapping for the shown chart:</span></div>
       <div id="mapping" class="mapview"></div>
+      <div id="swapControls" class="swapctl"></div>
     </div>
     <div class="panel viz-panel">
       <div class="vizhead">
         <h2>Step 3 — visualisation</h2>
         <div class="vtools">
-          <select id="basemapSel" title="Choropleth basemap — switch and compare" style="display:none;width:auto;padding:4px 6px;font-size:12px;">
-            <option value="mapunits">Basemap: map units (territories split)</option>
-            <option value="countries">Basemap: country outlines</option>
-          </select>
           <button id="zoomOut" class="ghost" title="Zoom out" disabled>&minus;</button>
           <span class="zlabel" id="zoomLabel">100%</span>
           <button id="zoomIn" class="ghost" title="Zoom in" disabled>+</button>
@@ -267,11 +278,14 @@ function showColumns(table) {
   const cols = (meta && meta.columns) || (schema[table] || []).map(n => ({ name: n }));
   $("cols").innerHTML = cols.map(c => {
     const type = c.type ? `<span class="ctype">${c.type}</span>` : "";
+    const dt = (c.datatypes || []).map(d =>
+      `<span class="dtype ${d}" title="Data type (${d}): a visualisation role this column can fill">${cap(d)}</span>`
+    ).join("");
     const pk = c.pk ? `<span class="cbadge pk" title="primary key">🔑 key</span>` : "";
     const fk = c.fk ? `<span class="cbadge fk" title="foreign key">🔗 fk</span>` : "";
     return `<label class="colrow"><input type="checkbox" value="${c.name}">` +
            `<span class="cname">${c.name}</span>` +
-           `<span class="ctags">${type}${pk}${fk}</span></label>`;
+           `<span class="ctags">${dt}${type}${pk}${fk}</span></label>`;
   }).join("");
   validateSelection();
 }
@@ -663,6 +677,7 @@ function renderMapping(m) {
 }
 
 function drawCharts(step2) {
+  curStep2 = step2;
   const rec = step2.recommended_charts || [];
   const sel = (step2.selected || {}).chart;
   const llm = step2.llm || null;
@@ -705,6 +720,7 @@ function drawCharts(step2) {
     const chart = p.dataset.chart;
     const mapping = byChart[chart] || (step2.selected||{}).mapping;
     $("mapping").innerHTML = renderMapping(mapping);
+    renderSwapControls(chart, mapping);
     // Use the mapping's own table (correct for every chart, incl. the natural-language path
     // where the manual table dropdown was never set); fall back to the last run, then the UI.
     const table = (mapping && mapping.table) || (last && last.table) || $("table").value;
@@ -715,22 +731,62 @@ function drawCharts(step2) {
   });
 }
 
-// The last chart render, tracked so the choropleth basemap selector can re-render it. The
-// stored mapping stays clean (no basemap key); the chosen basemap is merged only at call time.
-let curRender = null;
-function updateBasemapUI() {
-  $("basemapSel").style.display = (curRender && curRender.chart === "choropleth map") ? "" : "none";
+// The Step-2 block of the current run, so the column switcher can read each candidate's
+// swappable roles (which expressive role may re-point at another selected column).
+let curStep2 = null;
+function swapsFor(chart) {
+  const c = ((curStep2 && curStep2.candidates) || []).find(x => x.chart === chart);
+  return (c && c.swaps) || {};
 }
+
+// Render a per-role "which column to plot" switcher for charts that can't show every selected
+// column (e.g. a bar chart given two scalars uses one; the user flips between them here).
+// Changing a control re-renders the chart with that column swapped into the role.
+function renderSwapControls(chart, mapping) {
+  const box = $("swapControls");
+  const swaps = swapsFor(chart);
+  const roles = Object.keys(swaps);
+  if (!box) return;
+  if (!roles.length || !mapping) { box.innerHTML = ""; return; }
+  const shown = new Set(Object.values(mapping).map(String));
+  // Identity/label roles offer alternative keys (relabel the same item); the rest are
+  // expressive channels that can drop a selected measure. Word the hint for each case.
+  const ID_ROLES = new Set(["key", "region", "text"]);
+  const exprRoles = roles.filter(r => !ID_ROLES.has(r));
+  const idRoles = roles.filter(r => ID_ROLES.has(r));
+  const exprMissing = [...new Set([].concat(...exprRoles.map(r => (swaps[r] || [])))
+    .filter(c => !shown.has(String(c))))];
+  const parts = [];
+  if (exprMissing.length)
+    parts.push(`This chart plots one column per role — <code>${exprMissing.join("</code>, <code>")}</code> ${exprMissing.length > 1 ? "aren't" : "isn't"} shown. Switch which column is plotted.`);
+  if (idRoles.length)
+    parts.push(`Each item has more than one key — switch which one labels it (e.g. name vs code).`);
+  const hint = parts.length ? `<div class="swaphint">${parts.join("<br>")}</div>` : "";
+  const controls = roles.map(r => {
+    const opts = (swaps[r] || []).map(c =>
+      `<option value="${c}"${String(mapping[r]) === String(c) ? " selected" : ""}>${c}</option>`).join("");
+    return `<label>${cap(r)}: <select data-role="${r}">${opts}</select></label>`;
+  }).join("");
+  box.innerHTML = hint + controls;
+  box.querySelectorAll("select").forEach(sel => sel.onchange = () => {
+    const m2 = Object.assign({}, mapping, { [sel.dataset.role]: sel.value });
+    $("mapping").innerHTML = renderMapping(m2);
+    renderSwapControls(chart, m2);            // refresh selected value + "not shown" hint
+    const table = (m2 && m2.table) || (last && last.table) || $("table").value;
+    doRender({ chart, mapping: m2, table,
+               filters: (last && last.filters) || collectFilters(),
+               aggregate: (last && last.aggregate) || collectAggregate(),
+               joins: (last && last.joins) || collectJoins() });
+  });
+}
+
+// The last chart render, tracked so a pill click can re-render it.
+let curRender = null;
 async function doRender(params) {
   curRender = params;
-  updateBasemapUI();
-  const mapping = (params.chart === "choropleth map")
-    ? Object.assign({}, params.mapping, { basemap: $("basemapSel").value })
-    : params.mapping;
   showLoading("rendering " + params.chart + "…");
-  renderViz(await api("/api/render", Object.assign({}, params, { mapping })));
+  renderViz(await api("/api/render", params));
 }
-$("basemapSel").onchange = () => { if (curRender) doRender(curRender); };
 
 $("clearFilters").onclick = () => { showFilters($("table").value); };
 $("addJoin").onclick = () => {
@@ -763,12 +819,11 @@ async function runSelection(sel) {
   $("pattern").textContent = cap((j.step1.pattern || "—").replace(/_/g, " "));
   $("mapping").innerHTML = renderMapping((j.step2.selected||{}).mapping || {});
   drawCharts(j.step2);
+  renderSwapControls((j.step2.selected||{}).chart, (j.step2.selected||{}).mapping || {});
   renderViz(j.step3);
-  // Track the initial render so the basemap selector can re-render a choropleth (the server
-  // already rendered j.step3 with the default basemap).
+  // Track the initial render so a pill click can re-render from the same selection.
   curRender = { chart: (j.step2.selected||{}).chart, mapping: (j.step2.selected||{}).mapping || {},
                 table: j.selected_table, filters: j.filters, aggregate: j.aggregate, joins: j.joins };
-  updateBasemapUI();
 }
 
 $("run").onclick = async () => {

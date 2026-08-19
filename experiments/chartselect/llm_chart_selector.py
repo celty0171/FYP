@@ -39,6 +39,16 @@ NUMERIC_TYPES = {
 TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
 TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
 
+# Geographic entity tables / column names in Mondial — a text column that *is* the key or the
+# `name` of one, or a foreign key referencing one, identifies a place, so it can fill a
+# choropleth's geographic role. Mirrors the server's `_GEO_TABLES` / `_GEO_NAMES` (kept local
+# so this module stays importable without pulling in the server). Best-effort: geography is
+# not provable from SQL type, so choropleth stays a CONDITIONAL candidate either way.
+_GEO_TABLES = {"country", "city", "province", "continent", "sea", "river", "lake",
+               "island", "mountain", "desert", "organization"}
+_GEO_NAMES = {"country", "country1", "country2", "province", "city", "continent",
+              "capital", "region"}
+
 # Mapping roles the LLM may NOT swap: they establish an entity's identity or a join/label key
 # (`region` decides which country a choropleth colours, `source`/`target` the relationship
 # endpoints, etc.), so changing which column fills them alters *what* is shown or breaks the
@@ -47,21 +57,40 @@ TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
 FIXED_ROLES = {"table", "key", "region", "text", "source", "target", "parent", "child",
                "series", "group", "segment", "ring", "spoke", "node", "pattern"}
 
+# Identity/label roles that name a single base entity and may therefore be re-pointed at an
+# *alternative key* of the same entity (e.g. a country by `name` instead of `code`). Unlike the
+# expressive swaps above, the choices come from the table's candidate keys (see altkeys), not the
+# user's other selected measures, because switching a label shows the SAME entity a different way.
+# This stays a deterministic, user-facing affordance only — the LLM never overrides identity roles
+# (they remain in FIXED_ROLES), so blind/gold separation and the field-name contract are untouched.
+ALT_KEY_ROLES = ("key", "region", "text")
+
 _SYSTEM = (
     "You are choosing the single most effective visualisation for a data selection, from a "
     "FIXED list of already-valid candidate charts, to serve the user's goal. Output ONLY a "
     "JSON object, no prose.\n\n"
-    "Decide from: (a) the user's request/goal if given, (b) each column's type and role, "
-    "(c) the measured data signals (a key with hundreds of distinct values makes a bar or "
-    "single-axis chart unreadable; two independent scalars suit a scatter; a regular date "
-    "series suits a line; few categories suit part-to-whole).\n\n"
+    "Decide from: (a) the user's request/goal if given, (b) each column's SQL type, role, and "
+    "semantic data type(s) in {braces} — numeric / temporal / lexical / geographical (a column "
+    "can be several: a place name is both lexical and geographical), (c) the measured data "
+    "signals (a key with hundreds of distinct values makes a bar or single-axis chart "
+    "unreadable; two independent scalars suit a scatter; a regular date series suits a line; "
+    "few categories suit part-to-whole), and (d) each candidate's 'mapping fit' — how many of "
+    "the user's selected measures the chart actually shows.\n\n"
+    "Weigh mapping fit together with the goal: the user selected every column on purpose, so "
+    "prefer a chart that shows ALL of them. A chart whose mapping fit says it DROPS a selected "
+    "measure is a weaker fit and should rank below one that shows every selected measure — "
+    "UNLESS the user's goal clearly cares only about the measure(s) that chart does show. "
+    "Never let a chart that drops a selected measure win by default (e.g. do not pick a "
+    "single-measure bar chart over a scatter when the user selected two measures and the goal "
+    "does not single one out).\n\n"
     "Rules:\n"
     "- 'recommended_chart' MUST be exactly one of the candidate chart names given.\n"
     "- You may NOT invent charts, mapping keys, or column names.\n"
     "- A chart marked [CONDITIONAL] (e.g. choropleth needs a geographic key; word cloud needs "
     "a lexical/text key) may be chosen ONLY when the user's goal or the column semantics "
-    "clearly satisfy its precondition (e.g. the goal mentions a map/geography, or the key "
-    "names places). Otherwise prefer an unconditional candidate.\n"
+    "clearly satisfy its precondition: prefer it when the key column is tagged {geographical} "
+    "for a choropleth or {lexical} for a word cloud, or the goal mentions a map/geography. "
+    "Otherwise prefer an unconditional candidate.\n"
     "- 'mapping_overrides' is optional: an object {role: column} that swaps which selected "
     "column fills an existing role of the chosen chart. Use it when the goal emphasises a "
     "particular column (put it in the lead role). Only use roles listed as swappable for that "
@@ -97,8 +126,28 @@ def _dim(sql_type: Any) -> str:
     return "other"
 
 
+def _semantic_types(name: str, dim: str, is_pk: bool,
+                    ref_table: str | None, own_table: str | None) -> list[str]:
+    """The paper's semantic data type(s) for a column: numeric / temporal / lexical /
+    geographical. A column can carry more than one — a place name is both a readable word
+    (lexical -> word cloud) and a geographic identifier (geographical -> choropleth). Numeric
+    and temporal are exclusive. Mirrors the server so the LLM sees the same labels as the UI."""
+    if dim == "scalar":
+        return ["numeric"]
+    if dim == "temporal":
+        return ["temporal"]
+    n = (name or "").lower()
+    own_geo = bool(own_table) and str(own_table).lower() in _GEO_TABLES
+    is_geo = (n in _GEO_NAMES
+              or (ref_table and str(ref_table).lower() in _GEO_TABLES)
+              or (own_geo and (is_pk or n == "name")))
+    return ["lexical", "geographical"] if is_geo else ["lexical"]
+
+
 def _column_meta(schema: dict[str, Any], table: str, columns: list[str]) -> dict[str, dict[str, Any]]:
-    """Per selected column: {type, dim, is_pk, is_fk} — the pool the LLM may swap within."""
+    """Per selected column: {type, dim, datatypes, is_pk, is_fk} — the pool the LLM may swap
+    within. `datatypes` are the paper's semantic key types (numeric/temporal/lexical/
+    geographical), matching the front-end badges, so the LLM can justify a conditional pick."""
     tdef = schema.get("tables", {}).get(table) or {}
     typemap: dict[str, str] = {}
     for col in tdef.get("columns") or []:
@@ -106,13 +155,19 @@ def _column_meta(schema: dict[str, Any], table: str, columns: list[str]) -> dict
         typemap[name] = col.get("type", "") if isinstance(col, dict) else ""
     pk = set(tdef.get("primary_key") or [])
     fk_cols: set[str] = set()
+    fk_ref: dict[str, str] = {}
     for fk in tdef.get("foreign_keys") or []:
         for c in fk.get("columns") or []:
             fk_cols.add(c)
+            if fk.get("references_table"):
+                fk_ref.setdefault(c, fk["references_table"])
     meta: dict[str, dict[str, Any]] = {}
     for c in columns:
         t = typemap.get(c, "")
-        meta[c] = {"type": t, "dim": _dim(t), "is_pk": c in pk, "is_fk": c in fk_cols}
+        dim = _dim(t)
+        meta[c] = {"type": t, "dim": dim,
+                   "datatypes": _semantic_types(c, dim, c in pk, fk_ref.get(c), table),
+                   "is_pk": c in pk, "is_fk": c in fk_cols}
     return meta
 
 
@@ -174,6 +229,73 @@ def _signals_text(sig: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def swap_options(schema: dict[str, Any], table: str, columns: list[str],
+                 mapping: dict[str, Any],
+                 rows: list[dict[str, Any]] | None = None) -> dict[str, list[str]]:
+    """Deterministic, LLM-independent: for a chart's ``mapping``, the roles the user may
+    re-point at another column, as ``{role: [current_column, ...alternatives]}`` (current
+    first). Two kinds of swap are offered:
+
+    * **Expressive channels** (measure, x, y, color, size, value, width, ...): re-point at
+      another *selected* column of the SAME data dimension. Powers the "which column to plot"
+      switcher for charts that can't show every selected column (e.g. a bar chart with two
+      selected scalars).
+    * **Identity / label roles** (``key`` / ``region`` / ``text``): re-point at an
+      *alternative key* of the same entity, so the user can label it a different way (e.g. a
+      word cloud by ``name`` instead of ``code``). The choices are the table's single-column
+      candidate keys (see :mod:`chartselect.altkeys`), type-matched to the role.
+
+    ``rows`` (the table's data) enables data-driven alternative-key detection; without it only
+    schema-declared UNIQUE columns can seed identity swaps. Literal mapping values (e.g.
+    ``"count"``) are never offered. Only roles with at least one alternative are returned."""
+    if not isinstance(mapping, dict) or not mapping:
+        return {}
+    meta = _column_meta(schema, table, columns)
+    out = {role: [info["current"]] + info["options"]
+           for role, info in _swappable_roles(mapping, meta).items()}
+    out.update(_alt_key_options(schema, table, columns, mapping, rows))
+    return out
+
+
+def _alt_key_options(schema: dict[str, Any], table: str, columns: list[str],
+                     mapping: dict[str, Any],
+                     rows: list[dict[str, Any]] | None) -> dict[str, list[str]]:
+    """For each identity/label role (``ALT_KEY_ROLES``) the alternative keys of the entity the
+    user may switch to, current first. Candidates are the table's single-column alternative
+    keys plus its primary key (so the user can switch back), restricted to the role column's
+    dimension and — for ``region``/``text`` — its geographical/lexical semantic type, so the
+    chart still renders."""
+    from .altkeys import single_column_alternative_keys
+
+    tdef = schema.get("tables", {}).get(table) or {}
+    id_cols = list(dict.fromkeys(
+        single_column_alternative_keys(schema, table, rows) + list(tdef.get("primary_key") or [])
+    ))
+    if len(id_cols) < 2:
+        return {}
+    # Build meta over every identity column (some may not be in the user's selection).
+    meta = _column_meta(schema, table, list(dict.fromkeys(list(columns) + id_cols)))
+    out: dict[str, list[str]] = {}
+    for role in ALT_KEY_ROLES:
+        cur = mapping.get(role)
+        if not isinstance(cur, str) or cur not in meta:
+            continue
+        cur_dim = meta[cur]["dim"]
+        opts: list[str] = []
+        for c in id_cols:
+            if c == cur or c not in meta or meta[c]["dim"] != cur_dim:
+                continue
+            dts = meta[c].get("datatypes") or []
+            if role == "region" and "geographical" not in dts:
+                continue
+            if role == "text" and "lexical" not in dts:
+                continue
+            opts.append(c)
+        if opts:
+            out[role] = [cur] + opts
+    return out
+
+
 def _swappable_roles(mapping: dict[str, Any], meta: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """For each *expressive* mapping role whose value is a selected column with same-dimension
     alternatives, list the allowed replacement columns. Identity/join roles (FIXED_ROLES) and
@@ -221,6 +343,7 @@ def _build_user_prompt(pattern: str, meta: dict[str, dict[str, Any]],
     cols_desc = ", ".join(
         c + ":" + m["type"] + "[" + m["dim"]
         + ("/pk" if m["is_pk"] else "") + ("/fk" if m["is_fk"] else "") + "]"
+        + "{" + ",".join(m.get("datatypes") or []) + "}"
         for c, m in meta.items()
     )
     lines: list[str] = []
@@ -239,6 +362,16 @@ def _build_user_prompt(pattern: str, meta: dict[str, dict[str, Any]],
             if c.get("eligible") == "conditional" else ""
         lines.append("- " + c["chart"] + cond + ": " + str(c.get("reason", "")))
         lines.append("    mapping: " + json.dumps(mapping, ensure_ascii=False))
+        unused = c.get("unused_columns") or []
+        slider = c.get("slider_columns") or []
+        if unused:
+            lines.append("    mapping fit: DROPS selected measure(s) " + ", ".join(unused)
+                         + " — this chart cannot show " + ("them" if len(unused) > 1 else "it") + ".")
+        else:
+            lines.append("    mapping fit: shows every selected measure.")
+        if slider:
+            lines.append("    (surplus " + ", ".join(slider)
+                         + " would move to a time slider / paging — not yet rendered.)")
         if swap:
             swap_desc = "; ".join(
                 r + " (now " + s["current"] + ", " + s["dim"] + ") -> one of "

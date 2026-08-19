@@ -92,7 +92,19 @@ class PostgresDataSource(DataSource):
                 }
                 for fk in insp.get_foreign_keys(tname)
             ]
-            tables[tname] = {"columns": columns, "primary_key": pk, "foreign_keys": fks}
+            # UNIQUE constraints are the authoritative signal for alternative keys
+            # (chartselect.altkeys); a single-column UNIQUE column can label the entity in
+            # place of its primary key. Best-effort: some dialects/reflection paths omit them.
+            try:
+                uniques = [
+                    {"columns": list(uc.get("column_names") or [])}
+                    for uc in insp.get_unique_constraints(tname)
+                    if uc.get("column_names")
+                ]
+            except Exception:  # noqa: BLE001 — reflection may not support it; degrade to data-driven
+                uniques = []
+            tables[tname] = {"columns": columns, "primary_key": pk,
+                             "foreign_keys": fks, "unique_constraints": uniques}
         self._schema_cache = {"tables": tables}
         return self._schema_cache
 

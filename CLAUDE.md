@@ -93,19 +93,31 @@ drift). All three steps now exist as LLM-authored standard-library programs with
   bipartite, count fallback), **force graph** (`viz_codegen_force`, topology), and **arc diagram**
   (`viz_codegen_arc`, **reflexive-only**). matrix/force/arc read `mapping["value"]` (scalar column or
   `"count"`), matrix also an optional `category`. Each run dir has a `SUMMARY.md`.
-  The **choropleth** is the one renderer with two **switchable basemaps** (picked via
-  `mapping["basemap"]`, toggled from the viz toolbar so a reviewer can compare): `"mapunits"`
-  (default) = Natural Earth 50m admin-0 **map units** — dependencies (French overseas depts, Macao,
-  West Bank/Gaza) drawn separately and UK/Belgium sub-units all coloured, joined per unit via
-  `mondial_mapunit_crosswalk.json` (GU_A3→code, 242/246); `"countries"` = **world-atlas 50m**
-  sovereign outlines — cleaner (UK/Belgium each one shape) but dependencies merged into the
-  sovereign, joined on the ISO numeric `d.id` via `mondial_iso_crosswalk.json` (210/246). The
-  renderer auto-detects TopoJSON vs GeoJSON, and uses a sqrt colour scale + grey borders so highly
-  skewed measures (population/area) don't wash small countries out to white. Regenerate either
-  crosswalk with the sibling `build_*_crosswalk.py`.
+  The **choropleth** uses a single **world-atlas 50m** basemap — sovereign country outlines
+  (UK/Belgium each one shape, dependencies merged into the sovereign), joined on the ISO numeric
+  `d.id` via `mondial_iso_crosswalk.json` (210/246) with a lowercased-name fallback. The renderer
+  auto-detects TopoJSON vs GeoJSON, and uses a sqrt colour scale + grey borders so highly skewed
+  measures (population/area) don't wash small countries out to white. Regenerate the crosswalk with
+  the sibling `build_iso_crosswalk.py`. (The former switchable Natural Earth "map units" basemap and
+  its `mondial_mapunit_crosswalk.json` / `build_mapunit_crosswalk.py` are retired.)
 - **Web front-end.** `experiments/web_pipeline/` (`server.py` + `index.html`, std-lib
   ThreadingHTTPServer, **no model calls at serve time**) chains the three programs and renders the
-  result in a sandboxed iframe; unbuilt charts return `"working in process"`.
+  result in a sandboxed iframe; unbuilt charts return `"working in process"`. Each column in the
+  picker is badged with its semantic data type(s) (numeric / temporal / lexical / geographical —
+  a place name is both lexical and geographical). When a chart cannot plot every selected column
+  (e.g. a bar chart given two scalars), the UI shows a per-role **column switcher** so the user
+  can flip which column fills each expressive role; the options come from
+  `chartselect.swap_options` (deterministic, LLM-independent — same-dimension selected columns
+  only, `FIXED_ROLES` never offered), attached to every Step-2 candidate as `candidate.swaps` and
+  re-rendered via `/api/render` on change. The same switcher also covers the **identity/label
+  roles** `key` / `region` / `text`: they may be re-pointed at an **alternative key** of the same
+  entity (e.g. a word cloud by `name` instead of `code`). Alternative keys are detected generically
+  (works on any connected DB) by `chartselect.altkeys.single_column_alternative_keys` — a non-PK
+  column that is schema-`UNIQUE` or empirically non-null-and-all-distinct in the rows (continuous
+  real measures excluded; `MIN_ROWS` guards tiny samples); the Postgres source now also surfaces
+  `unique_constraints`. Run `python experiments/chartselect/altkeys.py [table]` to report each
+  table's primary + alternative keys. Only same-dimension, role-type-compatible keys are offered
+  (`region`→geographical, `text`→lexical), and the LLM never overrides these identity roles.
 
 ## Production layer (opt-in — live SQL + natural-language input)
 

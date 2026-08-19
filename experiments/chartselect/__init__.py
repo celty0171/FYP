@@ -8,4 +8,4 @@ optionally swap a column into an existing mapping role (same dimension only). On
 missing key, or invalid answer it falls back to the deterministic pick.
 """
 
-from .llm_chart_selector import select  # noqa: F401
+from .llm_chart_selector import select, swap_options  # noqa: F401

@@ -54,13 +54,24 @@ missing key, or invalid answer it falls back to the deterministic pick (`source=
 The verbatim system prompt is the `_SYSTEM` constant in
 `experiments/chartselect/llm_chart_selector.py` (the source of truth). Its rules, in brief:
 
-- decide from the user's goal (if given), each column's type/role, and the measured data
-  signals (a high-cardinality key makes a single-axis chart unreadable; two scalars suit a
-  scatter; a regular date series suits a line; few categories suit part-to-whole);
+- decide from the user's goal (if given), each column's type/role and **semantic data
+  type(s)** in `{braces}` — numeric / temporal / lexical / geographical, and a column can carry
+  several (a place name is both lexical and geographical) — the measured data signals (a
+  high-cardinality key makes a single-axis chart unreadable; two scalars suit a scatter; a
+  regular date series suits a line; few categories suit part-to-whole), and each candidate's
+  **mapping fit** (how many of the user's selected measures the chart actually shows);
+- **weigh mapping fit with the goal**: the user selected every column on purpose, so prefer a
+  chart that shows all of them; a candidate whose mapping fit says it **drops** a selected
+  measure ranks below one that shows every measure, unless the goal clearly cares only about
+  the shown measure(s). A chart that drops a selected measure must never win by default (e.g.
+  a single-measure bar chart must not beat a scatter when the user selected two measures and
+  the goal singles out neither);
 - `recommended_chart` must be exactly one candidate; never invent charts, mapping keys, or
   column names;
 - a `[CONDITIONAL]` chart (choropleth/word cloud) may be chosen **only** when the goal or
-  column semantics satisfy its precondition, else prefer an unconditional candidate;
+  column semantics satisfy its precondition — prefer it when the key column is tagged
+  `{geographical}` (choropleth) or `{lexical}` (word cloud), else prefer an unconditional
+  candidate;
 - `mapping_overrides` may only swap a same-dimension selected column into an existing role;
 - `reason` is one short English sentence; `ranking` lists **every** candidate best-first,
   each `{chart, note}`.
@@ -70,7 +81,7 @@ The verbatim system prompt is the `_SYSTEM` constant in
 ```
 User goal: <the user's original request>        # omitted when no intent is supplied
 ER pattern: <pattern>
-Selected columns: <col:TYPE[dim/pk/fk], ...>
+Selected columns: <col:TYPE[dim/pk/fk]{semantic types}, ...>   # e.g. code:VARCHAR(4)[discrete/pk]{lexical,geographical}
 Data signals:
 rows=<N>
   <col>: distinct=<d>, null=<f>, range=<min>..<max>
@@ -79,6 +90,8 @@ rows=<N>
 Candidate charts:
 - <chart>: <why the deterministic layer marked it eligible>
     mapping: <JSON mapping the renderer will read>
+    mapping fit: <"shows every selected measure" | "DROPS selected measure(s) <cols> — ...">
+    (surplus <cols> would move to a time slider / paging — not yet rendered.)   # only if any
     swappable roles: <role (now <col>, <dim>) -> one of [<cols>]; ...  | none>
 ...
 
