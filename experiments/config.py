@@ -1,8 +1,10 @@
 """Runtime configuration for the production layer, read from a repo-root ``.env`` (with
 ``os.environ`` taking precedence). Std-lib only — no python-dotenv dependency.
 
-Defaults keep the experiment path unchanged: ``VIZER_DATASOURCE=json`` uses the offline
-Mondial JSON files, and nothing here is consulted unless the production layer is used.
+The default data source is a live PostgreSQL database (``VIZER_DATASOURCE=postgres``): set
+``DATABASE_URL`` or the ``PG_*`` parts in ``.env`` (see README for loading Mondial). Set
+``VIZER_DATASOURCE=json`` to fall back to the bundled offline Mondial JSON files, which the
+experiment scripts also read directly.
 """
 
 from __future__ import annotations
@@ -75,7 +77,7 @@ def load_config(env_path: Path | None = None) -> Config:
         row_cap = 5000
 
     return Config(
-        datasource=_get(env, "VIZER_DATASOURCE", "json").lower(),
+        datasource=_get(env, "VIZER_DATASOURCE", "postgres").lower(),
         schema_path=Path(_get(env, "VIZER_SCHEMA_PATH", str(db / "mondial_schema_summary_clean.json"))),
         data_path=Path(_get(env, "VIZER_DATA_PATH", str(db / "mondial_data.json"))),
         database_url=database_url,

@@ -41,13 +41,21 @@ def _load(path: Path, name: str):
     return mod
 
 
-# Data source is chosen by .env (VIZER_DATASOURCE): JSON files by default (experiments
-# unchanged), or a live PostgreSQL database in production. Both yield the same schema
+# Data source is chosen by .env (VIZER_DATASOURCE): a live PostgreSQL database by default,
+# or the bundled offline JSON files (VIZER_DATASOURCE=json). Both yield the same schema
 # dict + row dicts, so nothing downstream changes.
 CONFIG = load_config()
-DS = make_datasource(CONFIG)
-SCHEMA = DS.get_schema()
-TABLES = DS.tables_view()                            # {table: rows}; lazy for live DB
+try:
+    DS = make_datasource(CONFIG)
+    SCHEMA = DS.get_schema()
+    TABLES = DS.tables_view()                        # {table: rows}; lazy for live DB
+except Exception as _exc:  # unconfigured / unreachable DB -> friendly message, no traceback
+    sys.stderr.write(
+        "VIZER_DATASOURCE=" + CONFIG.datasource + " but the database could not be reached: "
+        + str(_exc) + "\nLoad Mondial and set PG_*/DATABASE_URL in .env "
+        "(see README), or set VIZER_DATASOURCE=json to use the bundled offline files.\n"
+    )
+    sys.exit(1)
 
 # Renderers load D3 (and, for a few charts, a D3 plugin) from CDNs. In an offline /
 # restricted-network browser those fail (ERR_CONNECTION_CLOSED -> "d3 is not defined" ->
