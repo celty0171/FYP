@@ -140,6 +140,22 @@ experiment core stays std-lib.
   default `VIZER_DATASOURCE=json`) or a live PostgreSQL DB (`PostgresDataSource`, SQLAlchemy `inspect`
   for PK/FK/types, `SELECT … LIMIT` for rows with type coercion). `make_datasource(load_config())`
   picks one; `server.py` reads `SCHEMA`/`TABLES` from it instead of the two JSON globals.
+- **SQL pushdown (Step 0, data layer)** `experiments/datasource` + `results/sql_codegen/` — the
+  richer seam method `DataSource.get_selection(table, columns, joins, filters, aggregate, limit)`
+  returns a `SelectionResult` (`schema/table/columns/rows/rows_total/aggregated`) that the server's
+  `run_pipeline`/`prepared_data`/`/api/render` now consume. On a live DB `PostgresDataSource`
+  **pushes join → filter → (aggregate) into one parameterised, read-only, `statement_timeout`-bounded
+  query** built by the **LLM-authored** `build_selection_sql(schema, selection)`
+  (`results/sql_codegen/build_selection_sql_reference.py`, the compile-time artefact of the
+  LLM-as-compiler paradigm extended to the data layer; prompt `prompts/sql_builder_prompt.md`,
+  oracle `compare_sql_vs_python.py` — 18/18 vs the offline Python path). So aggregation and the
+  filter `column_stats` (`get_column_stats`) are **exact over the whole table**, not a
+  `VIZER_ROW_CAP` sample. `JsonFileDataSource` and `VIZER_PUSHDOWN=off` (or any builder/exec error)
+  use the std-lib Python default (`join.enrich` → `filter.apply` → `aggregate.prepare`) — graceful,
+  byte-identical degradation, so the experiment/fixture path is unchanged and the SQL builder stays
+  blind/gold-clean (schema + selection only). The UI's `limit` is a **display top-N** applied only to
+  the drawn rows (Step 2 still measures density on the full relation); `/api/run` + `/api/render`
+  return `rows_shown`/`rows_total` for the front-end's "showing N / M rows" badge.
 - **NL → selection** `experiments/nlquery/` — `nl_to_selection.parse(text, schema)` uses the Bailian /
   DashScope OpenAI-compatible client (`bailian_client.py`, key `DASHSCOPE_API_KEY`) to turn free text
   into a validated `{table, columns, filters, joins, aggregate}` selection — **never** a pattern or
