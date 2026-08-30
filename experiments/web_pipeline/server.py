@@ -172,7 +172,9 @@ def connect_postgres(params: dict[str, Any]) -> dict[str, Any]:
     try:
         from datasource.postgres_source import PostgresDataSource
 
-        ds = PostgresDataSource(url, row_cap=CONFIG.row_cap)
+        ds = PostgresDataSource(url, row_cap=CONFIG.row_cap,
+                                pushdown=CONFIG.pushdown,
+                                statement_timeout_ms=CONFIG.statement_timeout_ms)
         tables = set_datasource(
             ds, mode="postgres", database=database,
             note="connected to " + user + "@" + host + ":" + port + "/" + database,
