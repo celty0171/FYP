@@ -208,13 +208,11 @@ def use_default_datasource() -> dict[str, Any]:
 def joined_base_rows(table: str, joins: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """The base table's rows, enriched with any joined foreign columns (Phase 2).
 
-    Runs before filtering so a joined column (e.g. `continent`) can be filtered and
-    grouped like a native one. An empty/absent joins list is the identity.
+    Delegates to ``DS.get_selection`` so the work is pushed into SQL on a live DB (and done
+    in Python on the JSON fixture / when pushdown is off). An empty/absent joins list is the
+    identity.
     """
-    rows = TABLES.get(table) or []
-    if joins:
-        rows = JOIN.enrich(SCHEMA, TABLES, table, rows, joins)
-    return rows
+    return DS.get_selection(table, [], joins or [], None, None, None)["rows"]
 
 
 def filtered_data(table: str, filters: list[dict[str, Any]] | None,
@@ -224,10 +222,10 @@ def filtered_data(table: str, filters: list[dict[str, Any]] | None,
     The server selects rows from this view (``_select_rows`` -> ``data["tables"][table]``)
     and passes them to each renderer's ``render(mapping, rows)``, so passing this view
     (instead of the global DATA) draws the subset with no renderer change. Order is
-    join -> filter; empty joins/filters are the identity.
+    join -> filter; empty joins/filters are the identity. Goes through ``DS.get_selection``.
     """
-    rows = joined_base_rows(table, joins)
-    return {"tables": {table: FILTER.apply(rows, filters or [])}}
+    rows = DS.get_selection(table, [], joins or [], filters or [], None, None)["rows"]
+    return {"tables": {table: rows}}
 
 
 def _select_rows(mapping: dict[str, Any], data: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -425,13 +423,34 @@ def prepared_data(table: str, filters: list[dict[str, Any]] | None,
 
     Without aggregation this is the joined+filtered base table; with aggregation it is
     the derived aggregated table (keyed by the derived table name the mapping references).
+    Goes through ``DS.get_selection`` (SQL pushdown on a live DB).
     """
-    fdata = filtered_data(table, filters, joins)
-    rows = fdata["tables"][table]
-    if rows and _is_aggregate(aggregate):
-        _dsch, dtable, _dcols, arows = AGG.prepare(SCHEMA, table, rows, aggregate)
-        return {"tables": {dtable: arows}}
-    return fdata
+    sel = DS.get_selection(table, [], joins or [], filters or [], aggregate or {}, None)
+    return {"tables": {sel["table"]: sel["rows"]}}
+
+
+def _as_limit(v: Any) -> int | None:
+    """Parse a display top-N limit from the request; None (show all) for absent/invalid/<=0."""
+    try:
+        n = int(v)
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _render_selection(table: str, chart: str | None, mapping: dict[str, Any],
+                      filters: list[dict[str, Any]] | None, aggregate: dict[str, Any] | None,
+                      joins: list[dict[str, Any]] | None, limit: int | None) -> dict[str, Any]:
+    """Re-render one chart on the selection's join+filter(+aggregate) view (used by /api/render
+    on a swap). Draws the display top-N and reports rows_shown/rows_total for the badge."""
+    if not table:
+        return render_chart(chart, mapping, data=None)
+    sel = DS.get_selection(table, [], joins or [], filters or [], aggregate or {}, None)
+    render_rows = sel["rows"][:limit] if limit else sel["rows"]
+    result = render_chart(chart, mapping, data={"tables": {sel["table"]: render_rows}})
+    result["rows_shown"] = len(render_rows)
+    result["rows_total"] = sel["rows_total"]
+    return result
 
 
 def nl_select(text: str) -> dict[str, Any]:
@@ -579,59 +598,44 @@ def run_pipeline(table: str, columns: list[str],
                  filters: list[dict[str, Any]] | None = None,
                  aggregate: dict[str, Any] | None = None,
                  joins: list[dict[str, Any]] | None = None,
-                 intent: str = "") -> dict[str, Any]:
-    # Order: join (enrich) -> filter -> (aggregate) -> Step 1/2/3. Join + filter run
-    # before Step 2 so the selector measures on the subset the user sees.
-    fdata = filtered_data(table, filters, joins)
-    rows = fdata["tables"][table]
+                 intent: str = "", limit: int | None = None) -> dict[str, Any]:
+    # Order: join (enrich) -> filter -> (aggregate) -> Step 1/2/3, all via DS.get_selection
+    # (pushed into SQL on a live DB). The pipeline analyses the full selection (up to the row
+    # cap); `limit` is a display top-N applied only to what the renderer draws — so Step 2
+    # still measures density/N on the whole relation, not the truncated view.
+    sel = DS.get_selection(table, columns, joins or [], filters or [], aggregate or {}, None)
+    eff_schema, eff_table, eff_cols = sel["schema"], sel["table"], sel["columns"]
+    rows, rows_total, aggregated = sel["rows"], sel["rows_total"], sel["aggregated"]
 
-    if _is_aggregate(aggregate):
-        base_pattern = STEP1.classify_selection(SCHEMA, table, columns).get("predicted_pattern", "")
-        if not rows:
-            return _empty_run(table, columns, filters, aggregate, joins, base_pattern, "",
-                              "no rows match the current filter")
-        # Aggregate -> derived basic_entity; re-run the SAME Step 1/2/3 on the derived table.
-        dschema, dtable, dcols, arows = AGG.prepare(SCHEMA, table, rows, aggregate)
-        if not arows:
-            return _empty_run(table, columns, filters, aggregate, joins, base_pattern, "",
-                              "aggregation produced no groups (or none matched the having condition)")
-        s1 = STEP1.classify_selection(dschema, dtable, dcols)
-        pattern = s1["predicted_pattern"]
-        s2 = STEP2.recommend(dschema, dtable, dcols, pattern, rows=arows)
-        step2, selected = _step2_block(dschema, dtable, dcols, pattern, s2, rows=arows, intent=intent)
-        ddata = {"tables": {dtable: arows}}
-        rendered = render_chart(selected.get("chart"), selected.get("mapping") or {}, data=ddata)
-        return {
-            "selected_table": table,
-            "selected_columns": dcols,
-            "filters": filters or [],
-            "aggregate": aggregate or {},
-            "joins": joins or [],
-            "step1": {"pattern": pattern, "reason": s1.get("reason", ""),
-                      "derived_table": dtable},
-            "step2": step2,
-            "step3": rendered,
-        }
-
-    # Non-aggregate path (Phase-1 filtering only).
-    s1 = STEP1.classify_selection(SCHEMA, table, columns)
-    pattern = s1["predicted_pattern"]
     if not rows:
-        return _empty_run(table, columns, filters, aggregate, joins, pattern,
-                          s1.get("reason", ""), "no rows match the current filter")
-    s2 = STEP2.recommend(SCHEMA, table, columns, pattern, rows=rows)
-    step2, selected = _step2_block(SCHEMA, table, columns, pattern, s2, rows=rows, intent=intent)
-    rendered = render_chart(selected.get("chart"), selected.get("mapping") or {}, data=fdata)
-    return {
+        pat = STEP1.classify_selection(SCHEMA, table, columns).get("predicted_pattern", "")
+        msg = ("aggregation produced no groups (or none matched the having condition)"
+               if _is_aggregate(aggregate) else "no rows match the current filter")
+        return _empty_run(table, columns, filters, aggregate, joins, pat, "", msg)
+
+    s1 = STEP1.classify_selection(eff_schema, eff_table, eff_cols)
+    pattern = s1["predicted_pattern"]
+    s2 = STEP2.recommend(eff_schema, eff_table, eff_cols, pattern, rows=rows)
+    step2, selected = _step2_block(eff_schema, eff_table, eff_cols, pattern, s2, rows=rows, intent=intent)
+
+    render_rows = rows[:limit] if limit else rows
+    rendered = render_chart(selected.get("chart"), selected.get("mapping") or {},
+                            data={"tables": {eff_table: render_rows}})
+    resp = {
         "selected_table": table,
-        "selected_columns": columns,
+        "selected_columns": eff_cols,
         "filters": filters or [],
         "aggregate": aggregate or {},
         "joins": joins or [],
         "step1": {"pattern": pattern, "reason": s1.get("reason", "")},
         "step2": step2,
         "step3": rendered,
+        "rows_shown": len(render_rows),
+        "rows_total": rows_total,
     }
+    if aggregated:
+        resp["step1"]["derived_table"] = eff_table
+    return resp
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -673,10 +677,13 @@ class Handler(BaseHTTPRequestHandler):
                       joins: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         if table not in SCHEMA.get("tables", {}):
             return {"error": "unknown table", "stats": {}}
-        # Stats come from the *unfiltered* (but joined) rows so control ranges/values
-        # stay stable and a joined column gets a control.
-        rows = joined_base_rows(table, joins)
-        return {"table": table, "stats": FILTER.column_stats(rows, columns)}
+        # Stats come from the *unfiltered* (but joined) rows so control ranges/values stay
+        # stable and a joined column gets a control. On a live DB these are pushed into SQL
+        # (exact MIN/MAX/COUNT DISTINCT over the whole table), else computed in Python.
+        stats = DS.get_column_stats(table, joins)
+        if columns:
+            stats = {c: stats[c] for c in columns if c in stats}
+        return {"table": table, "stats": stats}
 
     def _join_options(self, table: str) -> dict[str, Any]:
         if table not in SCHEMA.get("tables", {}):
@@ -697,10 +704,11 @@ class Handler(BaseHTTPRequestHandler):
                 aggregate = body.get("aggregate") or {}
                 joins = body.get("joins") or []
                 intent = (body.get("intent") or "").strip()
+                limit = _as_limit(body.get("limit"))
                 if not table or not columns:
                     self._send(400, {"error": "pick a table and at least one column"})
                     return
-                self._send(200, run_pipeline(table, columns, filters, aggregate, joins, intent))
+                self._send(200, run_pipeline(table, columns, filters, aggregate, joins, intent, limit))
             elif self.path == "/api/connect":
                 # Live-DB login from the web form: connect + swap the active data source.
                 self._send(200, connect_postgres(body))
@@ -716,8 +724,10 @@ class Handler(BaseHTTPRequestHandler):
                 filters = body.get("filters") or []
                 aggregate = body.get("aggregate") or {}
                 joins = body.get("joins") or []
-                data = prepared_data(table, filters, aggregate, joins) if table else None
-                self._send(200, render_chart(body.get("chart"), body.get("mapping") or {}, data=data))
+                limit = _as_limit(body.get("limit"))
+                result = _render_selection(table, body.get("chart"), body.get("mapping") or {},
+                                           filters, aggregate, joins, limit)
+                self._send(200, result)
             elif self.path == "/api/column_stats":
                 self._send(200, self._column_stats((body.get("table") or "").strip(),
                                                     body.get("columns"), body.get("joins")))
