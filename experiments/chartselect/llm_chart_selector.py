@@ -32,22 +32,14 @@ import json
 from copy import deepcopy
 from typing import Any
 
+import geodetect     # generic geographical-column detection (shared with the server)
+
 NUMERIC_TYPES = {
     "INT", "INTEGER", "BIGINT", "SMALLINT", "NUMERIC", "DECIMAL",
     "FLOAT", "DOUBLE", "REAL", "MONEY",
 }
 TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
 TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
-
-# Geographic entity tables / column names in Mondial — a text column that *is* the key or the
-# `name` of one, or a foreign key referencing one, identifies a place, so it can fill a
-# choropleth's geographic role. Mirrors the server's `_GEO_TABLES` / `_GEO_NAMES` (kept local
-# so this module stays importable without pulling in the server). Best-effort: geography is
-# not provable from SQL type, so choropleth stays a CONDITIONAL candidate either way.
-_GEO_TABLES = {"country", "city", "province", "continent", "sea", "river", "lake",
-               "island", "mountain", "desert", "organization"}
-_GEO_NAMES = {"country", "country1", "country2", "province", "city", "continent",
-              "capital", "region"}
 
 # Mapping roles the LLM may NOT swap: they establish an entity's identity or a join/label key
 # (`region` decides which country a choropleth colours, `source`/`target` the relationship
@@ -126,28 +118,12 @@ def _dim(sql_type: Any) -> str:
     return "other"
 
 
-def _semantic_types(name: str, dim: str, is_pk: bool,
-                    ref_table: str | None, own_table: str | None) -> list[str]:
-    """The paper's semantic data type(s) for a column: numeric / temporal / lexical /
-    geographical. A column can carry more than one — a place name is both a readable word
-    (lexical -> word cloud) and a geographic identifier (geographical -> choropleth). Numeric
-    and temporal are exclusive. Mirrors the server so the LLM sees the same labels as the UI."""
-    if dim == "scalar":
-        return ["numeric"]
-    if dim == "temporal":
-        return ["temporal"]
-    n = (name or "").lower()
-    own_geo = bool(own_table) and str(own_table).lower() in _GEO_TABLES
-    is_geo = (n in _GEO_NAMES
-              or (ref_table and str(ref_table).lower() in _GEO_TABLES)
-              or (own_geo and (is_pk or n == "name")))
-    return ["lexical", "geographical"] if is_geo else ["lexical"]
-
-
 def _column_meta(schema: dict[str, Any], table: str, columns: list[str]) -> dict[str, dict[str, Any]]:
     """Per selected column: {type, dim, datatypes, is_pk, is_fk} — the pool the LLM may swap
     within. `datatypes` are the paper's semantic key types (numeric/temporal/lexical/
-    geographical), matching the front-end badges, so the LLM can justify a conditional pick."""
+    geographical), matching the front-end badges, so the LLM can justify a conditional pick.
+    Geographical columns come from :mod:`geodetect` (the server-injected, possibly LLM-refined
+    set when present), so the selector sees exactly the labels the UI shows."""
     tdef = schema.get("tables", {}).get(table) or {}
     typemap: dict[str, str] = {}
     for col in tdef.get("columns") or []:
@@ -155,18 +131,16 @@ def _column_meta(schema: dict[str, Any], table: str, columns: list[str]) -> dict
         typemap[name] = col.get("type", "") if isinstance(col, dict) else ""
     pk = set(tdef.get("primary_key") or [])
     fk_cols: set[str] = set()
-    fk_ref: dict[str, str] = {}
     for fk in tdef.get("foreign_keys") or []:
         for c in fk.get("columns") or []:
             fk_cols.add(c)
-            if fk.get("references_table"):
-                fk_ref.setdefault(c, fk["references_table"])
+    geo = geodetect.resolved_geo_columns(schema)
     meta: dict[str, dict[str, Any]] = {}
     for c in columns:
         t = typemap.get(c, "")
         dim = _dim(t)
         meta[c] = {"type": t, "dim": dim,
-                   "datatypes": _semantic_types(c, dim, c in pk, fk_ref.get(c), table),
+                   "datatypes": geodetect.semantic_types(dim, (table, c) in geo),
                    "is_pk": c in pk, "is_fk": c in fk_cols}
     return meta
 

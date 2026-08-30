@@ -48,6 +48,8 @@ const maxW = d3.max(links, l => l.w) || 1;
 const wScale = d3.scaleSqrt().domain([0, maxW]).range([0.5, 5]);
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 // Faint baseline rule under the nodes to anchor the axis.
@@ -70,7 +72,7 @@ const arc = svg.append("g").attr("transform", `translate(${leftPad},0)`)
   .on("mouseover", (event, d) => {
     arc.attr("stroke-opacity", a => (a === d) ? 0.95 : 0.04);
     node.attr("opacity", n => (n.k === d.i || n.k === d.j) ? 1 : 0.2);
-    tip.style("opacity", 1).html(names[d.i] + " &harr; " + names[d.j] + "<br>" + valueLabel + ": "
+    tip.style("opacity", 1).html(escHtml(names[d.i]) + " &harr; " + escHtml(names[d.j]) + "<br>" + valueLabel + ": "
       + (Number.isInteger(d.w) ? d.w : d.w.toFixed(2)));
     moveTip(event);
   })
@@ -103,7 +105,7 @@ node
     const nb = adj[d.k];
     node.attr("opacity", o => (o.k === d.k || nb.has(o.k)) ? 1 : 0.2);
     arc.attr("stroke-opacity", a => (a.i === d.k || a.j === d.k) ? 0.9 : 0.05);
-    tip.style("opacity", 1).html("<strong>" + d.nm + "</strong><br>degree: " + deg[d.k]);
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.nm) + "</strong><br>degree: " + deg[d.k]);
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -237,7 +239,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
 
     return (
         HEAD.replace("__T__", title).replace("__SUB__", html.escape(subtitle))
-        + "const names = " + json.dumps([html.escape(x) for x in disp_names]) + ";\n"
+        + "const names = " + json.dumps(disp_names) + ";\n"
         + "const deg = " + json.dumps(disp_deg) + ";\n"
         + "const maxDeg = " + json.dumps(max_deg) + ";\n"
         + "const links = " + json.dumps(links) + ";\n"

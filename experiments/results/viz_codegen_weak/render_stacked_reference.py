@@ -48,6 +48,8 @@ g.append("g").call(d3.axisTop(x).ticks(6));
 g.append("g").call(d3.axisLeft(y)).selectAll("text").style("font-size", "8px");
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const layer = g.append("g").selectAll("g").data(series).join("g").attr("fill", d => color(d.key));
@@ -61,7 +63,7 @@ const rect = layer.selectAll("rect").data(d => d.map(v => (v.key = d.key, v))).j
 rect
   .on("mouseover", (event, d) => {
     rect.attr("fill-opacity", r => r.key === d.key ? 0.95 : 0.2);
-    tip.style("opacity", 1).html("<strong>" + d.data.__group + "</strong><br>" + segmentName + ": " + d.key + "<br>" + valueName + ": " + (d.data[d.key] || 0));
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.data.__group) + "</strong><br>" + segmentName + ": " + escHtml(d.key) + "<br>" + valueName + ": " + (d.data[d.key] || 0));
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -149,16 +151,16 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     folded = [s for s in segments_all if s not in kept_set]
     has_other = bool(folded)
 
-    seg_keys = [html.escape(s) for s in kept]
+    seg_keys = list(kept)
     if has_other:
         seg_keys.append(OTHER_KEY)
 
     # One row object per group: every kept segment present (missing = 0), plus the folded "(other)".
     out_rows = []
     for gv in groups:
-        row: dict[str, Any] = {"__group": html.escape(gv)}
+        row: dict[str, Any] = {"__group": gv}
         for sv in kept:
-            row[html.escape(sv)] = cell.get((gv, sv), 0.0)
+            row[sv] = cell.get((gv, sv), 0.0)
         if has_other:
             row[OTHER_KEY] = sum(cell.get((gv, sv), 0.0) for sv in folded)
         out_rows.append(row)

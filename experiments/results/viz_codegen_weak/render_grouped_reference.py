@@ -48,6 +48,8 @@ g.append("g").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x0)
   .selectAll("text").attr("transform", "rotate(-40)").style("text-anchor", "end").style("font-size", "9px");
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const cluster = g.append("g").selectAll("g").data(rows).join("g")
@@ -64,7 +66,7 @@ const rect = cluster.selectAll("rect")
 rect
   .on("mouseover", (event, d) => {
     rect.attr("fill-opacity", r => r.key === d.key ? 0.95 : 0.18);
-    tip.style("opacity", 1).html("<strong>" + d.group + "</strong><br>" + segmentName + ": " + d.key + "<br>" + valueName + ": " + d.value);
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.group) + "</strong><br>" + segmentName + ": " + escHtml(d.key) + "<br>" + valueName + ": " + d.value);
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -161,11 +163,11 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     # One row per kept group; every kept segment present (missing = 0). Drop the tail (no "(other)").
     out_rows = []
     for gv in kept_groups:
-        row: dict[str, Any] = {"__group": html.escape(gv)}
+        row: dict[str, Any] = {"__group": gv}
         for sv in kept_segs:
-            row[html.escape(sv)] = cell.get((gv, sv), 0.0)
+            row[sv] = cell.get((gv, sv), 0.0)
         out_rows.append(row)
-    seg_keys = [html.escape(s) for s in kept_segs]
+    seg_keys = list(kept_segs)
 
     dropped_segs = len(segments_all) - len(kept_segs)
     dropped_groups = len(groups) - len(kept_groups)

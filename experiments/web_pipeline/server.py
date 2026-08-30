@@ -32,6 +32,7 @@ if str(EXP) not in sys.path:
     sys.path.insert(0, str(EXP))
 from config import load_config                       # noqa: E402
 from datasource import make_datasource               # noqa: E402
+import geodetect                                      # noqa: E402
 
 
 def _load(path: Path, name: str):
@@ -147,6 +148,7 @@ def set_datasource(ds, *, mode: str, database: str = "", note: str = "") -> list
     schema = ds.get_schema()
     DS, SCHEMA, TABLES = ds, schema, ds.tables_view()
     DS_STATUS = {"mode": mode, "database": database, "note": note}
+    _recompute_geo()  # re-detect geographical columns for the newly connected schema
     return sorted(SCHEMA.get("tables", {}))
 
 
@@ -258,54 +260,43 @@ def _single_pk(table: str | None) -> str | None:
     return pk[0] if len(pk) == 1 else None
 
 
-_NUMERIC_TYPES = {"INT", "INTEGER", "BIGINT", "SMALLINT", "NUMERIC", "DECIMAL",
-                  "FLOAT", "DOUBLE", "REAL", "MONEY"}
-_TEMPORAL_TYPES = {"DATE", "TIME", "TIMESTAMP", "YEAR"}
-_TEXT_TYPES = {"VARCHAR", "CHAR", "TEXT"}
+# Semantic data types (numeric / temporal / lexical / geographical) come from `geodetect`, which
+# generalises the former hard-coded Mondial geo lists to any database. `GEO_COLS` is the resolved
+# geographical-column set for the *active* schema, recomputed on connect (see `_recompute_geo`);
+# `dim_of` maps a SQL type to its coarse dimension.
+dim_of = geodetect.dim_of
+GEO_COLS: set[tuple[str, str]] = set()
 
 
-def _dim_of(type_str: Any) -> str:
-    b = str(type_str or "").strip().upper().split("(")[0].strip()
-    if b in _NUMERIC_TYPES:
-        return "scalar"
-    if b in _TEMPORAL_TYPES:
-        return "temporal"
-    if b in _TEXT_TYPES:
-        return "discrete"
-    return "other"
+def _get_geo_client() -> Any:
+    """One Bailian client for opt-in LLM geo refinement (VIZER_LLM_GEO), or None."""
+    if not (CONFIG.llm_geo and CONFIG.has_llm):
+        return None
+    try:
+        from nlquery.bailian_client import BailianClient
+        return BailianClient(api_key=CONFIG.dashscope_api_key,
+                             base_url=CONFIG.dashscope_base_url, model=CONFIG.geo_model)
+    except Exception:  # keep the pipeline alive if the SDK/key is unavailable
+        return None
 
 
-# Geographic entity tables in Mondial: a text column that *is* the key of one of these, or a
-# foreign key *referencing* one, names a place — enough for the UI to hint "geographical"
-# (choropleth-eligible). Display-only: geography is still not proven to the pipeline, so the
-# choropleth candidate stays "conditional" (see step2). The four labels below are the paper's
-# key data types (numeric / temporal / lexical / geographical).
-_GEO_TABLES = {"country", "city", "province", "continent", "sea", "river", "lake",
-               "island", "mountain", "desert", "organization"}
-_GEO_NAMES = {"country", "country1", "country2", "province", "city", "continent",
-              "capital", "region"}
+def _recompute_geo() -> None:
+    """Detect the active schema's geographical columns (heuristics + optional cached LLM) and
+    publish them: on `GEO_COLS` for the UI badges and on the schema dict (`_geo_columns`) so the
+    LLM chart selector reuses the same decision."""
+    global GEO_COLS
+    try:
+        GEO_COLS = geodetect.detect_geo_columns(
+            SCHEMA, TABLES, client=_get_geo_client(), use_llm=CONFIG.llm_geo)
+    except Exception:  # never let geo detection break startup / connect
+        GEO_COLS = geodetect.geo_columns(SCHEMA)
+    geodetect.inject(SCHEMA, GEO_COLS)
 
 
-def _semantic_types(name: str, type_str: Any, is_pk: bool,
-                    ref_table: str | None, own_table: str | None) -> list[str]:
+def _semantic_types(name: str, type_str: Any, table: str | None) -> list[str]:
     """The paper's semantic data type(s) for a column, for UI badges:
-    numeric / temporal / lexical / geographical. A column can carry **more than one** — a
-    place name (e.g. a country) is both a readable word (lexical → word cloud) and a
-    geographic identifier (geographical → choropleth). numeric / temporal are exclusive.
-    Geographical is a best-effort hint from name + FK reference (unprovable from SQL type
-    alone), not a pipeline decision."""
-    dim = _dim_of(type_str)
-    if dim == "scalar":
-        return ["numeric"]
-    if dim == "temporal":
-        return ["temporal"]
-    # text-valued: always lexical; also geographical when it names / references a place.
-    n = (name or "").lower()
-    own_geo = bool(own_table) and str(own_table).lower() in _GEO_TABLES
-    is_geo = (n in _GEO_NAMES
-              or (ref_table and str(ref_table).lower() in _GEO_TABLES)
-              or (own_geo and (is_pk or n == "name")))
-    return ["lexical", "geographical"] if is_geo else ["lexical"]
+    numeric / temporal / lexical / geographical (see :mod:`geodetect`)."""
+    return geodetect.semantic_types(dim_of(type_str), (table, name) in GEO_COLS)
 
 
 def _schema_meta() -> dict[str, Any]:
@@ -315,34 +306,42 @@ def _schema_meta() -> dict[str, Any]:
     for t, tdef in (SCHEMA.get("tables") or {}).items():
         pk = list(tdef.get("primary_key") or [])
         fk_cols: set[str] = set()
-        fk_ref: dict[str, str] = {}
         for fk in tdef.get("foreign_keys") or []:
             for c in fk.get("columns") or []:
                 fk_cols.add(c)
-                if fk.get("references_table"):
-                    fk_ref.setdefault(c, fk["references_table"])
         cols = []
         for c in tdef.get("columns") or []:
             name = c.get("name") if isinstance(c, dict) else c
             typ = c.get("type", "") if isinstance(c, dict) else ""
-            cols.append({"name": name, "type": typ, "dim": _dim_of(typ),
-                         "datatypes": _semantic_types(name, typ, name in pk,
-                                                      fk_ref.get(name), t),
+            cols.append({"name": name, "type": typ, "dim": dim_of(typ),
+                         "datatypes": _semantic_types(name, typ, t),
                          "pk": name in pk, "fk": name in fk_cols})
         out[t] = {"primary_key": pk, "columns": cols}
     return out
 
 
+_recompute_geo()  # detect geographical columns for the startup (.env) schema
+
+
 def _label_col(table: str | None) -> str | None:
-    """The human-readable label column of an entity table, if distinct from its key.
-    Convention: a `name` column, unless `name` is itself the key (already readable)."""
+    """The human-readable label column of an entity table, if distinct from its key — so a chart
+    can show readable names instead of opaque codes on *any* database, not only ones with a `name`
+    column. Prefers a conventional label name (`name`/`title`/`label`/`<table>_name`), else a
+    text-valued single-column alternative key (see :mod:`chartselect.altkeys`). Returns None when
+    the key is already the readable column."""
     tdef = SCHEMA.get("tables", {}).get(table) or {}
-    names = [c.get("name") for c in tdef.get("columns", [])]
-    if "name" not in names:
-        return None
-    if (tdef.get("primary_key") or []) == ["name"]:
-        return None
-    return "name"
+    pk = set(tdef.get("primary_key") or [])
+    types = {(c.get("name") if isinstance(c, dict) else c):
+             (c.get("type", "") if isinstance(c, dict) else "") for c in tdef.get("columns", [])}
+    names = list(types)
+    for cand in ("name", "title", "label", str(table) + "_name"):
+        if cand in names and cand not in pk:
+            return cand
+    from chartselect.altkeys import single_column_alternative_keys
+    for alt in single_column_alternative_keys(SCHEMA, table, TABLES.get(table) or []):
+        if alt not in pk and geodetect.base_sql_type(types.get(alt)) in geodetect.TEXT_TYPES:
+            return alt
+    return None
 
 
 def _fk_ref(tdef: dict[str, Any], col: str):
@@ -482,6 +481,42 @@ def _get_llm_client() -> Any:
     return _LLM_CLIENT
 
 
+# A choropleth is only usable when the region column's values actually resolve to the world
+# basemap; below this share of matched distinct values it would render mostly blank, so we hide it.
+CHOROPLETH_MATCH_MIN = 0.5
+
+
+def _gate_choropleth(s2: dict[str, Any], rows: list[dict[str, Any]] | None) -> None:
+    """Data-driven geography check: confirm the choropleth candidate's region column maps to the
+    world basemap. On a good match, annotate it; otherwise mark it ineligible so neither the UI
+    nor the LLM offers a map that cannot render (graceful degradation for non-geographic DBs)."""
+    if not rows:
+        return
+    mod = RENDERERS.get("choropleth map")
+    if mod is None or not hasattr(mod, "region_match_rate"):
+        return
+    for c in s2.get("candidates", []):
+        if c.get("chart") != "choropleth map" or c.get("eligible") is False:
+            continue
+        region = (c.get("mapping") or {}).get("region")
+        if not region:
+            continue
+        try:
+            matched, total, rate = mod.region_match_rate(rows, region)
+        except Exception:
+            return
+        if total == 0:
+            return
+        if matched == 0 or rate < CHOROPLETH_MATCH_MIN:
+            c["eligible"] = False
+            c["mapping"] = None
+            c["reason"] = ("No basemap match: values in '" + region + "' do not resolve to the "
+                           "world map (" + str(matched) + "/" + str(total) + " matched).")
+        else:
+            c["note"] = (str(matched) + "/" + str(total)
+                         + " region values matched the world basemap.")
+
+
 def _step2_block(schema: dict[str, Any], table: str, columns: list[str],
                  pattern: str, s2: dict[str, Any],
                  rows: list[dict[str, Any]] | None = None,
@@ -492,6 +527,7 @@ def _step2_block(schema: dict[str, Any], table: str, columns: list[str],
     highlighted via ``step2.llm`` and becomes ``selected`` (so Step 3 renders it). ``rows`` and
     ``intent`` make the pick data- and goal-aware. Returns ``(block, selected)``.
     """
+    _gate_choropleth(s2, rows)          # hide the map when the region can't join the basemap
     selected = s2.get("selected") or {}
     # Attach, per candidate, the expressive roles the user may re-point at another selected
     # column of the same dimension (deterministic, independent of the LLM path). This powers the

@@ -75,18 +75,45 @@ _SYSTEM = (
 )
 
 
+def _semantic_badge(schema: dict[str, Any]) -> tuple[Any, set[tuple[str, str]]]:
+    """Return (dim_of callable, geographical (table,col) set) from geodetect, degrading to
+    (None, empty) if geodetect is unavailable. Schema-derived only — no answers, no leakage."""
+    try:
+        import geodetect  # type: ignore
+        return geodetect.dim_of, geodetect.geo_columns(schema)
+    except Exception:  # noqa: BLE001
+        return None, set()
+
+
 def _schema_brief(schema: dict[str, Any]) -> str:
-    """Compact human-readable schema: table(col:TYPE[pk][fk->t.c], ...)."""
+    """Compact human-readable schema: table(col:TYPE[pk][fk->t.c][semantic], ...), followed by an
+    explicit relationship (foreign-key graph) summary. The semantic badge (num/time/lex/geo) and the
+    relationship list are derived purely from the schema — they describe the data's shape, never a
+    pattern or chart, so the blind/gold separation is untouched."""
+    dim_of, geo = _semantic_badge(schema)
+
+    def badge(table: str, name: str, typ: Any) -> str:
+        if (table, name) in geo:
+            return "geo"
+        if dim_of is None:
+            return ""
+        d = dim_of(typ)
+        return {"scalar": "num", "temporal": "time", "discrete": "lex"}.get(d, "")
+
     lines = []
+    rel_lines = []
     for tname, tdef in schema.get("tables", {}).items():
         pk = set(tdef.get("primary_key") or [])
         fk_map = {}
+        fk_refs: list[str] = []
         for fk in tdef.get("foreign_keys") or []:
             ref_t = fk.get("references_table", "")
             ref_cs = fk.get("references_columns") or []
             for i, c in enumerate(fk.get("columns") or []):
                 ref_c = ref_cs[i] if i < len(ref_cs) else ""
                 fk_map[c] = ref_t + ("." + ref_c if ref_c else "")
+            if ref_t:
+                fk_refs.append(ref_t)
         cols = []
         for col in tdef.get("columns") or []:
             name = col.get("name") if isinstance(col, dict) else col
@@ -96,9 +123,25 @@ def _schema_brief(schema: dict[str, Any]) -> str:
                 tags += " pk"
             if name in fk_map:
                 tags += " fk->" + fk_map[name]
+            b = badge(tname, name, typ)
+            if b:
+                tags += " " + b
             cols.append(name + ":" + str(typ) + tags)
         lines.append(tname + "(" + ", ".join(cols) + ")")
-    return "\n".join(lines)
+        # A table with >=2 FK columns is a connector/relationship table between entities; surfacing
+        # this (structurally, without naming the pattern) helps the model spot part-of-whole /
+        # relational requests (e.g. 'population divided between continents and countries' -> encompasses).
+        if len(fk_refs) >= 2:
+            if len(set(fk_refs)) == 1:
+                rel_lines.append("  " + tname + " links " + fk_refs[0] + " to itself (self-relationship)")
+            else:
+                rel_lines.append("  " + tname + " connects " + ", ".join(dict.fromkeys(fk_refs)))
+    out = "\n".join(lines)
+    if rel_lines:
+        out += ("\n\nRelationship tables (connect entities via foreign keys; use these when a request "
+                "spans two entities or asks how one is split/divided/shared across another):\n"
+                + "\n".join(rel_lines))
+    return out
 
 
 def _columns_of(schema: dict[str, Any], table: str) -> set[str]:
@@ -300,26 +343,9 @@ def _coverage_gap(selection: dict[str, Any], resolved: list[dict[str, Any]]) -> 
     return ", ".join(r["term"] for r in resolved if r["term"] not in present)
 
 
-def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str, Any]:
-    """Parse ``nl_text`` into a validated selection.
-
-    Returns ``{"ok": bool, "selection": {...}|None, "error": str, "raw": {...}|None}``.
-    ``client`` may be injected (for testing); otherwise a Bailian client is built from
-    ``config.load_config()``. A deterministic keyword resolver adds a table hint and, if the
-    model drops a measure the request named, retries once with a correction before accepting.
-    """
-    if client is None:
-        from config import load_config
-        from nlquery.bailian_client import from_config
-
-        client = from_config(load_config())
-
-    brief = _schema_brief(schema)
-    resolved = resolve_request_columns(nl_text, schema)
-    hint = _request_hint(resolved)
-    user = ("Schema:\n" + brief + "\n\nRequest: " + nl_text.strip()
-            + (("\n\n" + hint) if hint else "") + "\n\nReturn the JSON selection.")
-
+def _parse_once(user: str, schema: dict[str, Any], resolved: list[dict[str, Any]],
+                client: Any, temperature: float) -> dict[str, Any]:
+    """One parse pass: up to 3 self-correcting attempts at the given temperature."""
     error = ""
     raw: dict[str, Any] | None = None
     for attempt in range(3):
@@ -327,7 +353,7 @@ def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str,
             user + "\n\nYour previous answer had a problem: " + error + "\nFix it and return valid JSON."
         )
         try:
-            raw = client.chat_json(_SYSTEM, prompt)
+            raw = client.chat_json(_SYSTEM, prompt, temperature=temperature)
         except (json.JSONDecodeError, Exception) as exc:  # noqa: BLE001
             error = "model did not return parseable JSON: " + str(exc)
             continue
@@ -342,5 +368,63 @@ def parse(nl_text: str, schema: dict[str, Any], client: Any = None) -> dict[str,
                      "table that contains them or join them in")
             continue
         return {"ok": True, "selection": sel, "error": "", "raw": raw}
-
     return {"ok": False, "selection": None, "error": error or "could not resolve request", "raw": raw}
+
+
+def _selection_sig(sel: dict[str, Any]) -> tuple[Any, tuple[str, ...]]:
+    """Canonical vote key: (table, sorted column set). Table+columns is where selection accuracy
+    is decided, so voting on it stabilises the occasional wrong-table / dropped-column sample."""
+    cols = tuple(sorted(str(c) for c in (sel.get("columns") or [])))
+    return (sel.get("table"), cols)
+
+
+def parse(nl_text: str, schema: dict[str, Any], client: Any = None,
+          samples: int = 1, temperature: float = 0.0) -> dict[str, Any]:
+    """Parse ``nl_text`` into a validated selection.
+
+    Returns ``{"ok": bool, "selection": {...}|None, "error": str, "raw": {...}|None}``.
+    ``client`` may be injected (for testing); otherwise a Bailian client is built from
+    ``config.load_config()``. A deterministic keyword resolver adds a table hint and, if the
+    model drops a measure the request named, retries once with a correction before accepting.
+
+    **Self-consistency**: with ``samples > 1`` the parse is run that many times at ``temperature``
+    (>0 gives diverse samples) and the selections are majority-voted on (table, column-set); the
+    modal selection wins. This damps the occasional wrong-table / dropped-column sample without any
+    gold/answer leakage — voting is over the model's own structural outputs. ``samples <= 1`` keeps
+    the original single deterministic (temperature 0) behaviour.
+    """
+    if client is None:
+        from config import load_config
+        from nlquery.bailian_client import from_config
+
+        client = from_config(load_config())
+
+    brief = _schema_brief(schema)
+    resolved = resolve_request_columns(nl_text, schema)
+    hint = _request_hint(resolved)
+    user = ("Schema:\n" + brief + "\n\nRequest: " + nl_text.strip()
+            + (("\n\n" + hint) if hint else "") + "\n\nReturn the JSON selection.")
+
+    if samples <= 1:
+        return _parse_once(user, schema, resolved, client, temperature)
+
+    # Draw N samples; keep the successful ones and their vote signatures.
+    results: list[dict[str, Any]] = []
+    sigs: dict[tuple[Any, tuple[str, ...]], int] = {}
+    last_err = ""
+    for _ in range(samples):
+        r = _parse_once(user, schema, resolved, client, temperature if temperature > 0 else 0.7)
+        if r.get("ok"):
+            results.append(r)
+            sigs[_selection_sig(r["selection"])] = sigs.get(_selection_sig(r["selection"]), 0) + 1
+        else:
+            last_err = r.get("error", "")
+    if not results:
+        return {"ok": False, "selection": None, "error": last_err or "could not resolve request", "raw": None}
+
+    # Modal (table, columns); tie broken by first occurrence. Return a representative sample of it.
+    best_sig = max(sigs, key=lambda s: (sigs[s], -list(sigs).index(s)))
+    winner = next(r for r in results if _selection_sig(r["selection"]) == best_sig)
+    winner["vote"] = {"samples": samples, "agree": sigs[best_sig],
+                      "distinct": len(sigs), "signature": [best_sig[0], list(best_sig[1])]}
+    return winner

@@ -18,6 +18,8 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +121,65 @@ _ISO = _load_json_sibling("mondial_iso_crosswalk.json")      # code -> ISO id, n
 ISO_CODE_TO_ID = _ISO.get("code_to_id", {})
 ISO_NAME_TO_ID = _ISO.get("name_to_id", {})
 
+# Generic, database-agnostic basemap index (built from the world-atlas basemap by
+# build_basemap_index.py): resolves an arbitrary region value — a country name, an ISO alpha-2 /
+# alpha-3 code, or the numeric feature id itself — to the world-atlas feature id. This is what
+# lets the choropleth join a *foreign* database's region column, not only Mondial's codes.
+_IDX = _load_json_sibling("world_basemap_index.json")
+GEN_NAME_TO_ID = _IDX.get("name_to_id", {})                  # normalised name -> id
+GEN_A2_TO_ID = _IDX.get("alpha2_to_id", {})                  # ISO alpha-2 (lower) -> id
+GEN_A3_TO_ID = _IDX.get("alpha3_to_id", {})                  # ISO alpha-3 (lower) -> id
+GEN_IDS = set(_IDX.get("ids", []))                           # valid numeric feature ids
+
+
+def _norm(s: object) -> str:
+    """Accent/punctuation-folded lower-case name key (matches build_basemap_index.py)."""
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", s.lower())).strip()
+
+
+def _resolve_id(rv: Any) -> str | None:
+    """Resolve one region value to a world-atlas feature id, or None if it names no country.
+    Tries, in order: the Mondial crosswalk (backward compatible), then the generic index by
+    normalised name, ISO alpha-3, ISO alpha-2, or a literal numeric feature id."""
+    if rv is None:
+        return None
+    s = str(rv).strip()
+    if not s:
+        return None
+    mid = ISO_CODE_TO_ID.get(rv) or ISO_NAME_TO_ID.get(rv)
+    if mid:
+        return str(mid)
+    low = s.lower()
+    n = _norm(s)
+    if n in GEN_NAME_TO_ID:
+        return str(GEN_NAME_TO_ID[n])
+    if len(low) == 3 and low in GEN_A3_TO_ID:
+        return str(GEN_A3_TO_ID[low])
+    if len(low) == 2 and low in GEN_A2_TO_ID:
+        return str(GEN_A2_TO_ID[low])
+    if s in GEN_IDS:
+        return s
+    return None
+
+
+def region_match_rate(rows: list[dict[str, Any]], region_col: str) -> tuple[int, int, float]:
+    """How many of the distinct region values resolve to the world basemap: ``(matched, total,
+    rate)``. The server uses this to offer a choropleth only when the region column is actually
+    mappable (else it would render blank)."""
+    distinct: set[str] = set()
+    matched: set[str] = set()
+    for r in rows:
+        rv = r.get(region_col) if isinstance(r, dict) else None
+        if rv is None or str(rv).strip() == "":
+            continue
+        key = str(rv)
+        distinct.add(key)
+        if _resolve_id(rv) is not None:
+            matched.add(key)
+    total = len(distinct)
+    return len(matched), total, (len(matched) / total if total else 0.0)
+
 
 def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
@@ -135,8 +196,8 @@ def _rows_for(mapping: dict[str, Any], data: Any) -> list[dict[str, Any]]:
 
 
 def _value_by_key(rows: list[dict[str, Any]], region_col: str, color_col: str) -> dict[str, float]:
-    """Key each value by its ISO 3166-1 numeric id (the world-atlas feature id), plus a
-    lowercased-name fallback that matches the feature name directly."""
+    """Key each value by its world-atlas feature id (resolved from a name / ISO code / numeric id),
+    plus a lowercased-name fallback that the JS matches against the feature name directly."""
     out: dict[str, float] = {}
     for r in rows:
         try:
@@ -146,15 +207,22 @@ def _value_by_key(rows: list[dict[str, Any]], region_col: str, color_col: str) -
         rv = r.get(region_col)
         if rv is None:
             continue
-        iso = ISO_CODE_TO_ID.get(rv) or ISO_NAME_TO_ID.get(rv)
-        if iso:
-            out[str(iso)] = v
+        fid = _resolve_id(rv)
+        if fid is not None:
+            out[fid] = v
         out[str(rv).strip().lower()] = v            # name fallback (matches feature name)
     return out
 
 
 def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     region_col, color_col = mapping["region"], mapping["color"]
+
+    matched, _total, _rate = region_match_rate(rows, region_col)
+    if matched == 0:
+        # No region value resolves to the world basemap — a blank map would mislead, so refuse
+        # to render and let the caller report it (the server also hides the choropleth upstream).
+        raise ValueError("no basemap match: values in '" + region_col
+                         + "' do not name countries on the world map")
 
     value_by_key = _value_by_key(rows, region_col, color_col)
 

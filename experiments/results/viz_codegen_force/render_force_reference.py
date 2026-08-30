@@ -31,6 +31,8 @@ JS_BODY = """
 const width = size, height = size;
 const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const maxW = d3.max(links, l => l.w) || 1;
@@ -78,14 +80,14 @@ const node = svg.append("g").attr("stroke", "#fff").attr("stroke-width", 1)
     const nb = adj.get(d.id);
     node.attr("opacity", o => (o.id === d.id || nb.has(o.id)) ? 1 : 0.15);
     link.attr("stroke-opacity", l => (l.source.id === d.id || l.target.id === d.id) ? 0.9 : 0.05);
-    tip.style("opacity", 1).html("<strong>" + d.id + "</strong><br>degree: " + degree.get(d.id));
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.id) + "</strong><br>degree: " + degree.get(d.id));
     moveTip(event);
   })
   .on("mousemove", moveTip)
   .on("mouseout", () => { node.attr("opacity", 1); link.attr("stroke-opacity", 0.5); tip.style("opacity", 0); });
 
 link.on("mouseover", (event, d) => {
-  tip.style("opacity", 1).html(d.source.id + " &harr; " + d.target.id + "<br>" + valueLabel + ": "
+  tip.style("opacity", 1).html(escHtml(d.source.id) + " &harr; " + escHtml(d.target.id) + "<br>" + valueLabel + ": "
     + (Number.isInteger(d.w) ? d.w : d.w.toFixed(2)));
   moveTip(event);
 }).on("mousemove", moveTip).on("mouseout", () => tip.style("opacity", 0));
@@ -235,8 +237,8 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         key = (a, b) if bipartite else tuple(sorted((a, b)))
         weights[key] = weights.get(key, 0.0) + w
 
-    nodes = [{"id": html.escape(node_label[nid]), "group": node_group[nid]} for nid in node_ids]
-    esc = {nid: html.escape(node_label[nid]) for nid in node_ids}
+    nodes = [{"id": node_label[nid], "group": node_group[nid]} for nid in node_ids]
+    esc = {nid: node_label[nid] for nid in node_ids}
     links = [{"source": esc[a], "target": esc[b], "w": w} for (a, b), w in weights.items()]
 
     value_label = "count" if v_col is None else v_col
@@ -257,7 +259,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         + "const links = " + json.dumps(links) + ";\n"
         + "const valueLabel = " + json.dumps(html.escape(value_label)) + ";\n"
         + "const bipartite = " + ("true" if bipartite else "false") + ";\n"
-        + "const legend = " + json.dumps([html.escape(x) for x in legend]) + ";\n"
+        + "const legend = " + json.dumps(legend) + ";\n"
         + "const size = " + str(size) + ";\n"
         + JS_BODY
         + "</script>\n</body>\n</html>\n"

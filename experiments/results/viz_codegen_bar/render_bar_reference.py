@@ -31,6 +31,9 @@ g.append("g").call(d3.axisTop(x).ticks(6));
 g.append("g").call(d3.axisLeft(y)).selectAll("text").style("font-size", "8px");
 
 const tip = d3.select("#tip");
+// Escape data values only where they enter innerHTML (the tooltip); on-canvas labels use
+// .text() and must stay raw, so values are stored raw and escaped here at the point of use.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const bar = g.append("g").selectAll("rect").data(data).join("rect")
@@ -53,7 +56,7 @@ g.append("g").selectAll("text.val").data(data).join("text")
 bar
   .on("mouseover", (event, d) => {
     bar.attr("fill-opacity", b => b === d ? 1 : 0.2);
-    tip.style("opacity", 1).html("<strong>" + d.label + "</strong><br>" + measureName + ": " + d.value.toLocaleString());
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.label) + "</strong><br>" + measureName + ": " + d.value.toLocaleString());
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -122,7 +125,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             v = float(r[m_col])
         except (TypeError, ValueError):
             continue
-        bars.append({"label": html.escape(str(r[k_col])), "value": v})
+        bars.append({"label": str(r[k_col]), "value": v})
     bars.sort(key=lambda d: d["value"], reverse=True)
 
     title = html.escape(mapping.get("title") or (m_col + " by " + k_col + " (bar chart)"))

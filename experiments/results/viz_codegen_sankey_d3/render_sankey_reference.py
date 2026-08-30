@@ -51,6 +51,8 @@ const graph = sankey({
 const targetLabels = Array.from(new Set(graph.nodes.filter(n => n.name.startsWith("tgt:")).map(n => n.label)));
 const color = d3.scaleOrdinal(targetLabels, d3.schemeCategory10);
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 // Draw thin minor links last (on top) so they are not buried under thick bundles.
@@ -79,7 +81,7 @@ g.append("g").selectAll("text").data(graph.nodes).join("text")
 node
   .on("mouseover", (event, d) => {
     link.attr("stroke-opacity", l => (l.source === d || l.target === d) ? 0.8 : 0.04);
-    tip.style("opacity", 1).html("<strong>" + d.label + "</strong><br>total: " + Math.round(d.value));
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.label) + "</strong><br>total: " + Math.round(d.value));
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -88,7 +90,7 @@ node
 link
   .on("mouseover", (event, d) => {
     link.attr("stroke-opacity", l => (l === d) ? 0.9 : 0.04);
-    tip.style("opacity", 1).html(d.source.label + " &rarr; " + d.target.label + "<br>" + Math.round(d.value));
+    tip.style("opacity", 1).html(escHtml(d.source.label) + " &rarr; " + escHtml(d.target.label) + "<br>" + Math.round(d.value));
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -218,8 +220,8 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     source_rank = {s: i for i, s in enumerate(source_order)}
 
     # Nodes carry their integer order (Step C is enforced in JS via linkSort using node.order).
-    nodes = [{"name": "src:" + s, "label": html.escape(s), "order": source_rank[s]} for s in sources]
-    nodes += [{"name": "tgt:" + t, "label": html.escape(t), "order": target_rank[t]} for t in targets]
+    nodes = [{"name": "src:" + s, "label": s, "order": source_rank[s]} for s in sources]
+    nodes += [{"name": "tgt:" + t, "label": t, "order": target_rank[t]} for t in targets]
     links = [{"source": "src:" + s, "target": "tgt:" + t, "value": flows[(s, t)]} for (s, t) in order_pairs]
 
     # Pattern only affects the subtitle wording; explicit hint wins, else infer

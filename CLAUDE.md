@@ -95,11 +95,16 @@ drift). All three steps now exist as LLM-authored standard-library programs with
   `"count"`), matrix also an optional `category`. Each run dir has a `SUMMARY.md`.
   The **choropleth** uses a single **world-atlas 50m** basemap — sovereign country outlines
   (UK/Belgium each one shape, dependencies merged into the sovereign), joined on the ISO numeric
-  `d.id` via `mondial_iso_crosswalk.json` (210/246) with a lowercased-name fallback. The renderer
-  auto-detects TopoJSON vs GeoJSON, and uses a sqrt colour scale + grey borders so highly skewed
-  measures (population/area) don't wash small countries out to white. Regenerate the crosswalk with
-  the sibling `build_iso_crosswalk.py`. (The former switchable Natural Earth "map units" basemap and
-  its `mondial_mapunit_crosswalk.json` / `build_mapunit_crosswalk.py` are retired.)
+  `d.id`. It is **database-agnostic**: a region value is resolved to a feature id via
+  `render_choropleth_reference.py::_resolve_id`, which tries the Mondial `mondial_iso_crosswalk.json`
+  (backward compat) then a **generic** `world_basemap_index.json` — normalised country name, ISO
+  alpha-2 / alpha-3, or the numeric id itself — so *any* DB whose region column holds country names
+  or ISO codes joins. `region_match_rate` reports how many distinct region values resolve; on a miss
+  the renderer refuses (raises) rather than drawing a blank map, and the server hides the candidate
+  (see below). The renderer auto-detects TopoJSON vs GeoJSON and uses a sqrt colour scale + grey
+  borders so highly skewed measures don't wash small countries out to white. Regenerate the generic
+  index with `build_basemap_index.py` (world-atlas + an ISO 3166 table) and the Mondial crosswalk
+  with `build_iso_crosswalk.py`. (The former Natural Earth "map units" basemap is retired.)
 - **Web front-end.** `experiments/web_pipeline/` (`server.py` + `index.html`, std-lib
   ThreadingHTTPServer, **no model calls at serve time**) chains the three programs and renders the
   result in a sandboxed iframe; unbuilt charts return `"working in process"`. Each column in the
@@ -121,10 +126,14 @@ drift). All three steps now exist as LLM-authored standard-library programs with
 
 ## Production layer (opt-in — live SQL + natural-language input)
 
-An optional deployment layer sits **in front of** the pipeline without changing any of the above;
-it is off by default so the experiment path is byte-identical. Configured via a repo-root `.env`
-(gitignored; template `.env.example`), read by `experiments/config.py`. Needs
-`experiments/requirements.txt` (SQLAlchemy + psycopg2 + openai) — the experiment core stays std-lib.
+A deployment layer sits **in front of** the pipeline without changing any of the above. The
+experiment scripts (`scripts/` + evaluation) never read these flags, so the experiment path stays
+byte-identical regardless of them; the flags only shape the **live server**. Since the project's aim
+is to leverage the LLM, the LLM levers (`VIZER_LLM_GEO`, `VIZER_LLM_STEP2`) now default **on** — each
+needs a `DASHSCOPE_API_KEY` and degrades to the deterministic path with no key / on any error.
+Configured via a repo-root `.env` (gitignored; template `.env.example`), read by
+`experiments/config.py`. Needs `experiments/requirements.txt` (SQLAlchemy + psycopg2 + openai) — the
+experiment core stays std-lib.
 
 - **Data-source adapter** `experiments/datasource/` — a `DataSource` yields the *same* clean schema
   dict + row dicts the pipeline consumes, from either the offline JSON files (`JsonFileDataSource`,
@@ -143,8 +152,9 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   paraphrases with no keyword fall through to the LLM unaided.
   Served at `POST /api/nl` (returns the selection for the UI to confirm, then run via `/api/run`);
   degrades gracefully when no key is set.
-- **LLM chart selection (Step 2)** `experiments/chartselect/` — opt-in (`VIZER_LLM_STEP2=on`,
-  default `off`). `llm_chart_selector.select(schema, table, columns, pattern, s2, client, rows, intent)`
+- **LLM chart selection (Step 2)** `experiments/chartselect/` — on by default (`VIZER_LLM_STEP2`,
+  needs a key; set `off` to force deterministic).
+  `llm_chart_selector.select(schema, table, columns, pattern, s2, client, rows, intent)`
   asks the Bailian client to **rank every deterministic Step-2 candidate** (each with a one-line note),
   pick one to highlight, give one short English rationale, and optionally swap a selected column into an
   **existing expressive** mapping role (measure/x/y/color/size…, same dimension only; identity/join
@@ -162,6 +172,26 @@ it is off by default so the experiment path is byte-identical. Configured via a 
   selector's pool but flagged `[CONDITIONAL]` — the LLM may elevate one only when the goal/columns
   justify it, while the deterministic pick and fallback stay True-eligible only. Prompt contract
   documented in `prompts/step2_llm_select_prompt.md`.
+- **Geographical detection** `experiments/geodetect/` — makes the choropleth/word-cloud path
+  database-agnostic (replacing the former hard-coded Mondial `_GEO_TABLES`/`_GEO_NAMES`, which had
+  been duplicated in the server and `chartselect`). `detect_geo_columns(schema, tables_view, client,
+  use_llm)` returns the `(table, column)` pairs that are geographical: **generic heuristics always
+  run** (a text column whose name / FK-referenced table name matches a generic geo vocabulary
+  `GEO_TOKENS` — incl. ISO-code names iso/alpha/cca/ccn — or the key/label of a geo-named table; a
+  superset of Mondial's names, so Mondial is unchanged), and an **LLM refinement layer, on by
+  default** (`VIZER_LLM_GEO`, needs a key; `VIZER_GEO_MODEL`, prompt `prompts/geo_detect_prompt.md`)
+  that acts as the safety net for geo columns the heuristics miss (e.g. an ISO-code column named
+  generically like `code`, inferred from sample values) — unioned in; no key / off / any error →
+  heuristics only. The server computes it once per connected schema (cached by fingerprint) in
+  `_recompute_geo` (startup + `set_datasource`), publishes it on `GEO_COLS` for the UI badges and
+  injects it onto the schema (`schema["_geo_columns"]`) so `chartselect` reuses the same decision
+  via `geodetect.resolved_geo_columns`. `semantic_types(dim, is_geo)` is the single shared badge
+  formatter. The choropleth is then **data-gated**: `server.py::_gate_choropleth` calls the
+  renderer's `region_match_rate` on the real rows and, below `CHOROPLETH_MATCH_MIN` (0.5) matched,
+  flips the candidate to ineligible with a "no basemap match" reason so the UI/LLM never offer a map
+  that would render blank (graceful degradation for non-geographic DBs). `_label_col` likewise
+  generalised to any DB (conventional `name`/`title`/`label`, else a text alternative key via
+  `chartselect.altkeys`), so charts show readable labels beyond Mondial's `name` column.
 
 The Step-2→Step-3 mapping field-name contract and the base-renderer rules (thinking off,
 `repetition_penalty=1.1`, no f-string/`.format()` brace templating, structural + static-JS validation)

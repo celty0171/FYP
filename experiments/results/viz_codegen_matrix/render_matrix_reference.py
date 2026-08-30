@@ -58,6 +58,8 @@ const svg = d3.select("#chart").append("svg")
   .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 // Faint frame around the grid so empty (unfilled) pairs still read as part of the matrix.
@@ -72,9 +74,9 @@ const rects = svg.append("g").selectAll("rect").data(cells).join("rect")
   .attr("stroke", "#fff").attr("stroke-width", 0.5)
   .on("mouseover", (event, d) => {
     rects.attr("opacity", r => (r.i === d.i || r.j === d.j) ? 1 : 0.25);
-    let msg = "<strong>" + rowNames[d.i] + "</strong> &harr; <strong>" + colNames[d.j] + "</strong>"
+    let msg = "<strong>" + escHtml(rowNames[d.i]) + "</strong> &harr; <strong>" + escHtml(colNames[d.j]) + "</strong>"
             + "<br>" + valueLabel + ": " + (Number.isInteger(d.v) ? d.v : d.v.toFixed(2));
-    if (d.cat) msg += "<br>top " + categoryLabel + ": " + d.cat;
+    if (d.cat) msg += "<br>top " + categoryLabel + ": " + escHtml(d.cat);
     tip.style("opacity", 1).html(msg);
     moveTip(event);
   })
@@ -255,7 +257,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     for (i, j), v in agg.items():
         cell: dict[str, Any] = {"i": i, "j": j, "v": v}
         if (i, j) in cats:
-            cell["cat"] = html.escape(cats[(i, j)].most_common(1)[0][0])
+            cell["cat"] = cats[(i, j)].most_common(1)[0][0]
         cells.append(cell)
 
     value_label = "count" if v_col is None else v_col
@@ -269,8 +271,8 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
 
     return (
         HEAD.replace("__T__", title).replace("__SUB__", html.escape(subtitle))
-        + "const rowNames = " + json.dumps([html.escape(x) for x in row_names]) + ";\n"
-        + "const colNames = " + json.dumps([html.escape(x) for x in col_names]) + ";\n"
+        + "const rowNames = " + json.dumps(row_names) + ";\n"
+        + "const colNames = " + json.dumps(col_names) + ";\n"
         + "const cells = " + json.dumps(cells) + ";\n"
         + "const valueLabel = " + json.dumps(html.escape(value_label)) + ";\n"
         + "const categoryLabel = " + json.dumps(html.escape(c_col or "")) + ";\n"

@@ -1,0 +1,52 @@
+=== NL->viz local evaluation ===
+mode: full | openai: True | key: True | datasource: postgres 
+
+[1/13] D1: parsing …
+        -> table=country cols=['code', 'name', 'population'] | pattern=basic_entity | charts=['bar chart', 'choropleth map', 'word cloud']
+[2/13] D2: parsing …
+        -> table=economy cols=['country', 'gdp', 'unemployment'] | pattern=basic_entity_inherited_key | charts=['bar chart', 'choropleth map', 'scatter diagram', 'word cloud']
+[3/13] D3: parsing …
+        -> table=borders cols=['country1', 'country2', 'length'] | pattern=reflexive_many_many_relationship | charts=['arc diagram', 'chord diagram', 'force graph', 'matrix heatmap']
+[4/13] D4: parsing …
+        -> table=airport cols=['iata_code', 'name', 'elevation'] | pattern=basic_entity | charts=['bar chart', 'choropleth map', 'word cloud']
+[5/13] D5: parsing …
+        -> table=airport cols=['iata_code', 'country', 'gmt_offset'] | pattern=basic_entity | charts=['bar chart', 'choropleth map', 'word cloud']
+[6/13] D6: parsing …
+        -> table=city_population cols=['province', 'year', 'country', 'city', 'population'] | pattern=weak_entity | charts=['grouped bar chart', 'line chart']
+[7/13] D7: parsing …
+        -> table=encompasses cols=['country', 'continent'] | pattern=many_many_relationship | charts=['force graph', 'matrix heatmap']
+[8/13] D8: parsing …
+        -> table=economy cols=['country', 'gdp', 'industry', 'service'] | pattern=basic_entity_inherited_key | charts=['bar chart', 'bubble chart', 'choropleth map', 'scatter diagram', 'word cloud']
+[9/13] D9: parsing …
+        -> table=country_population cols=['country', 'year', 'population'] | pattern=weak_entity | charts=['grouped bar chart', 'line chart']
+[10/13] D10: parsing …
+        -> table=country_population cols=['country', 'year', 'population', 'country_name'] | pattern=weak_entity | charts=['grouped bar chart', 'line chart']
+[11/13] D11: parsing …
+        -> table=airport cols=['iata_code', 'name', 'elevation'] | pattern=basic_entity | charts=['bar chart', 'choropleth map', 'word cloud']
+[12/13] D12: parsing …
+        -> table=country cols=['code', 'name', 'population'] | pattern=basic_entity | charts=['bar chart', 'choropleth map', 'word cloud']
+[13/13] D13: parsing …
+        -> table=spoken cols=['name', 'country', 'percentage'] | pattern=weak_entity | charts=['grouped bar chart']
+ID  Sel  Pat  Chart   predicted_pattern / gold          chart hit
+------------------------------------------------------------------------------------------------
+D1  P    P    P       basic_entity                 vs basic_entity            primary
+D2  P    P    P       basic_entity_inherited_key   vs basic_entity_inherited  primary
+D3  P    P    P       reflexive_many_many_relationship vs reflexive_many_many_re  primary
+D4  P    P    P       basic_entity                 vs basic_entity            primary
+D5  P    —    —       basic_entity                 vs n/a (no clean single-t  —  [expected-hard/David-fail]
+D6  P    F    P       weak_entity                  vs one_many_relationship   accept
+D7  F    P    P       many_many_relationship       vs many_many_relationship  accept
+D8  P    P    P       basic_entity_inherited_key   vs basic_entity_inherited  primary
+D9  P    P    P       weak_entity                  vs weak_entity             primary
+D10 P    P    P       weak_entity                  vs weak_entity             primary
+D11 P    P    P       basic_entity                 vs basic_entity            primary
+D12 F    F    F       basic_entity                 vs many_many_relationship  miss
+D13 P    P    P       weak_entity                  vs weak_entity             primary
+
+=== summary (expected-hard D5/D6 excluded from rates) ===
+NL selection accuracy : 11/13 = 85%
+Pattern accuracy      : 10/12 = 83%
+Chart accuracy        : 11/12 = 92%
+(David Bull reference : 11/13 overall; 2 failed = D5, D6)
+
+wrote experiments/evaluation/david_bull_nl_tasks/results_pg_full.json

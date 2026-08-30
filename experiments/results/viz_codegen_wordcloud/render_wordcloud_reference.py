@@ -54,7 +54,11 @@ function draw(laid) {
   text
     .on("mouseover", (event, d) => {
       text.attr("fill-opacity", w => w === d ? 1 : 0.2);
-      tip.style("opacity", 1).html("<strong>" + d.text + "</strong><br>" + valueName + ": " + d.value);
+      // Build the tooltip with .text() (textContent) so names with ' & < > render literally.
+      tip.style("opacity", 1).html("");
+      tip.append("strong").text(d.text);
+      tip.append("br");
+      tip.append("span").text(valueName + ": " + d.value);
       moveTip(event);
     })
     .on("mousemove", moveTip)
@@ -112,9 +116,12 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             continue
         if v < 0:
             continue
-        w = {"text": html.escape(str(r.get(text_col))), "value": v}
+        # Store raw values: they reach the DOM via D3 .text() (textContent) and JSON encoding
+        # handles the JS-string context, so no HTML-escaping — that would turn ' & < > into
+        # visible &#x27;/&amp; entities in the SVG (see the tooltip, also built with .text()).
+        w = {"text": str(r.get(text_col)), "value": v}
         if color_col is not None:
-            w["color"] = html.escape(str(r.get(color_col)))
+            w["color"] = str(r.get(color_col))
         words.append(w)
 
     title = html.escape(mapping.get("title") or (text_col + " sized by " + size_col + " (word cloud)"))

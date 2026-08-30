@@ -50,6 +50,8 @@ class Config:
     nl_model: str
     llm_step2: bool
     step2_model: str
+    llm_geo: bool
+    geo_model: str
 
     @property
     def has_llm(self) -> bool:
@@ -87,6 +89,8 @@ def load_config(env_path: Path | None = None) -> Config:
             env, "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
         ),
         nl_model=_get(env, "NL_MODEL", "qwen-plus"),
-        llm_step2=_get(env, "VIZER_LLM_STEP2", "off").lower() in ("1", "on", "true", "yes"),
+        llm_step2=_get(env, "VIZER_LLM_STEP2", "on").lower() in ("1", "on", "true", "yes"),
         step2_model=_get(env, "VIZER_STEP2_MODEL", "") or _get(env, "NL_MODEL", "qwen-plus"),
+        llm_geo=_get(env, "VIZER_LLM_GEO", "on").lower() in ("1", "on", "true", "yes"),
+        geo_model=_get(env, "VIZER_GEO_MODEL", "") or _get(env, "NL_MODEL", "qwen-plus"),
     )

@@ -1,0 +1,643 @@
+{
+  "mode": "full",
+  "summary": {
+    "selection": [
+      11,
+      13
+    ],
+    "pattern": [
+      11,
+      12
+    ],
+    "chart": [
+      12,
+      12
+    ]
+  },
+  "tasks": [
+    {
+      "id": "D1",
+      "nl": "The current population of countries in Europe",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "continent",
+          "op": "eq",
+          "value": "Europe"
+        }
+      ],
+      "joins": [
+        {
+          "bring": "encompasses.continent",
+          "as": "continent",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "country",
+        "columns": [
+          "code",
+          "name",
+          "population"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity",
+      "gold_pattern": "basic_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "bar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "bar chart",
+      "david_result": "Pass (point & click)",
+      "expected_hard": false
+    },
+    {
+      "id": "D2",
+      "nl": "The relationship between GDP and unemployment for all countries",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "economy",
+        "columns": [
+          "country",
+          "gdp",
+          "unemployment"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity_inherited_key",
+      "gold_pattern": "basic_entity_inherited_key",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "bar chart",
+        "choropleth map",
+        "scatter diagram",
+        "word cloud"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "scatter diagram",
+      "david_result": "Pass (point & click)",
+      "expected_hard": false
+    },
+    {
+      "id": "D3",
+      "nl": "The length of the borders for all countries in South America",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "continent",
+          "op": "in",
+          "values": [
+            "South America"
+          ]
+        }
+      ],
+      "joins": [
+        {
+          "bring": "encompasses.continent",
+          "as": "continent",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "borders",
+        "columns": [
+          "country1",
+          "country2",
+          "length"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "reflexive_many_many_relationship",
+      "gold_pattern": "reflexive_many_many_relationship",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "arc diagram",
+        "chord diagram",
+        "force graph",
+        "matrix heatmap"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "chord diagram",
+      "david_result": "Pass (point & click)",
+      "expected_hard": false
+    },
+    {
+      "id": "D4",
+      "nl": "The top ten Mexican airports by elevation",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "country_name",
+          "op": "eq",
+          "value": "Mexico"
+        }
+      ],
+      "joins": [
+        {
+          "bring": "country.name",
+          "as": "country_name",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "airport",
+        "columns": [
+          "iata_code",
+          "name",
+          "elevation"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity",
+      "gold_pattern": "basic_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "bar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "bar chart",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D5",
+      "nl": "The GMT offset of all countries",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "airport",
+        "columns": [
+          "iata_code",
+          "country",
+          "gmt_offset"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity",
+      "gold_pattern": "n/a (no clean single-table mapping)",
+      "pattern_pass": null,
+      "recommended_charts": [
+        "bar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "chart_pass": null,
+      "chart_primary_hit": false,
+      "gold_chart_primary": "none / graceful message",
+      "david_result": "Fail",
+      "expected_hard": true
+    },
+    {
+      "id": "D6",
+      "nl": "All country-city pairs where the population of the city has been at least 5,000,000 at some point",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "population",
+          "op": "ge",
+          "value": 5000000
+        }
+      ],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "city_population",
+        "columns": [
+          "province",
+          "year",
+          "country",
+          "city",
+          "population"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "weak_entity",
+      "gold_pattern": "one_many_relationship (country -> city) / weak temporal on city_population",
+      "pattern_pass": false,
+      "recommended_charts": [
+        "grouped bar chart",
+        "line chart"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": false,
+      "gold_chart_primary": "none / graceful message",
+      "david_result": "Fail",
+      "expected_hard": false
+    },
+    {
+      "id": "D7",
+      "nl": "Countries that are in two continents",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "op": "group_having",
+          "group_by": [
+            "country"
+          ],
+          "having": [
+            {
+              "fn": "count_distinct",
+              "column": "continent",
+              "op": "eq",
+              "value": 2
+            }
+          ]
+        }
+      ],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "encompasses",
+        "columns": [
+          "country",
+          "continent"
+        ],
+        "table_hit": true,
+        "cols_superset": false,
+        "pass": false
+      },
+      "predicted_pattern": "many_many_relationship",
+      "gold_pattern": "many_many_relationship",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "force graph",
+        "matrix heatmap"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": false,
+      "gold_chart_primary": "sankey diagram",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D8",
+      "nl": "The relationship between industry and service GDP in the economies of different countries",
+      "mode": "full",
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "economy",
+        "columns": [
+          "country",
+          "gdp",
+          "industry",
+          "service"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity_inherited_key",
+      "gold_pattern": "basic_entity_inherited_key",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "bar chart",
+        "bubble chart",
+        "choropleth map",
+        "scatter diagram",
+        "word cloud"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "scatter diagram",
+      "david_result": "Pass (point & click)",
+      "expected_hard": false
+    },
+    {
+      "id": "D9",
+      "nl": "Display the population of France, Spain, and Italy for the years 1960 to 2015",
+      "mode": "full",
+      "vote": {
+        "samples": 5,
+        "agree": 4,
+        "distinct": 2,
+        "signature": [
+          "country_population",
+          [
+            "country",
+            "population",
+            "year"
+          ]
+        ]
+      },
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "name",
+          "op": "in",
+          "values": [
+            "France",
+            "Spain",
+            "Italy"
+          ]
+        },
+        {
+          "column": "year",
+          "op": "range",
+          "min": 1960,
+          "max": 2015
+        }
+      ],
+      "joins": [
+        {
+          "bring": "country.name",
+          "as": "name",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "country_population",
+        "columns": [
+          "country",
+          "year",
+          "population"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "weak_entity",
+      "gold_pattern": "weak_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "grouped bar chart",
+        "line chart"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "line chart",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D10",
+      "nl": "Display the history of the population level of each country in Oceania",
+      "mode": "full",
+      "vote": {
+        "samples": 5,
+        "agree": 5,
+        "distinct": 1,
+        "signature": [
+          "country_population",
+          [
+            "country",
+            "population",
+            "year"
+          ]
+        ]
+      },
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "continent",
+          "op": "eq",
+          "value": "Oceania"
+        }
+      ],
+      "joins": [
+        {
+          "bring": "encompasses.continent",
+          "as": "continent",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "country_population",
+        "columns": [
+          "country",
+          "year",
+          "population"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "weak_entity",
+      "gold_pattern": "weak_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "grouped bar chart",
+        "line chart"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "line chart",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D11",
+      "nl": "Display the elevation of all airports that are at least 2000 in altitude",
+      "mode": "full",
+      "vote": {
+        "samples": 5,
+        "agree": 3,
+        "distinct": 2,
+        "signature": [
+          "airport",
+          [
+            "elevation",
+            "iata_code"
+          ]
+        ]
+      },
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "elevation",
+          "op": "ge",
+          "value": 2000
+        }
+      ],
+      "joins": [],
+      "aggregate": {},
+      "selection": {
+        "table": "airport",
+        "columns": [
+          "iata_code",
+          "elevation"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "basic_entity",
+      "gold_pattern": "basic_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "bar chart",
+        "choropleth map",
+        "word cloud"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "bar chart",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D12",
+      "nl": "Display how the population of continents is divided between countries",
+      "mode": "full",
+      "vote": {
+        "samples": 5,
+        "agree": 3,
+        "distinct": 3,
+        "signature": [
+          "encompasses",
+          [
+            "continent",
+            "country"
+          ]
+        ]
+      },
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [],
+      "joins": [
+        {
+          "bring": "country.population",
+          "as": "population",
+          "policy": "first"
+        },
+        {
+          "bring": "country.name",
+          "as": "country_name",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "encompasses",
+        "columns": [
+          "country",
+          "continent"
+        ],
+        "table_hit": true,
+        "cols_superset": false,
+        "pass": false
+      },
+      "predicted_pattern": "many_many_relationship",
+      "gold_pattern": "many_many_relationship",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "force graph",
+        "matrix heatmap"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": false,
+      "gold_chart_primary": "sankey diagram",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    },
+    {
+      "id": "D13",
+      "nl": "The languages spoken in South American countries, excluding languages spoken by less than 1,000,000 people on the continent",
+      "mode": "full",
+      "vote": {
+        "samples": 5,
+        "agree": 3,
+        "distinct": 2,
+        "signature": [
+          "spoken",
+          [
+            "country",
+            "name",
+            "percentage"
+          ]
+        ]
+      },
+      "parsed_ok": true,
+      "parse_error": "",
+      "filters": [
+        {
+          "column": "continent",
+          "op": "eq",
+          "value": "South America"
+        }
+      ],
+      "joins": [
+        {
+          "bring": "encompasses.continent",
+          "as": "continent",
+          "policy": "first"
+        }
+      ],
+      "aggregate": {},
+      "selection": {
+        "table": "spoken",
+        "columns": [
+          "country",
+          "name",
+          "percentage"
+        ],
+        "table_hit": true,
+        "cols_superset": true,
+        "pass": true
+      },
+      "predicted_pattern": "weak_entity",
+      "gold_pattern": "weak_entity",
+      "pattern_pass": true,
+      "recommended_charts": [
+        "grouped bar chart"
+      ],
+      "chart_pass": true,
+      "chart_primary_hit": true,
+      "gold_chart_primary": "grouped bar chart",
+      "david_result": "Pass (custom SQL)",
+      "expected_hard": false
+    }
+  ]
+}

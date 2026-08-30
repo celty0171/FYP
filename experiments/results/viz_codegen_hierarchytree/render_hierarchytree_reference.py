@@ -68,6 +68,8 @@ node.append("text")
   .text(d => d.depth === 0 ? "" : d.data.name);
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 node
@@ -77,10 +79,10 @@ node
     link.attr("stroke-opacity", l => (isParent ? l.source === d : l.target === d) ? 0.95 : 0.05);
     let info;
     if (isParent) {
-      info = "<strong>" + d.data.name + "</strong><br>" + parentName + "<br>" + childName + " count: " + d.children.length;
+      info = "<strong>" + escHtml(d.data.name) + "</strong><br>" + parentName + "<br>" + childName + " count: " + d.children.length;
     } else {
-      info = "<strong>" + d.data.name + "</strong><br>" + parentName + ": " + d.parent.data.name
-           + (colorName && d.data._color != null ? "<br>" + colorName + ": " + d.data._color : "");
+      info = "<strong>" + escHtml(d.data.name) + "</strong><br>" + parentName + ": " + escHtml(d.parent.data.name)
+           + (colorName && d.data._color != null ? "<br>" + colorName + ": " + escHtml(d.data._color) : "");
     }
     tip.style("opacity", 1).html(info);
     moveTip(event);
@@ -156,13 +158,13 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         if p not in groups:
             groups[p] = []
             order.append(p)
-        child: dict[str, Any] = {"name": html.escape(str(r.get(c_col)))}
+        child: dict[str, Any] = {"name": str(r.get(c_col))}
         if color_col:
             cv = r.get(color_col)
-            child["_color"] = None if cv is None or cv == "" else html.escape(str(cv))
+            child["_color"] = None if cv is None or cv == "" else str(cv)
         groups[p].append(child)
 
-    children = [{"name": html.escape(p), "children": groups[p]} for p in order]
+    children = [{"name": p, "children": groups[p]} for p in order]
     data = {"name": "root", "children": children}
 
     n_children = sum(len(v) for v in groups.values())

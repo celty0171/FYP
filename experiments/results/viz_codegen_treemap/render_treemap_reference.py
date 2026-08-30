@@ -37,6 +37,8 @@ const colorSeq = colorScalar ? d3.scaleSequential(d3.interpolateViridis).domain(
 const colorOrd = (colorName && !colorScalar) ? d3.scaleOrdinal(Array.from(new Set(leafColorVals)), d3.schemeCategory10) : null;
 const leafFill = d => colorName ? (colorScalar ? colorSeq(+d.data.color) : colorOrd(d.data.color)) : color(d.parent.data.name);
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const leaf = g.selectAll("g.leaf").data(root.leaves()).join("g")
@@ -64,7 +66,7 @@ g.append("g").selectAll("text.group").data(parents).join("text")
 leaf
   .on("mouseover", (event, d) => {
     leaf.select("rect").attr("fill-opacity", x => x.parent === d.parent ? 0.95 : 0.18);
-    tip.style("opacity", 1).html("<strong>" + d.data.name + "</strong><br>" + parentName + ": " + d.parent.data.name + "<br>" + measureName + ": " + d.value);
+    tip.style("opacity", 1).html("<strong>" + escHtml(d.data.name) + "</strong><br>" + parentName + ": " + escHtml(d.parent.data.name) + "<br>" + measureName + ": " + d.value);
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -142,12 +144,12 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         if p not in groups:
             groups[p] = []
             order.append(p)
-        leaf = {"name": html.escape(str(r.get(c_col))), "value": v}
+        leaf = {"name": str(r.get(c_col)), "value": v}
         if color_col is not None:
-            leaf["color"] = html.escape(str(r.get(color_col)))
+            leaf["color"] = str(r.get(color_col))
         groups[p].append(leaf)
 
-    children = [{"name": html.escape(p), "children": groups[p]} for p in order]
+    children = [{"name": p, "children": groups[p]} for p in order]
     data = {"name": "root", "children": children}
 
     n_children = sum(len(v) for v in groups.values())

@@ -56,6 +56,8 @@ const arc = d3.arc().innerRadius(innerR).outerRadius(outerR);
 const ribbon = d3.ribbon().radius(innerR);
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 const svg = d3.select("#chart").append("svg")
@@ -83,7 +85,7 @@ arcs
   .on("mouseover", (event, d) => {
     ribbons.attr("fill-opacity", r => (r.source.index === d.index || r.target.index === d.index) ? 0.9 : 0.04);
     arcs.attr("opacity", a => (a.index === d.index) ? 1 : 0.3);
-    tip.style("opacity", 1).html("<strong>" + names[d.index] + "</strong><br>total " + valueLabel + ": " + Math.round(d.value));
+    tip.style("opacity", 1).html("<strong>" + escHtml(names[d.index]) + "</strong><br>total " + valueLabel + ": " + Math.round(d.value));
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -92,7 +94,7 @@ arcs
 ribbons
   .on("mouseover", (event, d) => {
     ribbons.attr("fill-opacity", r => (r === d) ? 0.95 : 0.04);
-    tip.style("opacity", 1).html(names[d.source.index] + " &harr; " + names[d.target.index] + "<br>" + valueLabel + ": " + Math.round(d.source.value));
+    tip.style("opacity", 1).html(escHtml(names[d.source.index]) + " &harr; " + escHtml(names[d.target.index]) + "<br>" + valueLabel + ": " + Math.round(d.source.value));
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -215,7 +217,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     else:
         subtitle = "Ribbon width represents '" + w_col + "'. Reflexive: one entity set linked to itself."
         legend = []
-    names_json = json.dumps([html.escape(x) for x in names])
+    names_json = json.dumps(names)
     size = max(700, min(1400, n * 9 + 300))
 
     # Plain concatenation: inject the dynamic values, keep JS braces literal.
@@ -225,7 +227,7 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         + "const matrix = " + json.dumps(matrix) + ";\n"
         + "const groupOf = " + json.dumps(group_of) + ";\n"
         + "const bipartite = " + ("true" if bipartite else "false") + ";\n"
-        + "const legend = " + json.dumps([html.escape(x) for x in legend]) + ";\n"
+        + "const legend = " + json.dumps(legend) + ";\n"
         + "const valueLabel = " + json.dumps(html.escape(w_col)) + ";\n"
         + "const size = " + str(size) + ";\n"
         + JS_BODY

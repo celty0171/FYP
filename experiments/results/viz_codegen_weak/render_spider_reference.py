@@ -40,6 +40,8 @@ spokes.forEach((sp, i) => {
 });
 
 const tip = d3.select("#tip");
+// Escape values only where they enter innerHTML (the tooltip); on-canvas labels use .text() and stay raw.
+const escHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const moveTip = (event) => tip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
 
 function polygon(values) {
@@ -61,7 +63,7 @@ poly
   .on("mouseover", (event, d) => {
     poly.attr("fill-opacity", p => p === d ? 0.35 : 0.03).attr("stroke-opacity", p => p === d ? 1 : 0.12);
     d3.select(event.currentTarget).raise();
-    tip.style("opacity", 1).html("<strong>" + ringName + ": " + d.name + "</strong>");
+    tip.style("opacity", 1).html("<strong>" + ringName + ": " + escHtml(d.name) + "</strong>");
     moveTip(event);
   })
   .on("mousemove", moveTip)
@@ -129,8 +131,8 @@ def render(mapping: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     top_spokes = sorted(spoke_freq, key=lambda k: (spoke_freq[k], k), reverse=True)[:max_spokes]
     top_spokes = sorted(top_spokes)  # stable display order
 
-    rings = [{"name": html.escape(rv), "values": [cell.get((rv, sv), 0.0) for sv in top_spokes]} for rv in top_rings]
-    spokes = [html.escape(s) for s in top_spokes]
+    rings = [{"name": rv, "values": [cell.get((rv, sv), 0.0) for sv in top_spokes]} for rv in top_rings]
+    spokes = list(top_spokes)
     max_val = max((v for rg in rings for v in rg["values"]), default=1.0)
 
     n_rings_all = len(ring_total)
