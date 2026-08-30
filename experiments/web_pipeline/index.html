@@ -238,7 +238,13 @@
   <div>
     <div class="panel" style="margin-bottom:16px;">
       <h2>What the system detected</h2>
-      <div class="row"><span class="k">Schema pattern:</span> <b id="pattern" class="badge">—</b></div>
+      <div class="row"><span class="k">Schema pattern:</span> <b id="pattern" class="badge">—</b>
+        <span id="rowsBadge" class="badge" style="display:none;background:#eef;color:#334;"></span>
+        <span style="margin-left:auto;white-space:nowrap;">
+          <label class="k" title="Applied after grouping — draws the top N rows by the leading measure.">show top
+            <input id="rowLimit" type="number" min="1" placeholder="all" style="width:64px;box-sizing:border-box;"> rows</label>
+        </span>
+      </div>
       <div class="row"><span class="k">Recommended charts (click to render):</span> <span id="charts"></span></div>
       <div class="row" id="llmRow" style="display:none;"><span class="k">LLM pick:</span> <b id="llmChart"></b> <span id="llmReason" class="k"></span></div>
       <div id="llmRank" class="k" style="font-size:12px;margin:2px 0 6px 0;line-height:1.5;"></div>
@@ -780,12 +786,28 @@ function renderSwapControls(chart, mapping) {
   });
 }
 
+// Display top-N: how many rows/groups the renderer draws. Empty/invalid => show all.
+function rowLimitValue() {
+  const n = parseInt(($("rowLimit").value || "").trim(), 10);
+  return (Number.isFinite(n) && n > 0) ? n : undefined;
+}
+function updateRowsBadge(shown, total) {
+  const b = $("rowsBadge");
+  if (shown == null || total == null) { b.style.display = "none"; return; }
+  b.style.display = "";
+  b.textContent = (total > shown) ? `showing ${shown} / ${total} rows` : `${total} rows`;
+  b.style.background = (total > shown) ? "#fdf3d0" : "#eef";
+}
+
 // The last chart render, tracked so a pill click can re-render it.
 let curRender = null;
 async function doRender(params) {
+  const limit = rowLimitValue();
   curRender = params;
   showLoading("rendering " + params.chart + "…");
-  renderViz(await api("/api/render", params));
+  const r = await api("/api/render", Object.assign({}, params, { limit }));
+  renderViz(r);
+  updateRowsBadge(r.rows_shown, r.rows_total);
 }
 
 $("clearFilters").onclick = () => { showFilters($("table").value); };
@@ -806,17 +828,20 @@ $("rsBucket").oninput = updateAggSummary;
 $("groupby").addEventListener("change", updateAggSummary);
 $("hvCol").onchange = $("hvOp").onchange = $("hvVal").oninput = updateAggSummary;
 $("keepRows").onchange = updateAggSummary;
+// Changing the display top-N re-renders the current chart (no re-run of the pipeline needed).
+$("rowLimit").onchange = () => { if (curRender) doRender(curRender); };
 
 async function runSelection(sel) {
   showLoading("running the pipeline…");
   const j = await api("/api/run", {
     table: sel.table, columns: sel.columns || [],
     filters: sel.filters || [], aggregate: sel.aggregate || {}, joins: sel.joins || [],
-    intent: sel.intent || $("intent").value.trim(),
+    intent: sel.intent || $("intent").value.trim(), limit: rowLimitValue(),
   });
   if (j.error) { $("viz").innerHTML = `<div class="wip">${j.error}</div>`; return; }
   last = j;
   $("pattern").textContent = cap((j.step1.pattern || "—").replace(/_/g, " "));
+  updateRowsBadge(j.rows_shown, j.rows_total);
   $("mapping").innerHTML = renderMapping((j.step2.selected||{}).mapping || {});
   drawCharts(j.step2);
   renderSwapControls((j.step2.selected||{}).chart, (j.step2.selected||{}).mapping || {});
