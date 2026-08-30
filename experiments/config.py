@@ -45,6 +45,8 @@ class Config:
     data_path: Path
     database_url: str
     row_cap: int
+    pushdown: bool             # push join/filter/aggregate into SQL (Postgres only)
+    statement_timeout_ms: int  # per-query ceiling for pushed-down SQL (0 = none)
     dashscope_api_key: str
     dashscope_base_url: str
     nl_model: str
@@ -77,6 +79,10 @@ def load_config(env_path: Path | None = None) -> Config:
         row_cap = int(_get(env, "VIZER_ROW_CAP", "5000"))
     except ValueError:
         row_cap = 5000
+    try:
+        statement_timeout_ms = int(_get(env, "VIZER_STATEMENT_TIMEOUT_MS", "15000"))
+    except ValueError:
+        statement_timeout_ms = 15000
 
     return Config(
         datasource=_get(env, "VIZER_DATASOURCE", "postgres").lower(),
@@ -84,6 +90,8 @@ def load_config(env_path: Path | None = None) -> Config:
         data_path=Path(_get(env, "VIZER_DATA_PATH", str(db / "mondial_data.json"))),
         database_url=database_url,
         row_cap=row_cap,
+        pushdown=_get(env, "VIZER_PUSHDOWN", "on").lower() in ("1", "on", "true", "yes"),
+        statement_timeout_ms=statement_timeout_ms,
         dashscope_api_key=_get(env, "DASHSCOPE_API_KEY"),
         dashscope_base_url=_get(
             env, "DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"

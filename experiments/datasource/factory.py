@@ -19,6 +19,11 @@ def make_datasource(config: "Config") -> DataSource:
             )
         from .postgres_source import PostgresDataSource
 
-        return PostgresDataSource(config.database_url, row_cap=config.row_cap)
+        return PostgresDataSource(
+            config.database_url,
+            row_cap=config.row_cap,
+            pushdown=getattr(config, "pushdown", True),
+            statement_timeout_ms=getattr(config, "statement_timeout_ms", 0),
+        )
     # default / "json"
     return JsonFileDataSource(config.schema_path, config.data_path)
