@@ -1,3 +1,27 @@
+% ---------------------------------------------------------------------------
+% Placeholder-figure helper. Renders a grey TikZ box carrying the caption text,
+% so the document compiles before the real artwork exists. Replace each
+% \phfig{width}{caption}{label} with a proper figure/\includegraphics later.
+% Requires the tikz package (already loaded by the main document).
+% ---------------------------------------------------------------------------
+\providecommand{\phfig}[3]{%
+  \begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}
+    \node[draw, fill=gray!12, rounded corners, align=center,
+          minimum width=#1\textwidth, minimum height=0.38\textwidth,
+          text width=#1\textwidth, inner sep=10pt]
+      {\emph{[Placeholder figure]}\\[4pt]\footnotesize #2};
+  \end{tikzpicture}
+  \caption{#2}
+  \label{#3}
+  \end{figure}%
+}
+
+% Pass / fail marks for evaluation tables (core-math symbols, no extra packages).
+\providecommand{\cmark}{\ensuremath{\surd}}
+\providecommand{\xmark}{\ensuremath{\times}}
+
 \chapter{Introduction}
 
 \section{Project Motivation}
@@ -5,6 +29,10 @@
 Data visualisation is an important technique for helping users understand complex datasets and discover meaningful patterns. However, many current data visualisation tools operate at a relatively low level of abstraction. In particular, users are often required to select tables, columns, transformations, and visual encodings directly from tabular data representations. This can be difficult for users who understand the real-world concepts in a domain, but are less familiar with the underlying database structure \cite{brientowards}.
 
 A key limitation of this table-centred approach is that it often ignores the conceptual model of the data. Conceptual models, such as Entity-Relationship (ER) schemas, describe data in terms of entities, relationships, attributes, and cardinality constraints \cite{brientowards}. These structures can provide important guidance for visualisation selection. For example, a many-many relationship represents an association where one instance of an entity can be related to multiple instances of another entity, and vice versa. In the Mondial database, the relationship between countries and continents is an example: one continent contains many countries, while some countries may be associated with more than one continent. Such structures are often more suitable for network-based visualisations \cite{brientowards}, because the visualisation needs to show links between two sets of related entities. Therefore, reasoning over conceptual schema structures can help bridge the gap between how users understand data and how visualisation tools represent it internally.
+
+To make this concrete, consider a user who wishes to see how the countries of the world are distributed across continents. In the Mondial database this information lives in the \texttt{encompasses} relationship, which records, for each country and continent, the percentage of that country's area lying in that continent. A conventional, table-centred tool inspects the selected columns and sees a place name and a percentage; recognising the place name as geographical, it will typically offer a symbol or choropleth map. Such a map is a poor fit for the question, because the relationship being asked about is the many-to-many association \emph{between} countries and continents, not a per-country quantity to be shaded onto a single map. A tool that instead reasons about the \emph{conceptual structure} of the selection, and recognises it as a many-to-many relationship, would offer a network-oriented view such as a chord diagram or an adjacency matrix, which shows the country--continent links directly. Figure~\ref{fig:intro-motivation} contrasts the two outcomes. This mismatch between what users conceptually intend and what table-centred tools recommend is the central problem this project addresses.
+
+\phfig{0.9}{A table-centred tool recommends a geographic map for the country--continent \texttt{encompasses} relationship (left), whereas reasoning over the many-to-many conceptual structure recommends a chord or matrix view that shows the links directly (right).}{fig:intro-motivation}
 
 Previous work by McBrien and Poulovassilis proposed the use of visualisation schema patterns to connect conceptual data structures with suitable visualisations. This approach has also been implemented and explored in earlier systems such as Bull's schema-driven visualisation tool \cite{bull2023visualisation} and Hannan's VizER system \cite{hannan2024vizer}. However, existing approaches mainly rely on manually designed rules or explicit pattern-matching procedures. With recent advances in Large Language Models (LLMs), there is an opportunity to investigate whether LLMs can perform this type of schema-level reasoning automatically.
 
@@ -28,6 +56,8 @@ The project has four main objectives:
     \item To investigate whether LLMs can recommend suitable visualisations based on the identified schema patterns and generate structured outputs that can be used by a visualisation library.
 
     \item To extend the current schema pattern identification approach towards an end-to-end natural-language-to-visualisation pipeline, including natural language query interpretation, data retrieval, visualisation recommendation, and visualisation specification generation.
+
+    \item To realise this pipeline in a way that is reproducible and honest to evaluate, by having the language model author deterministic programs once rather than answer each case at run time, and by keeping the ground-truth answers strictly separated from anything the model can see.
 \end{itemize}
 
 The initial stage of the project focuses on prompt-based schema reasoning over the Mondial database. Later stages will investigate visualisation generation and interaction. The project will also consider whether prompt engineering is sufficient for this task or whether training or fine-tuning a custom model is required.
@@ -231,332 +261,12 @@ At the same time, recent advances in large language models have demonstrated str
 
 Therefore, this project investigates whether prompt-engineered LLMs can reason directly over conceptual schemas, identify visualisation schema patterns, and recommend appropriate visualisations based on conceptual relationships. By combining conceptual modelling with modern language models, the project aims to bridge the gap between schema-level semantics and automated visualisation design.
 
-% \chapter{PROJECT X}
-\chapter{Technical Achievements}
-
-% \section{Methodology}
-% \subsection{Mondial Dataset}
-
-% This project uses the Mondial database as the primary benchmark dataset.
-% Mondial is a large integrated geographical database containing information
-% about countries, cities, rivers, lakes, mountains, organisations, languages,
-% religions and other geographical entities.
-% \begin{figure}[h] 
-%     \centering 
-%     \includegraphics[width=\textwidth]{mondial_ER.png} 
-%     \caption{Data-flow diagram of chart construction in Wilkinson's framework.} \label{fig:mondial-er} 
-% \end{figure}
-% Figure~\ref{fig:mondial-er} presents the conceptual ER schema of Mondial.
-
-Several key components of the proposed system have been developed and evaluated during the first stage of the project. The work completed so far focuses on enabling LLMs to identify schema patterns from relational schema information.
-
-\section{Mondial Schema Representation}
-
-The experiments conducted in this project are based on the Mondial database. In order to support automated schema reasoning, structural information was extracted from the database and transformed into a machine-readable representation. For each table, the extracted metadata includes:
-
-\begin{itemize}
-\item table names;
-\item column names;
-\item data types;
-\item primary keys;
-\item foreign-key relationships.
-\end{itemize}
-
-The extracted schema information was represented in JSON format and provided as context to the LLM. This representation preserves the structural relationships between tables while remaining independent of any particular database implementation. By explicitly providing key constraints and relationships, the model is able to reason about conceptual structures that are not directly visible from the selected tables and attributes alone.
-
-\section{Schema Pattern Identification Framework}
-
-The primary technical objective completed during this stage was the development of a schema pattern identification framework.
-
-Given a set of selected tables and attributes, the system aims to determine which schema pattern best describes the selected data. The classification task is based on the five schema patterns identified in previous work:
-
-\begin{itemize}
-\item Basic Entity;
-\item Weak Entity;
-\item One-Many Relationship;
-\item Many-Many Relationship;
-\item Reflexive Relationship.
-\end{itemize}
-
-The framework uses prompt engineering techniques to guide the reasoning process of the LLM. For each test case, the model is provided with:
-
-\begin{itemize}
-\item the Mondial schema information (served as context information);
-\item definitions about five schema patterns (served as context information)
-\item selected table names;
-\item selected attribute names.
-\end{itemize}
-
-The model is then required to classify the input into one of the five schema patterns. Unlike conventional Text-to-SQL systems, which use schema information to generate executable database queries, the proposed framework uses relational schema information to infer higher-level conceptual modelling structures. The objective is not to generate SQL queries, but rather to bridge the gap between relational database representations and conceptual visualisation schema patterns.
-
-\section{Experimental Evaluation}
-
-An initial evaluation was conducted using nine test cases derived from previous student projects based on the Mondial database. Each test case consists of a set of selected tables and attributes together with a ground-truth visualisation schema pattern. The objective was to determine whether the LLM could correctly infer the conceptual schema pattern from relational schema information alone.
-
-\begin{table}[htbp]
-\centering
-\label{tab:schema_pattern_test_cases}
-
-\small
-
-\begin{tabularx}{\textwidth}{|l|X|X|X|c|}
-\hline
-\textbf{Chosen Table}
-&
-\textbf{Chosen Columns}
-&
-\textbf{Groundtruth}
-&
-\textbf{Identified Pattern}
-&
-\textbf{PASS/FAIL?}
-\\
-\hline
-
-Country &
-code, population &
-Basic &
-Basic &
-PASS \\
-\hline
-
-Lake &
-name, depth, elevation, dam\_height &
-Basic &
-Basic &
-PASS \\
-\hline
-
-Organisation &
-abbreviation, established &
-Basic &
-Basic &
-PASS \\
-\hline
-
-Economy &
-country, gdp, unemployment &
-Basic with inherited key &
-Basic with inherited key &
-PASS \\
-\hline
-
-Country Population &
-country, year, population &
-Weak &
-Weak &
-PASS \\
-\hline
-
-Ethnic Group &
-country, name, percentage &
-Weak &
-Weak &
-PASS \\
-\hline
-
-Airport &
-iata\_code, island, elevation &
-One-Many &
-One-Many &
-PASS \\
-\hline
-
-Encompasses &
-country, continent, percentage &
-Many-Many &
-Many-Many &
-PASS \\
-\hline
-
-Borders &
-country1, country2, length &
-Reflexive Many-Many &
-Reflexive Many-Many &
-PASS \\
-\hline
-
-\end{tabularx}
-\caption{Test Cases for Schema Pattern Identification}
-\end{table}
-
-Table~\ref{tab:schema_pattern_test_cases} summarises the evaluation results. The experiments demonstrate that the proposed approach correctly identified the schema pattern for all test cases. These results provide initial evidence that LLMs can successfully reason over relational schema structures and infer schema patterns.
-
-
-
-% \chapter{Evaluation}
-
-\chapter{Project Plan}
-
-The remaining stages of the project will focus on extending the current schema pattern identification prototype into a complete natural-language-to-visualisation system.
-
-\begin{figure}[h]
-\centering
-
-\begin{tikzpicture}[
-    node distance=0.9cm,
-    every node/.style={
-        rectangle,
-        draw,
-        rounded corners,
-        align=center,
-        minimum width=6cm,
-        minimum height=0.8cm
-    },
-    arrow/.style={->, thick}
-]
-
-\node (query) {User Query};
-
-\node (text2sql) [below=of query]
-{LLM\\(Text-to-SQL)};
-
-\node (sql) [below=of text2sql]
-{SQL Query};
-
-\node (selection) [below=of sql]
-{Selected Tables + Attributes};
-
-\node (pattern) [below=of selection]
-{Schema Pattern Identification};
-
-\node (conceptual) [below=of pattern]
-{Conceptual Visualisation Schema Pattern};
-
-\node (recommendation) [below=of conceptual]
-{Visualisation Recommendation};
-
-\node (specification) [below=of recommendation]
-{Visualisation Specification Generation};
-
-\node (visualisation) [below=of specification]
-{Final Charts};
-
-\draw[arrow] (query) -- (text2sql);
-\draw[arrow] (text2sql) -- (sql);
-\draw[arrow] (sql) -- (selection);
-\draw[arrow] (selection) -- (pattern);
-\draw[arrow] (pattern) -- (conceptual);
-\draw[arrow] (conceptual) -- (recommendation);
-\draw[arrow] (recommendation) -- (specification);
-\draw[arrow] (specification) -- (visualisation);
-
-\end{tikzpicture}
-
-\caption{Planned project pipeline.}
-\label{fig:planned_pipeline}
-
-\end{figure}
-
-
-Figure~\ref{fig:planned_pipeline} illustrates the planned system architecture. The schema pattern identification component has already been implemented and evaluated, while the remaining stages will focus on SQL generation, visualisation recommendation, and automatic visualisation generation.
-
-\section{Natural Language Query Interpretation}
-
-The next stage of the project will investigate how LLMs can transform natural language visualisation requests into executable SQL queries over the Mondial database.
-
-Rather than requiring users to manually specify tables and columns, the system will aim to automatically generate SQL queries from natural language requests. The generated SQL queries will then be analysed to identify the selected tables and attributes, which serve as inputs to the schema pattern identification framework developed in the first stage of the project.
-
-This approach enables the existing schema pattern identification component to be integrated into a complete natural-language-to-visualisation pipeline.
-
-\section{Visualisation Recommendation}
-
-Once the selected tables and attributes have been extracted from the generated SQL query, the schema pattern identification framework developed in the first stage of the project will be applied to determine the corresponding schema pattern.
-
-The project will then investigate whether LLMs can recommend appropriate chart types based on identified schema patterns. Previous work has proposed associations between schema patterns and suitable visualisations; however, it remains unclear whether an LLM can reliably perform this mapping automatically.
-
-Experiments will therefore be conducted to evaluate the extent to which LLM-generated recommendations align with visualisation schema patterns identified in prior research.
-
-The outcome of this stage will be a mapping from conceptual schema patterns to suitable visualisation recommendations, forming the basis for automatic chart selection.
-
-\section{Data Retrieval and Visualisation Generation}
-
-After a suitable visualisation has been selected, the corresponding SQL query will be executed to retrieve the required data from the Mondial database.
-
-The retrieved data and recommended chart type will then be translated into an executable visualisation specification. At this stage, the specific visualisation specification language has not yet been finalised and will be selected following further investigation of available frameworks and their suitability for automatic visualisation generation.
-
-The ultimate objective is to construct an end-to-end pipeline that transforms a natural language query into a visualisation through SQL generation, schema pattern identification, visualisation recommendation, data retrieval, and automatic visualisation specification generation.
-
-\section{Evaluation}
-
-Evaluation will initially focus exclusively on the Mondial database, which serves as the primary experimental environment for this project. Additional databases may be considered only if the proposed approach demonstrates reliable performance on Mondial. The evaluation will consider:
-
-\begin{itemize}
-\item schema pattern identification accuracy;
-\item correctness of generated SQL queries;
-\item visualisation recommendation accuracy;
-\item correctness of generated visualisation specifications;
-\item end-to-end task completion success rate.
-\end{itemize}
-
-Where possible, results will be compared against manually constructed ground-truth solutions and previous systems developed using the same conceptual modelling framework.
-
-\section{Timeline}
-Table \ref{tab:timeline} presents the timeline of this project. Please note that during the project's execution, the tasks may be adjusted and plan may be modified according to the actual situation.
-\begin{table}[htbp]
-\centering
-\small
-\label{tab:timeline}
-
-\begin{tabularx}{\textwidth}{|p{2.7cm}|X|}
-\hline
-\textbf{Period} &
-\textbf{Planned Activities}
-\\
-\hline
-
-May &
-Completed schema pattern identification experiments using  prompt engineering on Mondial test cases derived from previous student reports.
-\\
-\hline
-
-June -- Mid-June&
-Investigate visualisation recommendation based on identified schema patterns and evaluate the effectiveness of LLM-based chart selection. 
-\\
-\hline
-
-Mid-June--July &
-Test and compare the visualization results of different visualization specification languages, and select the best one.
-\\
-\hline
-
-July -- Mid-July &
-Develop a Text-to-SQL module capable of translating natural language visualisation requests into executable SQL queries.
-\\
-\hline
-
-Mid-July--August &
-Implement automatic data retrieval and visualisation specification generation to construct an end-to-end visualisation pipeline.
-\\
-\hline
-
-August -- Mid-August &
-Conduct end-to-end system evaluation on Mondial test cases and compare results against ground-truth solutions.
-\\
-\hline
-
-Mid-August -- September&
-Complete dissertation writing, system documentation, and final project submission.
-\\
-\hline
-
-\end{tabularx}
-\caption{Planned timeline for this project.}
-\end{table}
-
-\section{Definition of Success}
-
-The project will be considered successful if the final system can automatically transform natural language visualisation requests into meaningful visualisations through a pipeline consisting of SQL generation, conceptual schema pattern identification, visualisation recommendation, and automatic visualisation specification generation.
-
-In particular, success will be measured by the system's ability to generate correct SQL queries, identify appropriate conceptual visualisation schema patterns, recommend suitable chart types, and produce executable visualisation specifications without requiring users to manually inspect relational tables.
-
-A further indicator of success would be demonstrating that conceptual-model-based reasoning can support more appropriate visualisation recommendations than approaches that rely solely on relational schema information or tabular data structures.
-
+This project builds on two earlier implementations of the visualisation schema pattern approach. Bull's system \cite{bull2023visualisation} realised schema-driven recommendation using the Vega grammar and contributed a Java binding for authoring Vega specifications, while Hannan's VizER \cite{hannan2024vizer} implemented the five patterns as a hand-written rule engine within a full-stack web application offering both a data-first and a chart-first mode. Both encode the pattern-matching and chart-selection logic as manually maintained rules. The distinctive move in this work is not merely to replace those rules with a language model, but to have the model \emph{author} the deterministic rules once, as small, inspectable programs, and then execute those programs reproducibly. As Chapters~\ref{ch:approach} and~\ref{ch:evaluation} show, this framing directly targets the two failure modes that afflict a naive run-time use of an LLM: the bounded context window, which is dissolved by reading data from disk at run time rather than inlining it in a prompt; and library-version drift in generated visualisation code, which is pinned once per program rather than re-risked on every invocation.
 
 \chapter{Approach}
 \label{ch:approach}
 
-This chapter describes the design of the end-to-end system that transforms a user's data selection into an executable visualisation. It first sets out the application design, its requirements and target audience (Section~\ref{sec:app-design}), and gives a high-level view of the architecture (Section~\ref{sec:architecture}). It then introduces the ``LLM-as-compiler'' paradigm that underpins the whole pipeline (Section~\ref{sec:llm-compiler}), describes each of the three pipeline steps (Sections~\ref{sec:step1}--\ref{sec:step3}) and the natural-language front end that sits in front of them (Section~\ref{sec:nl-front-end}), and closes with the user journey and high-level design (Section~\ref{sec:user-journey}).
+This chapter describes the design of the end-to-end system that transforms a user's data selection into an executable visualisation. It first sets out the application design, its requirements and target audience (Section~\ref{sec:app-design}). It then introduces the ``LLM-as-compiler'' paradigm that is the central design decision of the project (Section~\ref{sec:llm-compiler}) and gives the high-level architecture that follows from it (Section~\ref{sec:architecture}). It then describes each of the three pipeline steps (Sections~\ref{sec:step1}--\ref{sec:step3}) and the natural-language front end that sits in front of them (Section~\ref{sec:nl-front-end}), and closes with the user journey and high-level design (Section~\ref{sec:user-journey}).
 
 \section{Application Design}
 \label{sec:app-design}
@@ -573,26 +283,72 @@ Three requirements drive the design. First, the system should be \emph{reproduci
 
 The system is aimed at two overlapping groups. The first is domain experts and non-technical users who understand the conceptual model of their data, the entities and the relationships between them, far better than its tabular, relational representation, and who are consequently poorly served by tools that reason only over columns and rows. By recommending visualisations from the conceptual structure of a selection, the system meets these users where their understanding already lies. The second is researchers and developers who need an \emph{auditable} and \emph{extensible} pipeline: because each pipeline step is a small, readable, deterministic program rather than an opaque per-case model call, its behaviour can be inspected, tested, and extended with confidence.
 
-\section{High-Level Architecture}
-\label{sec:architecture}
-
-\emph{This section is to be completed. It will present a high-level architecture diagram of the pipeline, showing the compile-time authoring of the three deterministic programs and their run-time execution (Step~1 pattern identification $\rightarrow$ Step~2 chart recommendation and mapping $\rightarrow$ Step~3 visualisation generation), together with the optional natural-language front end and data-source layer that sit in front of them.}
-
-% \begin{figure}[h]
-%   \centering
-%   \includegraphics[width=\textwidth]{figures/architecture.pdf}
-%   \caption{High-level architecture of the end-to-end pipeline.}
-%   \label{fig:architecture}
-% \end{figure}
-
 \section{The LLM-as-Compiler Paradigm}
 \label{sec:llm-compiler}
 
-An earlier version of the project prompted the model to answer each case at run time. This exposed two well-known limitations of Large Language Models. First, their outputs are \emph{non-deterministic}: the same prompt can yield different answers on different runs, which conflicts with the reproducibility requirement. Second, their \emph{context window} is bounded, so inlining a full dataset into a prompt forces the data to compete for tokens with both the model's reasoning and its output, and can cause truncation.
+An earlier version of the project prompted the model to answer each case at run time, in the manner of the LLM-based visualisation systems reviewed in Chapter~\ref{ch:approach}'s background, such as Chat2VIS \cite{maddigan2023chat2vis}, LIDA \cite{dibia2023lida}, and LLM4Vis \cite{wang2023llm4vis}, which invoke a model afresh on every request. This exposed two well-known limitations of Large Language Models. First, their outputs are \emph{non-deterministic}: the same prompt can yield different answers on different runs, which conflicts with the reproducibility requirement. Second, their \emph{context window} is bounded, so inlining a full dataset into a prompt forces the data to compete for tokens with both the model's reasoning and its output, and can cause truncation.
 
-The project therefore adopted a different paradigm, at the direction of the supervisor: instead of asking the model to \emph{answer} each case, the model is asked, once, at ``compile time'', to \emph{author a deterministic Python program} that implements a pipeline step. That program is then reviewed, tested, and executed reproducibly, reading its data from disk at run time and never through the prompt. Because the program is a small, readable artefact, this also makes the system auditable in a way that opaque per-case responses are not, and the approach is a natural fit for the code-generation capability of modern models \cite{chen2021evaluating}.
+Following discussion with the supervisor, the project therefore adopted a different paradigm: instead of asking the model to \emph{answer} each case, the model is asked, once, at ``compile time'', to \emph{author a deterministic Python program} that implements a pipeline step. That program is then reviewed, tested, and executed reproducibly, reading its data from disk at run time and never through the prompt. Because the program is a small, readable artefact, this also makes the system auditable in a way that opaque per-case responses are not, and the approach is a natural fit for the code-generation capability of modern models \cite{chen2021evaluating}.
 
-This shift dissolves two independent failure axes that afflicted the run-time approach. The \emph{context-budget} axis disappears, because data is read from disk at run time rather than inlined in the prompt; and the \emph{library-version} axis is pinned once per program, rather than being re-risked on every invocation. All three pipeline steps are realised in this way, as standard-library programs whose input and output contracts line up end-to-end, so that the output of one step feeds directly into the next with no intervening glue code.
+This shift dissolves two independent failure axes that afflicted the run-time approach. The \emph{context-budget} axis disappears, because data is read from disk at run time rather than inlined in the prompt; and the \emph{library-version} axis is pinned once per program, rather than being re-risked on every invocation. All three pipeline steps are realised in this way, as standard-library programs whose input and output contracts line up end-to-end, so that the output of one step feeds directly into the next with no intervening glue code. The architecture that follows from this decision is described next.
+
+\section{High-Level Architecture}
+\label{sec:architecture}
+
+The architecture is best understood as two clearly separated phases: a \emph{compile-time} phase, which happens once and involves the language model, and a \emph{run-time} phase, which happens on every request and involves no model at all. Figure~\ref{fig:architecture} shows both.
+
+At compile time, the language model is prompted, once per pipeline step, to author a deterministic Python program: a Step~1 pattern classifier, a Step~2 chart recommender, and a family of Step~3 renderers (Section~\ref{sec:llm-compiler}). These programs are reviewed, tested against a hand-written reference, and then frozen as ordinary source files in the repository. From that point on they are treated exactly like any other deterministic component of the system.
+
+At run time, a request flows through those frozen programs in a fixed order. The entry point is a \emph{data selection}: a base table together with a set of selected columns, optionally accompanied by filters, joins, and an aggregate. A user may construct this selection directly through the web front end, or, when the optional natural-language layer is enabled, express it in free text, which a semantic parser turns into the same validated selection (Section~\ref{sec:nl-front-end}). The selection is passed to Step~1, which identifies its visualisation schema pattern; to Step~2, which uses that pattern and the underlying rows to recommend a chart and emit a field-to-role mapping; and finally to the corresponding Step~3 renderer, which reads the rows and produces runnable HTML that the server returns to the browser inside a sandboxed iframe. A data-source adapter supplies the schema and the rows to the pipeline from either offline JSON files or a live PostgreSQL database, so the same programs serve both the experimental and the deployed settings. Crucially, no part of the run-time path calls the language model, which is what makes a given selection always produce the same visualisation.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    font=\small,
+    box/.style={rectangle, draw, rounded corners, align=center,
+                minimum width=3.5cm, minimum height=0.85cm},
+    prog/.style={box, fill=blue!6},
+    data/.style={box, fill=gray!10},
+    arrow/.style={->, thick, >=stealth},
+    node distance=0.7cm and 1.1cm
+]
+
+% Compile-time band
+\node[prog] (llm) {Language model\\(compile time only)};
+\node[prog, below=of llm, xshift=-4.2cm] (p1) {Step~1 program\\pattern classifier};
+\node[prog, below=of llm] (p2) {Step~2 program\\chart + mapping};
+\node[prog, below=of llm, xshift=4.2cm] (p3) {Step~3 programs\\renderers};
+
+\draw[arrow] (llm) -- (p1);
+\draw[arrow] (llm) -- (p2);
+\draw[arrow] (llm) -- (p3);
+
+% Run-time flow
+\node[box, below=1.8cm of p2, xshift=-4.2cm] (nl) {Natural-language\\request (optional)};
+\node[box, right=of nl] (sel) {Data selection\\\{table, columns, \ldots\}};
+\node[box, below=of sel] (s1) {Step~1: identify pattern};
+\node[box, below=of s1] (s2) {Step~2: recommend chart\\+ emit mapping};
+\node[box, below=of s2] (s3) {Step~3: render chart};
+\node[box, below=of s3] (out) {Interactive HTML\\(sandboxed iframe)};
+\node[data, right=1.4cm of s2] (ds) {Data source\\(JSON / PostgreSQL)};
+
+\draw[arrow] (nl) -- node[above, font=\scriptsize]{parse} (sel);
+\draw[arrow] (sel) -- (s1);
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (out);
+\draw[arrow] (ds) -- (s2);
+\draw[arrow] (ds.south) |- (s3.east);
+
+% Programs drive the run-time steps (dashed = "compiled into")
+\draw[arrow, dashed] (p1) -- (s1);
+\draw[arrow, dashed] (p2) -- (s2);
+\draw[arrow, dashed] (p3) -- (s3);
+
+\end{tikzpicture}
+\caption{High-level architecture. At compile time (top, shaded blue) the language model authors the three deterministic programs once. At run time (bottom) a data selection, built directly or parsed from natural language, flows through those frozen programs, which read rows from the data source; no model is called when serving a request.}
+\label{fig:architecture}
+\end{figure}
 
 \section{Step 1 --- Pattern Identification}
 \label{sec:step1}
@@ -750,7 +506,7 @@ Which of the relationship charts leads is \emph{data-driven}. Whereas the origin
 \section{Step 3 --- Visualisation Generation}
 \label{sec:step3}
 
-Step~3 renders the chosen chart as runnable, interactive HTML using D3~v7 \cite{bostock2011d3}. Rather than a single monolithic prompt, the design uses \emph{layered} prompts: a shared base prompt establishes the D3~v7 contract, mandates interactivity, and forbids brace-based string templating (which collides with JavaScript object literals), while a per-chart block then specifies the particular chart. Each chart is realised as a parameterised renderer with a uniform \texttt{render(mapping, rows)} signature that reads its grouped data at run time via the \texttt{table} field of the mapping.
+Step~3 renders the chosen chart as runnable, interactive HTML using D3~v7 \cite{bostock2011d3}. D3 was preferred over the higher-level declarative grammars surveyed in the background, such as Vega and Vega-Lite \cite{satyanarayan2016vega,vega2025}, because the schema patterns call for bespoke, richly interactive layouts (chord, matrix, arc, force) whose fine-grained control is more directly expressed in D3, and because pinning a single library version at compile time is what neutralises the version-drift failures analysed in Chapter~\ref{ch:evaluation}. Rather than a single monolithic prompt, the design uses \emph{layered} prompts: a shared base prompt establishes the D3~v7 contract, mandates interactivity, and forbids brace-based string templating (which collides with JavaScript object literals), while a per-chart block then specifies the particular chart. Each chart is realised as a parameterised renderer with a uniform \texttt{render(mapping, rows)} signature that reads its grouped data at run time via the \texttt{table} field of the mapping.
 
 Because the data is read at run time rather than inlined, a renderer is independent of dataset size, and because the library version is pinned in the base prompt, the deprecated-API failures observed under the run-time approach do not recur. Renderers were built for all five applicable patterns, covering the eighteen charts Step~2 can recommend; each encodes the mapping of Section~\ref{sec:step2} as follows.
 
@@ -792,7 +548,7 @@ These renderers are pattern-aware: a Sankey diagram namespaces the two sides of 
 \section{Natural-Language Front End}
 \label{sec:nl-front-end}
 
-To realise the end-to-end workflow described in the objectives of Chapter~1, an optional layer sits \emph{in front of} the three steps and lets the user express a request in natural language. The project plan of Chapter~\ref{ch:approach}'s predecessor envisaged this stage as a Text-to-SQL component; in the implemented system it was refined into a more constrained and safer design. Rather than generating executable SQL, the front end performs a \emph{semantic parse} that translates free text into a validated \emph{data selection}, a structure of the form \{table, columns, joins, filters, aggregate\}. The model may only choose data; it may never name a pattern or a chart, and every table and column it returns is validated against the schema before use. Data retrieval itself uses a fixed, parameterised query template rather than model-authored SQL.
+To realise the end-to-end workflow described in the objectives of Chapter~1, an optional layer sits \emph{in front of} the three steps and lets the user express a request in natural language. An earlier project plan envisaged this stage as a Text-to-SQL component; in the implemented system it was refined into a more constrained and safer design. Rather than generating executable SQL, the front end performs a \emph{semantic parse} that translates free text into a validated \emph{data selection}, a structure of the form \{table, columns, joins, filters, aggregate\}. The model may only choose data; it may never name a pattern or a chart, and every table and column it returns is validated against the schema before use. Data retrieval itself uses a fixed, parameterised query template rather than model-authored SQL.
 
 This design choice is deliberate. Compared with full Text-to-SQL, which must reason over join paths and generate correct executable queries \cite{qin2022survey}, a constrained selection parse is easier to validate and impossible to use to smuggle the answer into the pipeline: because the model at this stage only picks data, the deterministic Step~1 and Step~2 programs remain the sole deciders of pattern and chart, and the experimental blind and gold separation (Chapter~\ref{ch:evaluation}) is preserved. The front end is off by default, so the experimental path is byte-identical whether or not it is used.
 
@@ -813,19 +569,46 @@ This chapter describes how the design of Chapter~\ref{ch:approach} was realised:
 
 The experiment core is written using \emph{only the Python standard library}, so that the pipeline has no installation step and runs identically across environments; the optional production layer adds third-party dependencies but is isolated behind a configuration flag, leaving the experiment path dependency-free. Visualisations target the browser, with D3~v7 as the primary rendering library \cite{bostock2011d3}.
 
-Model access is multi-model. Self-hosted Qwen models run on the Imperial HPC (the cx3 cluster) under the vLLM serving framework, each exposing an OpenAI-compatible API reached over an SSH tunnel. \texttt{Qwen3-14B} is used for the reasoning-heavy Steps~1 and~2, and \texttt{Qwen2.5-Coder-32B-Instruct} for the code generation of Step~3. Where a stronger author was required, GPT (accessed through a university web-chat platform) served as an alternative program author, and a hand-written \emph{reference} program was retained as a trusted artefact for each step.
+The dependency boundary is a deliberate design decision rather than an accident of implementation. Keeping the experiment core to the standard library means that the scripts which prepare inputs, run the generated programs, and score their outputs have no external requirements at all, so that any reader can reproduce a result with nothing more than a Python interpreter and the repository. The production layer of Section~\ref{sec:impl-production}, which brings in a database driver, an object-relational toolkit, and an OpenAI-compatible client, is confined behind a single configuration flag; when that flag is off, the code path is byte-identical to the pure experiment path, so that enabling the deployment features can never quietly change an experimental result.
+
+The system is designed to draw on several models rather than a single one. Self-hosted Qwen models run on the Imperial HPC (the cx3 cluster) under the vLLM serving framework, each exposing an OpenAI-compatible API reached over an SSH tunnel. \texttt{Qwen3-14B} is used for the reasoning-heavy Steps~1 and~2, and \texttt{Qwen2.5-Coder-32B-Instruct} for the code generation of Step~3, the latter chosen because a code-specialised model of larger size proved the most reliable HTML generator in the study of Section~\ref{sec:eval-step3}. Where a stronger author was required, GPT (accessed through a university web-chat platform) served as an alternative program author, and a hand-written \emph{reference} program was retained as a trusted artefact for each step. Because every model is reached through the same OpenAI-compatible interface, whether self-hosted or remote, swapping one model for another is a matter of configuration rather than code, which is what made the cross-author comparisons of Chapter~\ref{ch:evaluation} straightforward to run. Figure~\ref{fig:impl-serving} shows the serving topology.
+
+\phfig{0.8}{Model-serving topology: several Qwen models served by vLLM on the HPC cluster, each exposing an OpenAI-compatible endpoint reached over an SSH tunnel, alongside a remote general model, all addressed through one client interface.}{fig:impl-serving}
 
 \section{Schema Extraction, Task Generation, and the Baseline}
 
 Data preparation is a sequence of standard-library scripts. The Mondial SQL schema is parsed into a JSON summary of tables, columns, primary keys, and foreign keys; this is then reduced to the \emph{clean} summary, which contains structural evidence only and no derived pattern labels, expected visualisations, or reasoning. A task generator builds one data-first task per case, a selection of one table plus several columns, from the schema and the gold patterns. Finally, a deterministic classifier predicts the pattern from key structure alone, and a separate evaluator scores it against the gold file; this rule baseline is the reference against which the LLM-authored classifier is compared.
 
+The blind and gold separation described in Section~\ref{sec:eval-setup} is enforced at the level of the files themselves. The blind file carries, per case, only the case identifier, the selected table, and the selected columns; the gold file carries the expected pattern and expected visualisations and lives apart from it. The classifier and every generated program are given the blind file and the clean schema summary as their only inputs, and the evaluator is the sole reader of the gold file, invoked after predictions have been written to disk. This ordering, predict first and score afterwards, means that no pattern label can reach the model even by accident. The evaluation step follows a fixed contract: it consumes a run directory containing a metadata description and one response file per case, each carrying the case identifier, the identified pattern, the recommended visualisations, and the supporting schema evidence, and it emits machine-readable and human-readable summaries. New runs and new prompts are required to match this shape, which is what lets results from different prompt versions and different model authors be compared on equal terms.
+
 \section{Prompt Engineering and Iteration}
 
-The prompts were developed iteratively, with each iteration kept in its own versioned directory rather than overwriting its predecessor. Early prompts established a baseline using conceptual-modelling grounding; later versions folded in explicit pattern notes and chart groups, split the ambiguous many-to-many versus reflexive decision into separate gated reasoning steps, and constrained the model to reason only over the selected columns so that it could not introduce keys the user had not chosen. The single most significant finding concerned the model's ``thinking'' mode: enabling an explicit chain-of-thought reasoning trace \cite{wei2022chain} resolved a class of consistency errors in Steps~1 and~2 in which the structured evidence was correct but the final label contradicted it. A later reworking retasked the best pattern prompt to \emph{emit a classifier program} rather than answer directly, aligning it with the LLM-as-compiler paradigm of Section~\ref{sec:llm-compiler}.
+The prompts were developed iteratively, with each iteration kept in its own versioned directory rather than overwriting its predecessor, so that the behaviour of an earlier prompt could always be reproduced and the effect of a change could be attributed precisely. Early prompts established a baseline using conceptual-modelling grounding; later versions folded in explicit pattern notes and chart groups, split the ambiguous many-to-many versus reflexive decision into separate gated reasoning steps, and constrained the model to reason only over the selected columns so that it could not introduce keys the user had not chosen. The single most significant finding concerned the model's ``thinking'' mode: enabling an explicit chain-of-thought reasoning trace \cite{wei2022chain} resolved a class of consistency errors in Steps~1 and~2 in which the structured evidence was correct but the final label contradicted it. A later reworking retasked the best pattern prompt to \emph{emit a classifier program} rather than answer directly, aligning it with the LLM-as-compiler paradigm of Section~\ref{sec:llm-compiler}.
+
+The Step~3 prompts are organised differently, in \emph{layers}, because eighteen renderers share a great deal of contract but differ in their particulars. A single base prompt establishes what is common to every renderer: the pinned D3~v7 library, the requirement that the output be a complete, interactive HTML document, the fixed \texttt{render(mapping, rows)} entry point, and a rule that forbids brace-based string templating because it collides with the braces of JavaScript object literals. A short per-chart block is then concatenated onto this base to specify the individual chart. This layering keeps the shared contract in exactly one place, so that a correction to the common rules propagates to every chart at once, and it keeps each per-chart block small enough to fit comfortably within the context window alongside the base. As Chapter~\ref{ch:evaluation} showed, pinning the library version in the base prompt is what eliminates the deprecated-API failures, and forbidding brace templating is what keeps weaker models from colliding Python formatting with JavaScript syntax.
 
 \section{The Three Generated Programs}
 
 Each pipeline step exists as a generated standard-library program, and the three share aligned contracts. Step~1 is a pattern classifier exposing \texttt{classify\_selection}; Step~2 is a chart recommender that emits a mapping keyed exactly as the renderers expect; Step~3 is a family of renderers sharing the \texttt{render(mapping, rows)} signature. For each step, both a reference program and a model-authored program were produced, so that the model's output could be measured against a trusted baseline. A notable provenance finding was that authoring quality scales sharply with model strength: a strong code model produced a near-correct Step~2 program in a single attempt, whereas a weaker model reached only partial correctness and responded non-monotonically to prompt edits, which is why the reference program is retained as the authoritative artefact for the more complex steps.
+
+The concrete realisation of the Step-2-to-Step-3 field-name contract of Section~\ref{sec:step2} is what binds the three programs into a pipeline. For the \texttt{encompasses} relation, for example, Step~2 emits the mapping shown in Figure~\ref{lst:mapping}, and the Sankey renderer consumes precisely the \texttt{source}, \texttt{target}, and \texttt{width} roles it names, with the \texttt{table} field telling the renderer which grouped relation to read at run time. Because the names line up by construction, the output of Step~2 feeds into Step~3 with no intervening adaptation, which is exactly what the end-to-end column of Table~\ref{tab:eval-step2} measures.
+
+\begin{figure}[htbp]
+\centering
+\begin{minipage}{0.82\textwidth}
+\begin{verbatim}
+{
+  "table":  "encompasses",
+  "chart":  "sankey",
+  "mapping": { "source": "country",
+               "target": "continent",
+               "width":  "percentage" }
+}
+\end{verbatim}
+\end{minipage}
+\caption{A Step~2 mapping for the \texttt{encompasses} many-to-many relation. Its role names (\texttt{source}, \texttt{target}, \texttt{width}) are exactly those the Sankey renderer reads, so it feeds into Step~3 with no glue code.}
+\label{lst:mapping}
+\end{figure}
 
 \section{The Renderer Library}
 
@@ -840,74 +623,315 @@ Renderers were built for all five applicable patterns, covering the full set of 
 
 Each renderer reads the grouped Mondial data at run time and produces complete, interactive HTML with hover interaction. The matrix, force, and arc renderers read the \texttt{value} role as a scalar column or the count fallback, which is what allows the attribute-free relations in Mondial to be visualised at all, a case that the scalar-width Sankey and chord diagrams could not previously handle.
 
+The choropleth renderer is worth singling out because it was made deliberately database-agnostic. Rather than embedding Mondial-specific geography, it draws a single world basemap of sovereign country outlines and joins the data to it through a generic resolver: a region value is matched to a map feature by trying, in turn, a normalised country name, an ISO alpha-2 or alpha-3 code, or a numeric country identifier, so that any database whose region column holds country names or ISO codes will join. The renderer reports the proportion of distinct region values it managed to resolve, and if too few match it refuses to draw rather than produce a misleading blank map; the server uses this same signal to hide the choropleth from the recommendations when a selection is not in fact geographic. A square-root colour scale is used so that a few very large values do not wash the remaining countries out to near-white. Figure~\ref{fig:impl-choropleth} shows the renderer on a Mondial measure.
+
+\phfig{0.8}{The database-agnostic choropleth renderer: region values are resolved to basemap features by name or ISO code, a square-root colour scale keeps skewed measures legible, and the renderer refuses to draw when too few regions resolve.}{fig:impl-choropleth}
+
+Interactivity is uniform across the library. Every renderer supports hover tooltips, and the web front end wraps the rendered result with view controls, zoom, pan, full-screen, and download, so that dense visualisations such as the matrix heatmap or the force graph remain explorable. The renderers also implement the pattern-aware behaviour set out in Section~\ref{sec:step3}, for instance a Sankey diagram namespacing the two sides of a relation so that a country and a continent of the same name cannot collide.
+
 \section{Web Front End and Production Layer}
+\label{sec:impl-production}
 
 An interactive web front end chains the three programs. It is a standard-library threaded HTTP server that makes \emph{no model calls at serve time}: the user picks a table and columns, the server runs Step~1, then Step~2, then the selected Step~3 renderer, and the result is displayed in a sandboxed iframe; charts without a renderer return a placeholder message.
 
-An optional production layer sits in front of this without altering it, and is disabled by default so that the experiment path stays byte-identical. A data-source adapter yields the same clean schema and row dictionaries the pipeline consumes, from either the offline JSON files or a live PostgreSQL database, using schema introspection for keys and types and bounded queries for rows. The natural-language module of Section~\ref{sec:nl-front-end} turns free text into a validated selection through an OpenAI-compatible client, degrading gracefully when no API key is configured. Both additions are driven by a git-ignored configuration file, and the experiment core remains free of third-party dependencies.
+An optional production layer sits in front of this without altering it, and is disabled by default so that the experiment path stays byte-identical. A data-source adapter yields the same clean schema and row dictionaries the pipeline consumes, from either the offline JSON files or a live PostgreSQL database, using schema introspection for keys and types and bounded queries for rows. The natural-language module of Section~\ref{sec:nl-front-end} turns free text into a validated selection through an OpenAI-compatible client, degrading gracefully when no API key is configured. Both additions are driven by a git-ignored configuration file, and the experiment core remains free of third-party dependencies. The remainder of this section describes the production layer in more detail.
 
-\section{Problems Encountered During Development}
+\subsection{Server and request flow}
 
-Several difficulties shaped the final design. Under a tight (16k-token) context window, the verbose inline data of a D3 visualisation could not co-fit with the model's reasoning trace, causing the HTML to truncate mid-array or the reasoning to leak into the output; a controlled comparison against a 32k window confirmed that this \emph{context-budget} axis scales away with more context, whereas a separate \emph{library-version and graph-construction} axis (deprecated APIs, mismatched library and CDN pairings, malformed node and link construction) does not, and must be addressed through prompt constraints. Prompt hardening proved \emph{non-monotonic} on weaker models, where fixing one bug could regress another; this was recorded as evidence rather than patched away. Adding interactivity pushed models past a brace-collision threshold between Python string formatting and JavaScript object literals, which the base prompt now forbids outright. Finally, structural validity checks were found to be necessary but not sufficient, a renderer could pass them yet still be broken in the browser, so static JavaScript checks were added.
+The server exposes a small set of endpoints. One returns the schema and per-column semantic badges for the picker; one accepts a structured selection and runs the pipeline; one re-renders a chart when the user changes a role without re-running the reasoning; and, when the natural-language layer is enabled, one accepts free text and returns a parsed selection for the user to confirm before running it. The important property is where the model does and does not appear: the natural-language endpoint may call a model to \emph{parse} a request, but once a selection exists, running it through Steps~1 to~3 involves no model at all. Figure~\ref{fig:impl-sequence} traces a natural-language request through the server.
+
+\phfig{0.92}{Request flow for a natural-language query: the text is parsed once into a validated selection, the user confirms it, and the server then runs the three deterministic programs, reading rows from the data source, and returns interactive HTML. Only the parse step calls a model.}{fig:impl-sequence}
+
+\subsection{Data-source adapter}
+
+The adapter presents the pipeline with the same clean schema dictionary and the same row dictionaries whether the data lives in the offline JSON files or in a live PostgreSQL database. For the live source it uses schema introspection to recover primary keys, foreign keys, column types, and unique constraints, and bounded queries with type coercion to retrieve rows. Because the adapter yields exactly the shape the pipeline already consumed, none of the three steps needed any change to work against a live database; the deployment simply selects a different adapter through configuration.
+
+\subsection{Natural-language parsing}
+
+The natural-language module turns free text into a validated selection of the form \{table, columns, filters, joins, aggregate\}, and never a pattern or a chart, so the blind and gold separation holds even in the deployed system. Three details make it robust. First, for a non-aggregate selection it deterministically ensures that the base table's primary-key columns are present, so that Step~2 always has an identity role to work with and can produce real candidates. Second, a small keyword resolver spots measure columns that a request names explicitly and checks that they survive into the selection, retrying with a correction if the model drops one; this is high-precision and low-recall, so paraphrases with no recognisable keyword simply fall through to the model unaided. Third, the parser can be run several times at a non-zero temperature and its results majority-voted on the chosen table and column set, which, as Section~\ref{sec:eval-nl} showed, is what recovered the one clean end-to-end miss. The parsed selection is shown back to the user as a plain-English restatement that can be edited before it is run.
+
+\subsection{LLM chart selection}
+
+Where the natural-language layer lets a model choose \emph{which data} to plot, an optional selection layer lets a model influence \emph{which chart} leads, without ever breaking the contracts that keep the pipeline honest. It is given the full set of deterministic Step~2 candidates, each with a one-line note, and asked to rank them, highlight one, give a short rationale, and optionally swap a selected column into an existing expressive role such as a measure or an axis. It may never invent a chart, a mapping key, or a column name, and it may never touch the identity and join roles that must stay fixed, such as a key or the two endpoints of a relationship. The selector is both intent-aware, in that the user's stated purpose flows through as a soft goal, and data-aware, in that deterministic signals such as row count, cardinality, and value ranges are supplied, so that the same columns under different goals or at different data scales can lead to different charts. Every valid candidate is still returned to the user, and any malformed or invalid answer falls back to the deterministic choice, so the layer can only ever re-rank within the space the deterministic step already judged legal.
+
+\subsection{Geographical detection and column switching}
+
+Two further mechanisms make the deployed pipeline work beyond Mondial. Geographical detection decides which columns are geographic, and therefore whether a choropleth or a word cloud can be offered, using generic heuristics over column and table names and their foreign-key targets, optionally refined by a model that can recognise a geographic column the heuristics miss, such as an ISO-code column with a generic name. The result is computed once per connected schema and reused both for the column badges the user sees and by the recommendation step, so that the badge on screen and the decision inside the pipeline can never disagree. Column switching lets the user re-point a role at a compatible column after a chart has been drawn, offered only for columns of the same dimension and role type; it also covers identity roles, letting a key, region, or text role be re-pointed at an alternative key of the same entity, for instance drawing a word cloud by country name instead of country code. Alternative keys are detected generically, as non-primary-key columns that are either declared unique in the schema or empirically distinct and non-null in the data, so the mechanism works on any connected database. Figure~\ref{fig:impl-ui} shows the picker with its semantic badges and the per-role column switcher.
+
+\phfig{0.92}{The web front end: a column picker badging each column with its semantic types (numeric, temporal, lexical, geographical), a per-role column switcher for flipping which column fills each role, and the rendered chart in a sandboxed iframe.}{fig:impl-ui}
+
+\section{Testing and Integration}
+\label{sec:impl-testing}
+
+Because each pipeline step is a small deterministic program, testing was organised around comparison and integration rather than a conventional unit-test suite. Each generated program was checked against a hand-written \emph{reference} program for the same step, run over the same blind cases, so that a divergence between the two was immediately visible; the reference thus doubles as both a trusted baseline and a regression oracle. Scoring itself follows the fixed run-directory contract of Section~\ref{sec:eval-setup}: a run is a directory of per-case responses that a single evaluator consumes, which means any prompt version or model author can be scored by the same code on equal terms.
+
+Integration was tested at the seam that matters most, the boundary between Step~2 and Step~3. Every mapping that Step~2 selected was fed directly into the corresponding Step~3 renderer against the real data; the fact that seven of seven testable mappings produced complete HTML with no adapter code (Section~\ref{sec:eval-step2}) is the concrete evidence that the field-name contract holds end to end. Renderer output was validated at two levels: a structural check that the emitted document is well-formed and inlines all rows, and, because a renderer could pass that check yet still fail in a browser, a static JavaScript check that catches deprecated D3 APIs and syntax errors before a file is accepted. One limitation of this scheme is acknowledged here and revisited in Section~\ref{sec:eval-limitations}: this static analysis establishes that a renderer \emph{should} run, but the visual correctness of every chart was not exhaustively confirmed by opening each file in a browser.
+
+Several distinct difficulties shaped the final design, and each is worth isolating because each led to a specific design response.
+
+\paragraph{Context budget.} Under a tight (16k-token) context window, the verbose inline data of a D3 visualisation could not co-fit with the model's reasoning trace, causing the HTML to truncate mid-array or the reasoning to leak into the output. A controlled comparison against a 32k window confirmed that this \emph{context-budget} axis scales away with more context, which is precisely why the deployed renderers read their data from disk at run time rather than inlining it.
+
+\paragraph{Library-version and graph construction.} A separate axis, comprising deprecated APIs, mismatched library and CDN pairings, and malformed node-and-link construction, did \emph{not} respond to a larger window. Pinning the library version and forbidding the removed APIs in the prompt addresses the version half, but the graph-construction half needed a corrected per-chart specification.
+
+\paragraph{Non-monotonic prompt hardening.} On weaker models, hardening a prompt to fix one bug could regress another. This was recorded as evidence (Section~\ref{sec:eval-step2}) rather than patched away, because it is itself a finding about how such models respond to prompt edits.
+
+\paragraph{Brace collision.} Adding interactivity pushed models past a brace-collision threshold between Python string formatting and JavaScript object literals, which the base prompt now forbids outright in favour of plain string concatenation.
+
+\paragraph{Insufficient structural checks.} Structural validity checks proved necessary but not sufficient: a renderer could pass them yet still be broken in the browser. This motivated the additional static JavaScript checks described in Section~\ref{sec:impl-testing}.
 
 
 \chapter{Evaluation}
 \label{ch:evaluation}
 
-\emph{This chapter is to be completed. It will assess the system against the objectives set out in Chapter~1: the accuracy of pattern identification, the appropriateness of the recommended visualisations, the quality of the generated visualisation implementations, the reproducibility and extensibility of the pipeline, and the behaviour of the end-to-end natural-language workflow.}
+This chapter assesses the system against the objectives set out in Chapter~1. It first states the success criteria and the experimental method, in particular the strict separation of blind inputs from gold answers that keeps the evaluation honest (Section~\ref{sec:eval-setup}). It then evaluates each pipeline step in turn: the accuracy of pattern identification (Section~\ref{sec:eval-step1}), the quality of the chart recommendations and mappings (Section~\ref{sec:eval-step2}), and the quality of the generated visualisation implementations (Section~\ref{sec:eval-step3}). Finally it evaluates the complete natural-language pipeline on an external, previously unseen task set (Section~\ref{sec:eval-nl}) and reflects on the determinism, scalability, and extensibility of the design (Section~\ref{sec:eval-determinism}).
+
+\section{Success Criteria and Experimental Method}
+\label{sec:eval-setup}
+
+The project is considered successful if a language model can drive the transformation of a data selection, whether chosen directly or expressed in natural language, into a meaningful visualisation, through a pipeline that identifies the conceptual visualisation schema pattern, recommends a suitable chart, and produces a runnable visualisation specification, without requiring the user to inspect relational tables by hand. A further, stronger criterion is that this should be achieved \emph{reproducibly}, so that the same selection always yields the same visualisation, and \emph{honestly}, so that the model never has sight of the answers against which it is scored.
+
+The last criterion shapes the whole method. The nine evaluation cases are split into two files: a \emph{blind} file, which contains only a case identifier together with the selected table and columns, and a \emph{gold} file, which contains the expected pattern and expected visualisations. The generated programs and the language model read the blind file only; the gold file is read exclusively by a separate evaluation step, after predictions have already been written. This separation is preserved throughout the pipeline, so that even the natural-language front end, which chooses only \emph{which data} to plot, can never leak a pattern or chart label into the components that decide \emph{how} to plot it.
+
+The primary dataset is the Mondial geographical database \cite{mondial}, whose schema exercises every one of the six patterns of Section~\ref{sec:step1} in genuine relations: basic entities such as \texttt{country} and \texttt{lake}, an inherited-key entity in \texttt{economy}, weak entities such as \texttt{country\_population} and \texttt{ethnic\_group}, a one-to-many link in \texttt{airport}, an ordinary many-to-many in \texttt{encompasses}, and a reflexive many-to-many in \texttt{borders}. Two families of models are used: self-hosted Qwen models served on the Imperial HPC (\texttt{Qwen3-14B} for the reasoning-heavy Steps~1 and~2, and \texttt{Qwen2.5-Coder-32B-Instruct} for Step~3), and a stronger general model (referred to below as GPT) accessed through a university web-chat platform. For each step a hand-written \emph{reference} program provides a trusted baseline against which every model-authored program is compared.
 
 \section{Pattern Identification Accuracy}
+\label{sec:eval-step1}
 
-\emph{Placeholder. This section will report the accuracy of the generated Step~1 classifier on the blind cases, compared against the deterministic rule baseline, and analyse the cases that are hardest to classify (in particular the inherited-key basic entity versus weak entity boundary). Preliminary results indicate the classifier reaches full agreement on the nine blind cases.}
+Step~1 was evaluated by running the generated classifier over the nine blind cases and comparing its predictions with the gold patterns. Table~\ref{tab:eval-step1-cases} lists the cases and the predicted pattern for each. The generated classifier agrees with the hand-written baseline on all nine cases.
+
+\begin{table}[htbp]
+\centering
+\caption{Step~1 pattern identification on the nine blind cases. The generated classifier agrees with the gold pattern on every case (9/9).}
+\label{tab:eval-step1-cases}
+\small
+\begin{tabularx}{\textwidth}{|l|X|l|c|}
+\hline
+\textbf{Table} & \textbf{Selected columns} & \textbf{Gold / identified pattern} & \textbf{Result} \\
+\hline
+country & code, population & basic\_entity & PASS \\ \hline
+lake & name, depth, elevation, dam\_height & basic\_entity & PASS \\ \hline
+organization & abbreviation, established & basic\_entity & PASS \\ \hline
+economy & country, gdp, unemployment & basic\_entity\_inherited\_key & PASS \\ \hline
+country\_population & country, year, population & weak\_entity & PASS \\ \hline
+ethnic\_group & country, name, percentage & weak\_entity & PASS \\ \hline
+airport & iata\_code, island, elevation & one\_many\_relationship & PASS \\ \hline
+encompasses & country, continent, percentage & many\_many\_relationship & PASS \\ \hline
+borders & country1, country2, length & reflexive\_many\_many\_relationship & PASS \\ \hline
+\end{tabularx}
+\end{table}
+
+Two of these cases specifically probe the strict scope constraint of Section~\ref{sec:step1}. The \texttt{organization} case carries an unselected composite foreign key that must be ignored, and the \texttt{airport} case carries two foreign keys of which only one is selected. Because the generated classifier counts a foreign key only when all of its columns are among the selected columns, both are classified correctly, confirming that the constraint is applied by the compiled code rather than left to case-by-case judgement.
+
+The more interesting comparison is across program authors, shown in Table~\ref{tab:eval-step1-authors}. The reference classifier and a GPT-authored classifier both reach 9/9 directly. The self-hosted \texttt{Qwen3-14B}, prompted to author the same classifier, initially reached 8/9, its one error being the inherited-key \texttt{economy} case, which it treated as an ordinary basic entity. Tightening the wording of the inherited-key rule in the prompt, with no change to the decision logic itself, moved the same model to 9/9. This is a useful result in its own right: the residual error lay in the \emph{ambiguity of the specification handed to the model}, not in the model's capacity to encode the rule, and once the boundary between an inherited-key basic entity and a weak entity was made explicit the weaker model matched the stronger ones.
+
+\begin{table}[htbp]
+\centering
+\caption{Step~1 classifier accuracy by program author (agreement with the gold patterns over nine blind cases).}
+\label{tab:eval-step1-authors}
+\small
+\begin{tabular}{@{}lc l@{}}
+\toprule
+\textbf{Author of the classifier program} & \textbf{Accuracy} & \textbf{Note} \\
+\midrule
+Hand-written reference & 9/9 & trusted baseline \\
+GPT (from the original prompt) & 9/9 & one-shot, no prompt help \\
+Qwen3-14B (hardened prompt) & 9/9 & after clarifying the inherited-key rule \\
+Qwen3-14B (original prompt) & 8/9 & missed the inherited-key \texttt{economy} case \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Visualisation Recommendation Quality}
+\label{sec:eval-step2}
 
-\emph{Placeholder. This section will evaluate how well Step~2 recommendations match the gold visualisations, and will examine the behaviour of the data-driven relationship selector on dense versus sparse relations, including the attribute-free relations handled through the count fallback.}
+Step~2 was evaluated in two ways: whether it recommends the gold set of charts and selects an appropriate primary chart, and whether the mapping it emits is well-formed enough to drive a Step~3 renderer with no adaptation. Table~\ref{tab:eval-step2} reports agreement with the reference program across authors.
+
+\begin{table}[htbp]
+\centering
+\caption{Step~2 chart recommendation and mapping, by program author, over the nine cases. A dash (---) marks a program that produced no valid selected chart, so that column is not scored for it. The final column reports how many selected mappings rendered complete HTML when fed straight into the Step~3 renderers (cases 5--6 are weak-entity charts whose renderers were built later, so seven cases are testable end-to-end).}
+\label{tab:eval-step2}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Author / prompt} & \textbf{Recommended set} & \textbf{Selected chart} & \textbf{Selected mapping} & \textbf{$\rightarrow$ Step~3} \\
+\midrule
+Hand-written reference & 9/9 & 9/9 & 9/9 & 7/7 \\
+GPT (original prompt) & 9/9 & 9/9 & 7/9 & 7/7 \\
+Qwen3-14B (original prompt) & 4/9 & --- & 4/9 & --- \\
+Qwen3-14B (hardened prompt v2) & 3/9 & --- & 0/9 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The strong model tracks the reference closely. GPT recommends the correct chart set and selects the correct primary chart on all nine cases, and its selected mapping matches the reference on seven; the two differences are the harmless addition of an \emph{optional} colour field on the two scatter cases, which the renderer accepts. Decisively, all seven testable mappings rendered a complete visualisation when fed straight into the corresponding Step~3 renderer, which validates the Step-2-to-Step-3 field-name contract: the roles Step~2 emits (\texttt{key}/\texttt{measure}, \texttt{x}/\texttt{y}/\texttt{size}, \texttt{date}/\texttt{key}, \texttt{parent}/\texttt{child}/\texttt{measure}, \texttt{source}/\texttt{target}/\texttt{width}) are exactly those the renderers read.
+
+The weaker self-hosted model exposes the limits of the paradigm. \texttt{Qwen3-14B} reached only 4/9, failing on the cases whose columns carry parameterised SQL types such as \texttt{NUMERIC(10,2)}: it matched types by exact string and so dropped the scalar attribute, and it omitted the inherited-key branch entirely. More revealing was what happened when the prompt was hardened to address exactly these two defects. Both targeted bugs cleared, but the program regressed elsewhere, dropping its eligibility gating (so that simple cases now recommended every chart) and emitting malformed mappings, for a net result of 0/9 selected mappings, worse than before. This \emph{non-monotonic} response to prompt hardening stands in sharp contrast to Step~1, where an analogous single clarification moved the model cleanly from 8/9 to 9/9. The difference is scale: the Step~2 program is far larger, with a branch per pattern and several mapping shapes, so for a weak model a local prompt edit perturbs the whole generation. The practical conclusion, carried into the design, is that the more complex authoring steps need either a strong code model or the retained reference program as the authoritative artefact.
+
+Beyond matching the gold charts, Step~2's data-driven relationship selector was examined qualitatively on the many-to-many relations. On a sparse relation carrying a scalar attribute, such as \texttt{encompasses} with its \texttt{percentage}, the selector leads with a node-link view (a Sankey or chord diagram); as a relation becomes dense or large it instead leads with the matrix heatmap, which stays readable where a node-link diagram would not. The count fallback was exercised on the attribute-free relations of Mondial, such as membership relations that carry no scalar: by weighting cells and links by edge count, the matrix, force, and arc views render these relations at all, a case the scalar-width Sankey and chord diagrams alone cannot handle. Figure~\ref{fig:eval-relationship} illustrates the transition from a node-link to a matrix view as density increases.
+
+\phfig{0.92}{The data-driven relationship selector: a sparse, small relation with a scalar attribute is shown as a node-link diagram (left), while a dense or large relation is shown as an adjacency-matrix heatmap (right), which remains legible where a node-link view would become cluttered.}{fig:eval-relationship}
 
 \section{Visualisation Implementation Quality}
+\label{sec:eval-step3}
 
-\emph{Placeholder. This section will assess the Step~3 renderers for runnability, mapping fidelity, data completeness, faithfulness to the chart type, and readability, and will summarise the controlled context-window study that separated the context-budget and library-version failure axes.}
+Step~3 was evaluated through a controlled comparison on the hardest of the built cases: the \texttt{encompasses} many-to-many relation, whose 251 rows are rendered as a Sankey diagram. The pattern and mapping were held fixed so that only the code-generation step varied, and the two self-hosted models were run under different libraries and reasoning settings. Table~\ref{tab:eval-step3} summarises the runs.
 
-\section{Determinism, Scalability, and Extensibility}
+\begin{table}[htbp]
+\centering
+\caption{Step~3 controlled comparison on the \texttt{encompasses} Sankey case (251 rows), varying model, rendering library, and reasoning mode. ``Complete'' means the generated file inlines all rows and closes properly. The default serving context window is 16k tokens; the last two rows repeat the D3 and Google Charts runs at 32k.}
+\label{tab:eval-step3}
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}llccl@{}}
+\toprule
+\textbf{Model} & \textbf{Library} & \textbf{Thinking} & \textbf{Complete} & \textbf{Outcome} \\
+\midrule
+Coder-32B & Google Charts & off & yes & \textbf{best: complete and titled} \\
+Qwen3-14B & Google Charts & on & yes & complete; missing title \\
+Coder-32B & D3 & off & yes & renders, but a deprecated API breaks at run time \\
+Coder-32B & D3 (v7-pinned) & off & yes & API fixed by prompt; a graph-construction bug remains \\
+Qwen3-14B & D3 & on & no (175/251) & truncated: thinking + data overran 16k \\
+Qwen3-14B & D3 (compact) & on & no & reasoning trace leaked into the file \\
+\addlinespace[2pt]
+Qwen3-14B & D3 & on & yes (251/251) & 32k window fixes the truncation \\
+Qwen3-14B & Google Charts & on & yes (251/251) & unchanged from 16k \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\emph{Placeholder. This section will argue that the LLM-as-compiler design yields reproducible outputs, scales to full datasets because data is read at run time, and can be extended with new charts and patterns without disturbing the components that already work.}
+The comparison separates two independent failure axes, and this separation is the main analytical result of the section. The first is a \emph{context-budget} axis: under the default 16k-token window, D3's verbose inline data could not co-fit with a long reasoning trace, so the output either truncated mid-array (175 of 251 rows) or the reasoning leaked into the file. Repeating the same run at a 32k window fixed this completely, all 251 rows present and no leak, which shows that this axis scales away with more context. The second is a \emph{library-version and graph-construction} axis: a generated D3 file used an API removed in modern D3, and this did \emph{not} respond to a larger window at all. Pinning the library version and forbidding the removed APIs in the prompt reliably eliminated the deprecated-API error, confirming it as a knowledge-alignment issue that is steerable through the prompt; but a deeper graph-construction error survived even that, marking the boundary of what prompt constraints alone can fix.
+
+Two design decisions follow directly. First, ``thinking'' mode, which was beneficial for the short, reasoning-bound outputs of Steps~1 and~2, is a \emph{liability} here, because for long HTML the reasoning trace competes with the code for the token budget; the most reliable generator was the code-specialised Coder-32B with thinking off. Second, the LLM-as-compiler paradigm structurally removes the context-budget axis in the deployed system, because a renderer reads its data from disk at run time rather than inlining it, so the failures observed above cannot recur once a renderer has been authored. Figure~\ref{fig:eval-renders} shows representative outputs of the completed renderers.
+
+\phfig{0.95}{Representative Step~3 renderer outputs (Sankey, chord, and adjacency-matrix views of Mondial relationships), each generated once as a deterministic D3~v7 renderer and then run reproducibly over the full data.}{fig:eval-renders}
 
 \section{End-to-End Natural-Language Pipeline}
+\label{sec:eval-nl}
 
-\emph{Placeholder. This section will evaluate the natural-language front end: how reliably free-text requests are turned into valid data selections, and whether the complete pipeline produces appropriate visualisations while preserving the blind and gold separation.}
+The blind cases test the pipeline on selections drawn from the same schema it was designed around. To test generalisation to \emph{unseen} requests, the complete natural-language pipeline was evaluated on the thirteen functional visualisation tasks from Bull's earlier project \cite{bull2023visualisation}. These tasks were written by Imperial staff, independently of this system, and phrased in free English rather than as column selections, so they are a genuine external benchmark. Each task was graded on four independent layers: whether the parser chose the right table and columns (\emph{selection}), whether Step~1 identified the expected pattern (\emph{pattern}), whether Step~2 highlighted an acceptable chart (\emph{chart}), and whether any required filter, join, or aggregate was applied correctly (the hardest layer). Table~\ref{tab:eval-nl} lists the tasks and the per-layer outcome.
+
+\begin{table}[htbp]
+\centering
+\caption{End-to-end natural-language evaluation on the thirteen external tasks from Bull's project \cite{bull2023visualisation}, showing the final (improved-parser) system. \cmark~= pass, \xmark~= fail, \textemdash~= expected-hard, not scored. Task~5 is a task Bull's own tool could not express and is excluded from the headline rates. The selection misses on D7 and D12 are gold-superset artefacts, the relationship's scalar attribute was not among the selected columns, rather than incorrect table choices, which is why D12 still identifies the right pattern and chart.}
+\label{tab:eval-nl}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}c X l ccc@{}}
+\toprule
+\textbf{ID} & \textbf{Request (abbreviated)} & \textbf{Expected chart} & \textbf{Sel} & \textbf{Pat} & \textbf{Chart} \\
+\midrule
+D1 & Population of European countries & bar & \cmark & \cmark & \cmark \\
+D2 & GDP vs.\ unemployment of countries & scatter & \cmark & \cmark & \cmark \\
+D3 & Border lengths, South American countries & chord & \cmark & \cmark & \cmark \\
+D4 & Top ten Mexican airports by elevation & bar & \cmark & \cmark & \cmark \\
+D5 & GMT offset of all countries & --- & \cmark & --- & --- \\
+D6 & City--country pairs, population $\geq$ 5M & --- & \cmark & \xmark & \cmark \\
+D7 & Countries lying in two continents & Sankey & \xmark & \cmark & \cmark \\
+D8 & Industry vs.\ service GDP of countries & scatter & \cmark & \cmark & \cmark \\
+D9 & Population of FR/ES/IT, 1960--2015 & line & \cmark & \cmark & \cmark \\
+D10 & Population history of Oceanian countries & line & \cmark & \cmark & \cmark \\
+D11 & Airports at least 2000\,m in elevation & bar & \cmark & \cmark & \cmark \\
+D12 & How continent population divides by country & Sankey & \xmark & \cmark & \cmark \\
+D13 & Languages of South American countries & grouped bar & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:eval-nl-metrics} gives the headline rates and the improvement from two non-leaking additions to the parser; the ``final system'' referred to below is this improved parser. On the layers that can be scored, it parses the correct selection on 11 of 13 tasks (85\%), identifies the correct pattern on 11 of 12 (92\%), and highlights an acceptable chart on 12 of 12 (100\%). The selection rate is unchanged from the initial parser because its two residual misses (D7 and D12) are the gold-superset artefacts noted above rather than wrong tables, so a fix to the selection heuristic would not move them. For comparison, Bull's own tool solved 11 of 13 tasks end-to-end, but needed hand-written custom SQL for seven of them and failed two outright; the natural-language pipeline reaches a comparable selection rate directly from free English, and on two of Bull's failures it degrades gracefully to a sensible chart rather than crashing.
+
+\begin{table}[htbp]
+\centering
+\caption{Natural-language pipeline accuracy, and the effect of the two parser improvements (richer schema context plus self-consistency voting). Task~5 is excluded as not expressible; the pattern and chart denominators drop the expected-hard tasks.}
+\label{tab:eval-nl-metrics}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Layer} & \textbf{Initial parser} & \textbf{Improved parser} & \textbf{$\Delta$} \\
+\midrule
+Selection & 11/13 = 85\% & 11/13 = 85\% & = \\
+Pattern & 10/12 = 83\% & 11/12 = 92\% & +9\,pt \\
+Chart & 11/12 = 92\% & 12/12 = 100\% & +8\,pt \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two improvements are worth noting because both preserve the blind and gold separation. The first enriches the schema context handed to the parser: each column is annotated with a semantic badge (numeric, temporal, lexical, or geographical), and the brief ends with an explicit list of relationship tables derived purely from the foreign-key graph, for example that \texttt{encompasses} connects \texttt{country} and \texttt{continent}. No pattern or chart label is ever included. The second runs the parser several times at a non-zero temperature and majority-votes on the chosen table and column set. Together these fixed the one clean end-to-end miss: the request ``how the population of continents is divided between countries'' was initially flattened to a per-country population bar, losing the part-of-whole relationship, but with the relationship-table context the improved parser correctly selects \texttt{encompasses} and a many-to-many chart. Figure~\ref{fig:eval-nl} summarises the three layer accuracies.
+
+\phfig{0.75}{Natural-language pipeline accuracy by layer (selection, pattern, chart) for the initial and improved parser on the thirteen external tasks.}{fig:eval-nl}
+
+The remaining weaknesses are concentrated, as expected, in the filter/join/aggregate layer, which is where Bull's users needed custom SQL. Encouragingly, the parser auto-generated the query structure for most of these from plain English, including geographic filters expressed as a join through \texttt{encompasses}, a multi-value membership filter with a numeric range, and a grouped ``having count'' aggregate, all cases Bull solved only with hand-written SQL. The genuine gaps are top-$N$ ordering and limiting, a temporal ``at some point'' maximum over years, and a derived cross-table threshold; these are natural targets for future work rather than failures of the schema-reasoning core.
+
+\section{Determinism, Scalability, and Extensibility}
+\label{sec:eval-determinism}
+
+Finally, the pipeline is assessed against the three requirements that motivated its design (Section~\ref{sec:design-requirements}). It is \emph{reproducible} by construction: because the three pipeline steps are deterministic programs and the web server makes no model call when serving a request, the same selection always produces the same pattern, recommendation, and visualisation. This is precisely what makes the tables above meaningful, since a reported accuracy is a property of a fixed program rather than of a sampled model response.
+
+It is \emph{scalable} in the sense that matters for this system. Because each renderer reads its data from disk at run time rather than through the prompt, a visualisation is independent of dataset size, which is what dissolves the context-budget failures of Section~\ref{sec:eval-step3} in the deployed pipeline. Mondial itself, with its dozens of tables and its largest relations in the thousands of rows, is served without difficulty, and the data-source adapter draws from a live PostgreSQL database as readily as from the offline files, using bounded queries for row retrieval.
+
+It is \emph{extensible} because the components are decoupled through explicit contracts. A new chart is added by authoring one more renderer against the shared \texttt{render(mapping, rows)} signature and adding one entry to the Step~2 chart group, without touching pattern identification or any existing renderer; the eighteen charts across five patterns were built incrementally in exactly this way. The database-agnostic mechanisms reinforce this: geographical columns are detected generically rather than hard-coded to Mondial, the choropleth resolves regions through a generic basemap index and refuses to draw rather than render a blank map when it cannot, and alternative keys are discovered from schema uniqueness or the data itself, so the same pipeline can be pointed at another relational database with no change to its reasoning core.
+
+\section{Limitations and Threats to Validity}
+\label{sec:eval-limitations}
+
+The results above are encouraging, but several limitations bound how far they should be read, and they are stated here so that the conclusions of the next chapter can be read against them.
+
+\paragraph{Sample size and a single dataset.} The pattern and recommendation results rest on nine cases, and the end-to-end results on thirteen tasks, all drawn from Mondial. A perfect score on nine blind cases is evidence that the compiled rules are correct on those cases, not a statistical accuracy over a large population, and the internal-validity strength of a deterministic classifier is bought at the cost of external validity: the approach has been demonstrated on one schema, and its behaviour on unrelated databases is only partially probed by the database-agnostic mechanisms rather than measured.
+
+\paragraph{Provenance of the gold labels.} The gold patterns and tasks are taken from earlier student projects on the same database. Because the prompts were iterated against these very boundary cases, in particular the inherited-key versus weak-entity distinction, there is a risk of over-fitting the specification to Mondial's exact structure; a genuinely unfamiliar schema might surface ambiguities the current prompts do not resolve.
+
+\paragraph{Reproducibility of the strong author.} The self-hosted Qwen results are fully reproducible, but the strong ``GPT'' author was reached through a web-chat platform whose exact model version is not pinned, so that particular provenance comparison cannot be reproduced exactly. It should be read as an existence result, a sufficiently strong model authors a near-correct program in one shot, rather than as a precise benchmark of a named model.
+
+\paragraph{Runnability judged by static analysis.} Step~3 correctness was assessed by structural and static JavaScript checks (Section~\ref{sec:impl-testing}) rather than by opening every generated file in a browser and confirming its pixels. These checks catch the failure modes that dominated the study, but they do not guarantee that every chart is visually faithful in every browser.
+
+\paragraph{Qualitative and mixed-run evaluations.} The data-driven relationship selector and the readability of the renderers were assessed qualitatively, without a user study, so claims about appropriateness and legibility are the author's judgement rather than measured human preference. Finally, the natural-language improvement was a partial, mixed-model re-run in which several tasks were reused from an earlier run, so the reported gain is not a clean single-variable comparison; a full re-run under one model would isolate the effect more cleanly.
 
 
 \chapter{Ethical Considerations}
 \label{ch:ethics}
 
-\emph{This chapter is to be completed. It will discuss the ethical dimensions of the work, including:}
+This chapter discusses the ethical dimensions of the work. Although the project is a research prototype rather than a deployed product, several of its design choices have ethical consequences, and the constrained, deterministic form of the pipeline was in part motivated by them.
 
-\begin{itemize}
-    \item \emph{the provenance and licensing of the Mondial dataset, and the fact that it contains no personal data;}
-    \item \emph{the transparency and reproducibility benefits of auditable, generated programs over opaque per-case model calls;}
-    \item \emph{the risk that an automatically generated visualisation could mislead a viewer if the underlying mapping is incorrect, and how the deterministic pipeline mitigates this;}
-    \item \emph{the computational and energy cost of self-hosting large language models on shared HPC infrastructure.}
-\end{itemize}
+\section{Data provenance and privacy}
+
+The primary dataset, Mondial, is a well-documented, publicly available geographical database assembled from public sources such as international statistical yearbooks and encyclopaedias. It contains information about countries, cities, geographical features, organisations, languages, and religions, and no personal data about identifiable individuals. Using it therefore raises no data-protection concerns, and its long history as a teaching and research benchmark makes results on it easy for others to reproduce and scrutinise. The production layer can, however, connect to an arbitrary live PostgreSQL database, which may contain sensitive or personal data. Two properties of the design limit the exposure this creates: the pipeline reads only the schema and bounded samples of rows that it needs to reason about structure and to render a chart, and, when the natural-language and selection layers are disabled, no data leaves the machine at all. Where a third-party model API is used, any data placed in a prompt is sent to that provider, so a deployment over sensitive data should prefer the self-hosted models, which keep both the schema and the rows within the operator's own infrastructure.
+
+\section{Transparency and the risk of misleading visualisations}
+
+A visualisation is a form of argument, and an automatically generated one can mislead if the mapping beneath it is wrong: a poorly chosen chart, a miscoloured map, or an inverted axis can all suggest a pattern that the data does not support. The design mitigates this in three ways. First, the reasoning that chooses a chart is deterministic and auditable: because each step is a small, readable program rather than an opaque per-case model response, a questionable recommendation can be traced to the rule that produced it. Second, the pipeline degrades safely rather than silently: the choropleth refuses to draw when too few regions resolve, and a chart without a renderer returns a clear placeholder instead of a broken or empty image. Third, the model is deliberately confined at the edges of the pipeline, choosing which data to plot and which of several legal charts to highlight, but never inventing the mapping, so it cannot fabricate a visual claim that the deterministic core would reject. Transparency also brings a reproducibility benefit that matters ethically in a research setting: a reported accuracy is a property of a fixed program, so the evaluation cannot be quietly improved by re-sampling a model until it agrees.
+
+\section{Environmental cost}
+
+Serving large language models, even for the modest workload of authoring a handful of programs, consumes energy on shared high-performance computing infrastructure. The LLM-as-compiler paradigm has a favourable profile here that is worth stating explicitly: because the model is invoked only once, at compile time, to author each program, and never again while the system serves requests, the per-request energy cost of the deployed pipeline is that of ordinary deterministic code, not of model inference. A system that instead called a model on every request would multiply its inference cost by its traffic; this one does not. The one-off authoring cost is small and is incurred only when a new program is created or a prompt is revised.
 
 
 \chapter{Future Work}
 \label{ch:future}
 
-\emph{This chapter is to be completed. Anticipated directions include:}
+The evaluation of Chapter~\ref{ch:evaluation} points to several natural extensions, which fall into three groups: broadening what the pipeline can express, strengthening the weakest layer, and testing the approach more widely.
 
-\begin{itemize}
-    \item \emph{extending the relationship chart set with parallel sets or alluvial diagrams and hierarchical edge bundling, and handling directed reflexive relations;}
-    \item \emph{supporting temporal relationship attributes, which the Mondial dataset does not exercise;}
-    \item \emph{investigating whether fine-tuning a model improves program authoring on weaker models, relative to prompt engineering alone;}
-    \item \emph{a user study of the natural-language workflow and of the readability of the generated visualisations;}
-    \item \emph{evaluating the approach on databases beyond Mondial to test its generalisability.}
-\end{itemize}
+\section{Broadening the visualisation vocabulary}
+
+The relationship chart set could be extended with parallel-set and alluvial diagrams and with hierarchical edge bundling, all of which suit dense many-to-many data and would give the data-driven selector a richer menu to rank. Two structural cases in particular are currently unexercised. The first is the \emph{directed} reflexive relation, in which the two endpoints of a self-relationship are asymmetric, such as a river flowing into another; the current arc and chord renderers assume an undirected relation, and directedness would call for arrowed or ordered encodings. The second is the \emph{temporal relationship attribute}, where the strength of an association changes over time; the Mondial schema contains no such attribute, so supporting it would require both a new dataset and an animated or small-multiple encoding. Both were identified during the audit of Mondial as gaps in the test data rather than in the design, and both are good candidates for a follow-up dataset chosen specifically to exercise them.
+
+\section{Strengthening the natural-language and authoring layers}
+
+The natural-language evaluation showed that the weakest layer is the translation of filters, joins, and aggregates from free English: top-$N$ ordering and limiting, a temporal maximum over years, and derived cross-table thresholds were the remaining gaps. These are well-defined targets, and each could be addressed by extending the selection grammar and the parser's few-shot guidance without disturbing the schema-reasoning core. On the authoring side, the non-monotonic response of the weaker model to prompt hardening (Section~\ref{sec:eval-step2}) raises a clear question: whether fine-tuning a smaller model to author these programs would give the reliability that prompt engineering alone could not, and whether it would do so more cheaply than relying on a large general model. A controlled comparison of prompt engineering against fine-tuning for program authoring, holding the target contract fixed, would answer this directly.
+
+\section{Wider evaluation and user studies}
+
+The system was evaluated on Mondial and on an external task set written for an earlier project, but a full test of generalisability would run it against several unrelated databases, measuring how often the geographical detection, the alternative-key discovery, and the pattern classifier behave correctly on schemas they were never tuned for. Finally, the appropriateness and readability of a visualisation are ultimately judged by people, so a user study, along the lines of those conducted for the two predecessor systems, comparing both expert and non-expert users on the natural-language workflow and on the clarity of the generated charts, would complement the automated evaluation with the human judgement that only a study can provide.
 
 
 \chapter{Conclusion}
 \label{ch:conclusion}
 
-\emph{This chapter is to be completed. It will summarise the extent to which the project met its objectives, showing that a Large Language Model can perform conceptual-schema-level reasoning to identify visualisation schema patterns and to drive executable visualisation generation, and will reflect on the LLM-as-compiler paradigm as the key enabler of reproducible and auditable results.}
+This project set out to investigate whether Large Language Models can support conceptual-model-based data visualisation: whether a model can reason over relational schema structure, identify the visualisation schema patterns of McBrien and Poulovassilis, recommend suitable visualisations, and drive an end-to-end pipeline from a user's request to a runnable chart. The evaluation of Chapter~\ref{ch:evaluation} answers each of these in turn.
+
+On the first two objectives, the results are strong. A generated, deterministic classifier identifies the correct visualisation schema pattern on all nine blind cases, distinguishing the structurally similar inherited-key basic entity and weak entity, and a generated recommender chooses an appropriate chart and emits a mapping that drives the renderers with no glue code, matching a hand-written reference closely when authored by a strong model. On the third objective, eighteen renderers spanning five patterns turn those mappings into interactive visualisations, and a controlled study of the generation step separated its failures into a context-budget axis that the design dissolves and a library-version axis that prompt constraints largely fix. On the fourth objective, the complete natural-language pipeline generalised to an external task set written for an earlier project, parsing the correct data selection on most tasks and recommending an acceptable chart on all of the scored ones, while degrading gracefully on requests that even the predecessor tool could not express.
+
+The thread running through these results is the LLM-as-compiler paradigm. By asking the model to author a deterministic program once, rather than to answer each case at run time, the project turned the two most troublesome properties of run-time model use, non-determinism and a bounded context window, from recurring hazards into problems solved once at authoring time. This is what makes the reported accuracies meaningful, because each is a property of a fixed program; what keeps the evaluation honest, because the answer is never visible to the model; and what makes the system extensible, because a new chart is one more renderer against a shared contract. It also draws a clean line between this work and Text-to-SQL: rather than generating executable queries, the natural-language front end performs a constrained, visualisation-oriented semantic parse that chooses only which data to plot, leaving every decision about how to visualise it to the auditable programs behind it.
+
+The approach has clear limits, most of them concentrated in the translation of complex filters and aggregates from free English and in the reliance on a sufficiently strong model to author the more intricate programs. These are the natural subjects of the future work of the previous chapter. Taken together, however, the results support the project's central claim: a Large Language Model can perform conceptual-schema-level reasoning to identify visualisation schema patterns and to drive executable visualisation generation, and it can do so in a way that is reproducible, auditable, and honest to evaluate.
 
 
 \appendix
@@ -967,4 +991,72 @@ deterministic (no randomness, no network, no model calls), exposing
 classify_selection(schema, table_name, selected_columns) -> dict
 returning predicted_pattern and a short reason. It must read blind input
 only and must never read any gold/answer file.
+\end{verbatim}
+
+\section{Step 2 --- Chart-Recommendation Prompt (Excerpt)}
+\label{app:step2-prompt}
+
+The Step~2 prompt (Section~\ref{sec:step2}) likewise asks the model to author a
+deterministic program rather than to recommend charts case by case. The excerpt below
+shows the dimension-typing rules and one per-pattern block; the full prompt covers every
+pattern and fixes the mapping field names the Step~3 renderers consume.
+
+\begin{verbatim}
+Task: write a deterministic Python program that, given the schema, a
+column selection and its identified pattern, (1) classifies each selected
+attribute's dimension type, (2) checks every chart in the pattern's group
+against its mandatory requirements, (3) lists the eligible charts, and
+(4) emits, for each, a mapping whose field names are EXACTLY the ones the
+Step-3 renderers consume. Reason only from PK/FK structure and SQL column
+types, never from the natural-language meaning of names.
+
+Dimension types (from the SQL type):
+- scalar   : INT, INTEGER, BIGINT, NUMERIC, DECIMAL, FLOAT, DOUBLE, REAL ...
+- temporal : DATE, TIME, TIMESTAMP, YEAR
+- discrete : VARCHAR, CHAR, TEXT
+Match by the leading type name, so NUMERIC(10,2) is still scalar.
+Two further characters are CONDITIONAL (cannot be proven from the type):
+geographical (region key -> choropleth) and lexical (word key -> word cloud);
+flag them, do not assert them.
+
+basic_entity / basic_entity_inherited_key:
+  key = the selected primary-key column; attributes = selected scalar/
+  temporal columns that are not keys.
+  - bar     : key + >=1 scalar attribute -> { table, key, measure }
+  - scatter : key + >=2 scalar attributes -> { table, key, x, y }
+  - bubble  : key + >=3 scalar attributes -> { table, key, x, y, size }
+  - calendar: key + >=1 temporal attribute -> { table, date, key }
+  - choropleth (conditional: key geographical) -> { table, region, color }
+  - word cloud (conditional: key lexical)     -> { table, text, size }
+\end{verbatim}
+
+\section{Step 3 --- Base Renderer Contract (Excerpt)}
+\label{app:step3-prompt}
+
+Every Step~3 renderer is authored against the shared base prompt of
+Section~\ref{sec:step3}. The excerpt below shows the parts of the contract that proved
+decisive in the evaluation: the fixed entry point, the pinned library version with its
+list of forbidden removed APIs, and the rule against brace-based templating.
+
+\begin{verbatim}
+Write one self-contained standard-library Python module that exposes
+    render(mapping: dict, rows: list[dict]) -> str
+returning a complete HTML document, plus a --mapping/--data/--out CLI.
+The data is supplied at run time as a file; it is NOT embedded in this
+prompt, and the program must not assume any dataset, value set, or row count.
+Always read column names from the mapping; never hard-code Mondial names.
+
+Library (pinned): D3 version 7 only, from the official CDN. Do NOT use
+APIs removed in D3 v6+ -- d3.keys, d3.values, d3.entries, d3.map, d3.set,
+d3.nest, d3.event -- use Object.keys, Map, Set, d3.group/d3.rollup, and the
+event passed as the first argument to listeners.
+
+Do NOT assemble the HTML with any brace-based templating (no f-strings, no
+str.format): the embedded JavaScript contains literal { ... } and ${ ... }.
+Inject JSON only by plain string concatenation or str.replace on non-brace
+placeholder tokens, and keep all JavaScript braces exactly as written.
+
+The visualisation must be interactive: hovering a mark shows a tooltip and
+emphasises the connected marks. Handle empty data by rendering a short
+"No data to display" message rather than a NaN layout.
 \end{verbatim}
