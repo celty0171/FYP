@@ -39,7 +39,7 @@ _SYSTEM = (
     '  "aggregate": {"group_by": ["<col>"...], "measures": [{"column":"<col>","fn":"sum","as":"<alias>"}],\n'
     '                "having": [{"column":"<measure alias or group_by col>","op":"<gt|ge|lt|le|eq>","value":<n>}]}\n'
     "}\n"
-    "Rules: for a data-first visualisation, 'columns' MUST include the base table's "
+    "Rules: 'columns' MUST include the base table's "
     "identifying key (its primary-key column(s)) as well as the attributes to show — the key "
     "identifies the entities being visualised (e.g. for country include 'code', not only "
     "'name'). Omit joins/filters/aggregate if not needed (use [] or {}). For a plain filter "
