@@ -58,7 +58,7 @@ n=$(psql -h localhost -p "$PGPORT" -U "$PGUSER" -d "$DBNAME" -tAc \
      "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
 if [ "${n:-0}" = "0" ]; then
   echo "• loading Mondial into $DBNAME"
-  python "$REPO/experiments/scripts/load_mondial_postgres.py" --url "$URL"
+  python "$REPO/schemavislm/scripts/load_mondial_postgres.py" --url "$URL"
 fi
 
 cat <<EOF

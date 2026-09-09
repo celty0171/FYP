@@ -22,9 +22,9 @@ PGPORT="$PGPORT" DBNAME="$DBNAME" PGUSER="$PGUSER" "$REPO/start_pg.sh"
 # 2) Launch the web server against that live database. PGGSSENCMODE=disable silences the HPC
 # Kerberos/GSSAPI probe for psycopg2 too.
 echo
-echo "• starting web server on http://$HOST:$PORT  (VIZER_DATASOURCE=postgres, db=$DBNAME)"
+echo "• starting web server on http://$HOST:$PORT  (SCHEMAVISLM_DATASOURCE=postgres, db=$DBNAME)"
 echo "  from your laptop:  ssh -L $PORT:localhost:$PORT <you@hpc>   then open http://localhost:$PORT"
 exec env \
-  VIZER_DATASOURCE=postgres PGGSSENCMODE=disable \
+  SCHEMAVISLM_DATASOURCE=postgres PGGSSENCMODE=disable \
   PG_HOST=localhost PG_PORT="$PGPORT" PG_USER="$PGUSER" PG_DATABASE="$DBNAME" \
-  python "$REPO/experiments/web_pipeline/server.py" --host "$HOST" --port "$PORT"
+  python "$REPO/schemavislm/web_pipeline/server.py" --host "$HOST" --port "$PORT"

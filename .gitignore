@@ -2,3 +2,10 @@ __pycache__/
 *.py[cod]
 .venv/
 .env
+
+# Local-only staging: category-3 files (reports / literature / HPC notes) kept on disk
+# but excluded from git so they never reach remote main.
+try/
+
+# Kept at repo root for local tooling (Claude Code project instructions) but not pushed.
+CLAUDE.md

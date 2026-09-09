@@ -1,6 +1,6 @@
-# VizLM — LLM-powered visualisation, guided by your database's structure
+# SchemaVisLM — LLM-powered visualisation, guided by your database's structure
 
-VizLM turns a database selection into an interactive web visualisation. It classifies the
+SchemaVisLM turns a database selection into an interactive web visualisation. It classifies the
 schema pattern of what you pick (a table + columns), recommends a chart that fits that
 structure, and renders it — optionally letting an LLM take your plain-language request and
 pick the chart. The demo ships with the offline **Mondial** dataset, so it runs with no
@@ -19,15 +19,15 @@ pip install -r requirements.txt
 
 # 1. Create an empty database and load the bundled Mondial dump into it
 createdb mondial
-python experiments/scripts/load_mondial_postgres.py \
+python schemavislm/scripts/load_mondial_postgres.py \
     --url postgresql+psycopg2://postgres@localhost:5432/mondial
 
 # 2. Point the app at it
 cp .env.example .env          # then set PG_HOST/PG_PORT/PG_USER/PG_PASSWORD/PG_DATABASE
-                              # (or a single DATABASE_URL). VIZER_DATASOURCE=postgres is default.
+                              # (or a single DATABASE_URL). SCHEMAVISLM_DATASOURCE=postgres is default.
 
 # 3. Run
-python experiments/web_pipeline/server.py --port 8090
+python schemavislm/web_pipeline/server.py --port 8090
 ```
 
 Then open <http://127.0.0.1:8090>, pick a table and some columns, and a chart is built for
@@ -37,17 +37,17 @@ what to fix and exits — it does not silently fall back.
 
 ## Offline (JSON) mode — no database
 
-Set `VIZER_DATASOURCE=json` in `.env` (or the environment) to run against the bundled Mondial
+Set `SCHEMAVISLM_DATASOURCE=json` in `.env` (or the environment) to run against the bundled Mondial
 JSON files with no PostgreSQL:
 
 ```bash
-VIZER_DATASOURCE=json python experiments/web_pipeline/server.py --port 8090
+SCHEMAVISLM_DATASOURCE=json python schemavislm/web_pipeline/server.py --port 8090
 ```
 
 ## Natural language + LLM chart choice (optional)
 
 In `.env`, set `DASHSCOPE_API_KEY` (an OpenAI-compatible Alibaba Cloud Bailian / DashScope
-key) to enable plain-language input, and `VIZER_LLM_STEP2=on` to let the LLM rank charts. Both
+key) to enable plain-language input, and `SCHEMAVISLM_LLM_STEP2=on` to let the LLM rank charts. Both
 degrade gracefully to the deterministic path if no key is set.
 
 ## How it works

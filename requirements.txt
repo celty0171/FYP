@@ -2,9 +2,9 @@
 # natural-language input + LLM chart selection). The bundled Mondial demo runs on the
 # Python standard library alone, so nothing here is needed to try it:
 #
-#   python experiments/web_pipeline/server.py --port 8090
+#   python schemavislm/web_pipeline/server.py --port 8090
 #
-# Install these only when using VIZER_DATASOURCE=postgres and/or a DASHSCOPE_API_KEY.
+# Install these only when using SCHEMAVISLM_DATASOURCE=postgres and/or a DASHSCOPE_API_KEY.
 
 SQLAlchemy>=2.0        # live schema (inspect) + row queries
 psycopg2-binary>=2.9   # PostgreSQL driver

@@ -1,1 +1,0 @@
-{"table": "encompasses", "source": "country", "target": "continent", "value": "percentage", "pattern": "many_many_relationship", "title": "Country–continent force-directed graph"}

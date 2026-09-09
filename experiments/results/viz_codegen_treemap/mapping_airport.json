@@ -1,1 +1,0 @@
-{"table": "airport", "parent": "island", "child": "iata_code", "measure": "elevation", "title": "Airports per island (tree map, area = elevation)"}

@@ -1,4 +1,4 @@
-# Keep the image small, but DO NOT exclude experiments/mondial_database/ or results/ —
+# Keep the image small, but DO NOT exclude schemavislm/mondial_database/ or results/ —
 # server.py imports the LLM-authored programs from results/ and reads the Mondial JSON.
 .git
 .gitignore
@@ -7,7 +7,7 @@
 *.pyc
 *.pyo
 .env
-experiments/outputs/
-experiments/generated/
+schemavislm/outputs/
+schemavislm/generated/
 *.log
 .DS_Store
