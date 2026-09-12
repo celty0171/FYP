@@ -1009,16 +1009,27 @@ document.querySelectorAll(".mtab").forEach(t => t.onclick = () => {
   };
   // Prefill the connect form from the server's configured .env (host/port/user/database,
   // never the password), so connecting is a single click.
+  let dsState = null;
   try {
     const ds = await api("/api/datasource");
+    dsState = ds;
     const d = (ds && ds.defaults) || {};
     if (d.host) $("pgHost").value = d.host;
     if (d.port) $("pgPort").value = d.port;
     if (d.user) $("pgUser").value = d.user;
     if (d.database) $("pgDatabase").value = d.database;
   } catch (e) { /* leave form defaults */ }
-  // Start locked: the user must connect a database before either mode is usable.
-  setConnected(false);
+  // If the server already has a working data source (its configured .env DB — e.g. the hosted
+  // Mondial demo), start ready so visitors needn't enter any DB credentials. The connect form
+  // stays available for pointing at a different database.
+  if (dsState && Array.isArray(dsState.tables) && dsState.tables.length) {
+    await loadSchema();
+    const st = dsState.status || {};
+    setConnected(true, st.database || st.mode || "server database");
+  } else {
+    // No usable startup source (e.g. misconfigured) — fall back to the manual connect gate.
+    setConnected(false);
+  }
 })();
 </script>
 </body>

@@ -137,8 +137,18 @@ RENDERERS = {
 # The active data source can be swapped at runtime from the web UI (POST /api/connect),
 # mirroring VizER's live-DB login form. `.env` still provides the startup default; a form
 # override rebinds the globals below so every downstream read sees the new source.
+def _startup_db_name() -> str:
+    """Best-effort database name for the startup source, so the UI can show it (e.g.
+    'Connected · mondial') without a manual connect. Parsed from the configured URL for a
+    live DB; empty for the offline JSON source (the UI then falls back to the mode)."""
+    if CONFIG.datasource == "postgres" and CONFIG.database_url:
+        from urllib.parse import urlparse
+        return (urlparse(CONFIG.database_url.replace("+psycopg2", "")).path or "").lstrip("/")
+    return ""
+
+
 DS_STATUS: dict[str, Any] = {
-    "mode": CONFIG.datasource, "database": "", "note": "startup default from .env"
+    "mode": CONFIG.datasource, "database": _startup_db_name(), "note": "startup default from .env"
 }
 
 
