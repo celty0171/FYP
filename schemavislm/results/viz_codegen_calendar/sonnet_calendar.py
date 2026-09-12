@@ -1,13 +1,3 @@
-"""Reference calendar renderer for basic_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_calendar.md. Reads a
-chart mapping and the entity rows at run time (a flat array, or the grouped Mondial
-database selected by mapping["table"]) and emits a complete, standalone D3 v7
-calendar HTML file: one year strip per year that has data, day cells coloured by the
-day's value (count of instances, or sum of an optional measure). HTML assembled by
-plain concatenation (no f-string / str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

@@ -1,18 +1,3 @@
-"""Reference choropleth renderer for basic_entity (geographical key) selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_choropleth.md. Colours a
-**world-atlas** basemap (50m sovereign country outlines) by a scalar attribute. Each sovereign
-is a single polygon (the UK, Belgium each one shape) and dependencies are merged into their
-sovereign; regions join on the ISO 3166-1 numeric id via ``mondial_iso_crosswalk.json`` (with a
-lowercased-name fallback).
-
-A highly skewed measure (population/area/gdp) is spread with a sqrt colour scale and a lifted
-floor so small countries stay visible; borders are light grey so every shape is outlined. The
-geometry is fetched at run time from a CDN (pinned); TopoJSON vs GeoJSON is auto-detected. Reads a
-flat row array or the grouped Mondial database (mapping["table"]). HTML by plain concatenation
-(no f-string / str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

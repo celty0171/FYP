@@ -1,13 +1,3 @@
-"""Reference scatter / bubble renderer for basic_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_scatter.md / chart_bubble.md.
-Scatter and bubble share one cartesian data-prep recipe, so one renderer serves both:
-when the mapping carries a `size` field it draws a bubble chart (area = size via
-scaleSqrt); otherwise a scatter diagram. Reads a flat row array or the grouped Mondial
-database (mapping["table"]). HTML assembled by plain concatenation (no f-string /
-str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

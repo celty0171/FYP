@@ -1,13 +1,3 @@
-"""Reference spider/radar renderer for weak_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_spider.md. One polygon
-per parent key (ring), one axis per child key (spoke), radius = scalar measure. Because
-a radar is unreadable with many rings/spokes, keeps the top max_rings rings by total and
-the top max_spokes spokes by frequency, padding missing combinations with 0. Reads a flat
-row array or the grouped Mondial database (mapping["table"]). HTML by plain concatenation.
-Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

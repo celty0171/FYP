@@ -1,12 +1,3 @@
-"""Reference word-cloud renderer for basic_entity (lexical key) selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_wordcloud.md. Each instance
-is a word (lexical key) whose font size is area-proportional (scaleSqrt) to a scalar
-attribute, laid out by the official d3-cloud plugin (loaded from a CDN). The layout is
-asynchronous; words are drawn in its on("end") callback. Reads a flat row array or the
-grouped Mondial database (mapping["table"]). HTML by plain concatenation. Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

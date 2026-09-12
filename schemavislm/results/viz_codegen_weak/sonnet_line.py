@@ -1,11 +1,3 @@
-"""Reference line-chart renderer for weak_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_line.md. One line per
-parent key (series); scalar child key on x, scalar measure on y. Reads a flat row
-array or the grouped Mondial database (mapping["table"]). HTML assembled by plain
-concatenation (no f-string / str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

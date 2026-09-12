@@ -1,13 +1,3 @@
-"""Reference circle-packing renderer for one_many_relationship selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_circlepack.md. Reads a
-chart mapping and the child rows at run time (a flat array, or the grouped Mondial
-database selected by mapping["table"]) and emits a complete, standalone D3 v7
-circle-packing HTML file with hover interaction. Builds the same two-level
-parent -> child hierarchy as the tree map; leaf area = measure; layout is d3.pack.
-HTML assembled by plain concatenation (no f-string / str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

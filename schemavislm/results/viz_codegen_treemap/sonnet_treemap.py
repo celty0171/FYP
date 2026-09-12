@@ -1,13 +1,3 @@
-"""Reference tree-map renderer for one_many_relationship selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_treemap.md. Reads a
-chart mapping and the child rows at run time (a flat array, or the grouped Mondial
-database selected by mapping["table"]) and emits a complete, standalone D3 v7
-tree-map HTML file with hover interaction. Builds a two-level parent -> child
-hierarchy; leaf area = measure. HTML assembled by plain concatenation (no f-string
-/ str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

@@ -1,22 +1,3 @@
-"""Reference stacked-bar renderer for weak_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_stacked.md, strictly per the
-McBrien paper / pattern_notes weak-entity rules: a weak entity has a compound key of a parent
-key `k1` (group) and a local child key `k2` (segment), plus a scalar `a1` (value). One bar per
-`k1`; each stacked element is a `k2` value; the segment length is `a1`.
-
-The paper requires **completeness** for a stacked bar: each `k1` bar should contain the same, or
-almost the same, set of `k2` values, otherwise the stacks are not comparable (pattern_notes
-"Stacked bar ... requires completeness"). Real weak entities have a long tail of `k2` values that
-occur for only one or two `k1` values; including them all yields hundreds of unshared,
-non-comparable segments. So this renderer keeps the `k2` values shared across the most `k1`
-groups (the comparable core) and folds the remaining tail into a single `(other)` band, which
-preserves each bar's part-to-whole total. The kept/folded counts are stated in the subtitle.
-
-Reads a flat row array or the grouped Mondial database (mapping["table"]). HTML by plain
-concatenation. Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

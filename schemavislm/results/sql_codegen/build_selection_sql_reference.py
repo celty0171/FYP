@@ -1,7 +1,6 @@
-"""Step 0 (data layer) — the LLM-authored deterministic SQL builder.
+"""Step 0 (data layer) — the SQL builder.
 
-Compile-time artefact of the LLM-as-compiler paradigm, extended to the data-marshalling
-layer: authored **once** against the clean schema dict + a selection, it emits one
+Using the clean schema dict + a selection as input, it emits one
 parameterised PostgreSQL query that performs the join -> filter -> (aggregate) that the
 offline path does in Python (``schemavislm/join`` -> ``schemavislm/filter`` ->
 ``schemavislm/aggregate``). Pushing this into the database makes aggregation and filter
@@ -40,8 +39,6 @@ The generated query is layered exactly as the offline stages run:
   4. **order + limit**: measure-desc when a measure exists (top-N like Mohammed's TRUNCATE),
      else by the key columns; then ``LIMIT``.
 
-The offline Python stages remain the authoritative implementation for the JSON fixture path
-and for ``SCHEMAVISLM_PUSHDOWN=off`` fallback; ``compare_sql_vs_python.py`` asserts the two agree.
 """
 
 from __future__ import annotations

@@ -1,23 +1,3 @@
-"""Reference hierarchy-tree renderer for one_many_relationship selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_hierarchytree.md, strictly per the
-McBrien paper / pattern_notes one-many rules. A one-many relationship links a parent entity `Ep`
-to a child entity `Ec`; the hierarchy tree shows "instances of parent entity `Ep` ... as nodes
-connected by lines to child instances `Ec`. A discrete attribute `a1` may optionally be used to
-colour the links between the entities." (pattern_notes). So this is a node-link tree, NOT an
-area chart: unlike the tree map / circle packing it does **not** require a scalar measure
-(pattern_notes: "Hierarchy tree does not require scalar size, but may use a discrete attribute for
-colour"). The optional discrete attribute colours the parent->child **links**, not the nodes.
-
-Mapping (Step-2 shape): { "table": <Ec>, "parent": <kp = FK column>, "child": <kc = child key>,
-"color": <optional discrete attribute on Ec> }. Two-level hierarchy root -> parent values ->
-child instances; laid out with d3.tree(); links coloured by the child's discrete attribute when
-`color` is given, otherwise a neutral grey.
-
-Reads a flat row array or the grouped Mondial database (mapping["table"]). HTML by plain
-concatenation (no f-string / str.format). Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse

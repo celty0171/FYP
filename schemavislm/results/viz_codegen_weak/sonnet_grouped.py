@@ -1,25 +1,3 @@
-"""Reference grouped-bar renderer for weak_entity selections (D3 v7).
-
-Faithful response to prompts/viz_codegen/base_d3v7.md + chart_grouped.md, strictly per the
-McBrien paper / pattern_notes weak-entity rules. A weak entity has a compound key of a parent
-key `k1` (group) and a local child key `k2` (segment), plus a scalar `a1` (value). A grouped bar
-chart draws one cluster per `k1`; within each cluster one bar per `k2`, side by side; the bar
-height is `a1`. It is the **comparison** sibling of the stacked bar: instead of part-to-whole, it
-puts the `a1` values for each `k2` next to each other so they can be compared across `k1`.
-
-The paper requires the `k2` values to be "complete, or almost complete, across `k1` values",
-otherwise the side-by-side comparison is not meaningful (pattern_notes "grouped bar ... require
-scalar a1" + the completeness note). Real weak entities have a long tail of `k2` values present
-for only one or two `k1` groups. Because a grouped bar is a comparison (not a composition), the
-faithful response is the spider one: **keep only the comparable core** — the `k2` values shared
-across the most groups and the `k1` groups best covered by them — and drop the rest (do *not*
-fold into an "(other)" bar, which would be a meaningless side-by-side sum). Both caps are stated
-in the subtitle.
-
-Reads a flat row array or the grouped Mondial database (mapping["table"]). HTML by plain
-concatenation. Std-lib only.
-"""
-
 from __future__ import annotations
 
 import argparse
