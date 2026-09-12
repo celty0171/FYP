@@ -1,0 +1,162 @@
+{
+  "_about": "External NL->visualisation test set adapted from David Bull's MSc functional-test tasks (Table 5.1). Each task's natural-language wording is fed to the web NL box; the gold records the expected selection, ER pattern and chart(s). Grade the four layers independently (selection / pattern / chart / filter-join-aggregate). Mondial column names verified against mondial_schema_summary_clean.json (2026-08-26).",
+  "_pattern_taxonomy": ["basic_entity", "basic_entity_inherited_key", "weak_entity", "one_many_relationship", "many_many_relationship", "reflexive_many_many_relationship"],
+  "tasks": [
+    {
+      "id": "D1",
+      "nl_input": "The current population of countries in Europe",
+      "expected_table": "country",
+      "expected_columns": ["code", "name", "population"],
+      "expected_filter_join_aggregate": "filter continent = 'Europe' (needs join country.code -> encompasses.country, encompasses.continent = 'Europe')",
+      "expected_pattern": "basic_entity",
+      "expected_charts": {"primary": "bar chart", "acceptable": ["choropleth map", "word cloud"]},
+      "david_result": "Pass (point & click)",
+      "stresses": "geographic filter across a many-many relationship (country<->continent)",
+      "notes": "population is the single snapshot country.population, NOT the country_population time series. country is geographical+lexical, so choropleth/word cloud are also eligible."
+    },
+    {
+      "id": "D2",
+      "nl_input": "The relationship between GDP and unemployment for all countries",
+      "expected_table": "economy",
+      "expected_columns": ["country", "gdp", "unemployment"],
+      "expected_filter_join_aggregate": "none",
+      "expected_pattern": "basic_entity_inherited_key",
+      "expected_charts": {"primary": "scatter diagram", "acceptable": []},
+      "david_result": "Pass (point & click)",
+      "stresses": "is-a / inherited-key subset (economy PK = country, a FK to country); two scalar attributes -> scatter",
+      "notes": "economy.country is both the whole PK and a FK, so the entity is an inherited-key basic entity, treated like a basic entity for charting."
+    },
+    {
+      "id": "D3",
+      "nl_input": "The length of the borders for all countries in South America",
+      "expected_table": "borders",
+      "expected_columns": ["country1", "country2", "length"],
+      "expected_filter_join_aggregate": "filter both endpoints to South America (join country1/country2 -> encompasses, continent = 'South America')",
+      "expected_pattern": "reflexive_many_many_relationship",
+      "expected_charts": {"primary": "chord diagram", "acceptable": ["matrix heatmap", "force graph", "arc diagram", "sankey diagram"]},
+      "david_result": "Pass (point & click)",
+      "stresses": "reflexive many-many (country borders country); geographic filter on BOTH endpoints",
+      "notes": "length is the scalar edge weight. The continent filter on a reflexive relationship is the hard part."
+    },
+    {
+      "id": "D4",
+      "nl_input": "The top ten Mexican airports by elevation",
+      "expected_table": "airport",
+      "expected_columns": ["iata_code", "name", "elevation"],
+      "expected_filter_join_aggregate": "filter country = 'Mexico' (country code MEX); order by elevation desc; limit 10",
+      "expected_pattern": "basic_entity",
+      "expected_charts": {"primary": "bar chart", "acceptable": []},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "single-column equality filter + ordering + row limit (top-N)",
+      "notes": "airport PK is iata_code alone (own key, not inherited) -> basic entity. elevation is the single scalar measure."
+    },
+    {
+      "id": "D5",
+      "nl_input": "The GMT offset of all countries",
+      "expected_table": "airport",
+      "expected_columns": ["country", "gmt_offset"],
+      "expected_filter_join_aggregate": "would require chaining joins country -> province -> city -> airport to attribute a GMT offset to a country",
+      "expected_pattern": "n/a (no clean single-table mapping)",
+      "expected_charts": {"primary": "none / graceful message", "acceptable": ["bar chart on airport.gmt_offset"]},
+      "david_result": "Fail",
+      "stresses": "multi-hop join chain; the measure (gmt_offset) lives on airport, not country",
+      "notes": "David's system FAILED this (needs country-province-city-airport chaining). Interesting probe: does the LLM NL parser overreach (wrongly map to a country measure) or degrade gracefully? Either 'no sensible result' or an honest airport-level chart is acceptable; a confidently-wrong country choropleth is a failure."
+    },
+    {
+      "id": "D6",
+      "nl_input": "All country-city pairs where the population of the city has been at least 5,000,000 at some point",
+      "expected_table": "city_population",
+      "expected_columns": ["country", "city", "year", "population"],
+      "expected_filter_join_aggregate": "aggregate MAX(population) per (country, city) over all years, then filter MAX >= 5000000",
+      "expected_pattern": "one_many_relationship (country -> city) / weak temporal on city_population",
+      "expected_charts": {"primary": "none / graceful message", "acceptable": ["hierarchy tree", "treemap", "grouped bar chart"]},
+      "david_result": "Fail",
+      "stresses": "temporal aggregate ('at some point' = MAX over years) + threshold filter; relationship spans first-and-last entity in a chain",
+      "notes": "David's system FAILED this. Probe whether the aggregate ('at some point') is understood at all. Graceful failure is an acceptable outcome here."
+    },
+    {
+      "id": "D7",
+      "nl_input": "Countries that are in two continents",
+      "expected_table": "encompasses",
+      "expected_columns": ["country", "continent", "percentage"],
+      "expected_filter_join_aggregate": "aggregate: keep countries whose COUNT(distinct continent) = 2 (David used custom SQL for this)",
+      "expected_pattern": "many_many_relationship",
+      "expected_charts": {"primary": "sankey diagram", "acceptable": ["chord diagram", "matrix heatmap", "force graph"]},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "many-many relationship; HAVING COUNT = 2 aggregate filter",
+      "notes": "Even without the COUNT=2 filter, the core many-many -> sankey/chord recommendation should be correct; grade the count filter separately."
+    },
+    {
+      "id": "D8",
+      "nl_input": "The relationship between industry and service GDP in the economies of different countries",
+      "expected_table": "economy",
+      "expected_columns": ["country", "industry", "service"],
+      "expected_filter_join_aggregate": "none",
+      "expected_pattern": "basic_entity_inherited_key",
+      "expected_charts": {"primary": "scatter diagram", "acceptable": []},
+      "david_result": "Pass (point & click)",
+      "stresses": "is-a subset again; two scalar attributes -> scatter",
+      "notes": "industry and service are the two scalar percentages on economy."
+    },
+    {
+      "id": "D9",
+      "nl_input": "Display the population of France, Spain, and Italy for the years 1960 to 2015",
+      "expected_table": "country_population",
+      "expected_columns": ["country", "year", "population"],
+      "expected_filter_join_aggregate": "filter country IN (France, Spain, Italy); filter year BETWEEN 1960 AND 2015",
+      "expected_pattern": "weak_entity",
+      "expected_charts": {"primary": "line chart", "acceptable": ["grouped bar chart", "stacked bar chart"]},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "temporal weak entity (year is an orderable key) -> line; multi-value IN filter + numeric range filter",
+      "notes": "country_population is a weak entity (PK country+year). year is continuous/orderable so a line chart is valid; this is the case David uses to demonstrate 'effectiveness' (order-aware)."
+    },
+    {
+      "id": "D10",
+      "nl_input": "Display the history of the population level of each country in Oceania",
+      "expected_table": "country_population",
+      "expected_columns": ["country", "year", "population"],
+      "expected_filter_join_aggregate": "filter continent = 'Oceania' (join country -> encompasses, continent = 'Oceania')",
+      "expected_pattern": "weak_entity",
+      "expected_charts": {"primary": "line chart", "acceptable": ["grouped bar chart", "stacked bar chart"]},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "temporal weak entity + geographic filter via a many-many relationship",
+      "notes": "'history' + 'each country' -> one temporal line per country. Continent membership is only reachable through encompasses."
+    },
+    {
+      "id": "D11",
+      "nl_input": "Display the elevation of all airports that are at least 2000 in altitude",
+      "expected_table": "airport",
+      "expected_columns": ["iata_code", "elevation"],
+      "expected_filter_join_aggregate": "filter elevation >= 2000",
+      "expected_pattern": "basic_entity",
+      "expected_charts": {"primary": "bar chart", "acceptable": []},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "identity/alternative-key handling: airport NAME is not unique, so the key must be iata_code; single numeric filter",
+      "notes": "Good test of the identity-role logic: the chart must key by iata_code (unique), not name. Grade whether the label/key role is iata_code."
+    },
+    {
+      "id": "D12",
+      "nl_input": "Display how the population of continents is divided between countries",
+      "expected_table": "encompasses",
+      "expected_columns": ["country", "continent", "percentage"],
+      "expected_filter_join_aggregate": "optionally weight country population by encompasses.percentage; group by continent",
+      "expected_pattern": "many_many_relationship",
+      "expected_charts": {"primary": "sankey diagram", "acceptable": ["treemap", "circle packing", "matrix heatmap", "stacked bar chart"]},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "many-many part-of-whole; David notes this flips between one-many and many-many depending on the data subset",
+      "notes": "'divided between' = part-of-whole -> sankey/treemap. percentage is the natural weight. Accept a one-many hierarchy (treemap/circle packing) reading too."
+    },
+    {
+      "id": "D13",
+      "nl_input": "The languages spoken in South American countries, excluding languages spoken by less than 1,000,000 people on the continent",
+      "expected_table": "spoken",
+      "expected_columns": ["country", "name", "percentage"],
+      "expected_filter_join_aggregate": "filter continent = 'South America' (join country -> encompasses); exclude languages whose total speakers on the continent < 1,000,000 (percentage x country population, summed per language, thresholded)",
+      "expected_pattern": "weak_entity",
+      "expected_charts": {"primary": "grouped bar chart", "acceptable": ["stacked bar chart", "spider chart"]},
+      "david_result": "Pass (custom SQL)",
+      "stresses": "weak entity (spoken: country+language) + geographic filter + a derived cross-table aggregate threshold (David flagged this as needing considerable SQL updates)",
+      "notes": "spoken is a weak entity (strong = country, weak key = language name); percentage is the scalar. The speaker-count threshold is a derived aggregate the NL parser is unlikely to compute fully -> grade the aggregate layer separately from the base grouped-bar recommendation."
+    }
+  ]
+}
